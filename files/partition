@@ -1,0 +1,36 @@
+#!/bin/sh /etc/rc.common
+
+START=70
+
+start() {
+	PART3=$(fdisk -l /dev/mmcblk0|grep mmcblk0p3)
+	[ -n "$PART3" ] && {
+		mount /dev/mmcblk0p3 /usr/pnrouter
+		return
+	}
+
+	P3START=$(fdisk -l /dev/mmcblk0|grep mmcblk0p2|awk -F" " '{print $5}')
+	let P3START=P3START+1
+
+	fdisk -u /dev/mmcblk0 << EOF
+n
+p
+3
+$P3START
+
+
+w
+EOF
+
+	partx -u /dev/mmcblk0
+	
+	mkfs.ext4 /dev/mmcblk0p3 << EOF
+	
+EOF
+
+	mkdir /usr/pnrouter_bak
+	cp -fr /usr/pnrouter/* /usr/pnrouter_bak/
+	mount /dev/mmcblk0p3 /usr/pnrouter
+	mv -f /usr/pnrouter_bak/* /usr/pnrouter/
+	rm -fr /usr/pnrouter_bak/
+}
