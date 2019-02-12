@@ -223,6 +223,13 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define MAX_FILE_BUFF	(1024*1024*3)
 #define IM_MSG_MAGIC	0x0dadc0de
 
+enum PNR_DEV_TYPE_ENUM
+{
+    PNR_DEV_TYPE_X86SERVER = 1,
+    PNR_DEV_TYPE_ONESPACE = 2,
+    PNR_DEV_TYPE_RASIPI3 = 3,
+    PNR_DEV_TYPE_EXPRESSOBIN = 4,
+};
 #ifdef DEV_ONESPACE
 #define PNR_DB_USERFILE_HEAD     "/root"
 #define DAEMON_PNR_TOP_DIR "/root/pnrouter/"
@@ -697,6 +704,26 @@ enum {
 	PNR_FILE_RECV = 2,
 	PNR_FILE_UPLOAD = 3
 };
+
+#define PAPUSHMSG_DEVELOP_HTTPS_SERVER   "47.96.76.184"  //"192.168.137.64"
+#define PAPUSHMSG_PRODUCT_HTTPS_SERVER   "pprouter.online"
+#define PAPUSHMSG_HTTPSSERVER_PORT   9001
+#define PAPUSHMSG_HTTPSSERVER_PREURL "/v1/pareg/pushmsg"
+enum PUSHMSG_PRI_LEVER
+{
+    PUSHMSG_PRI_LEVER_LOW = 1,
+    PUSHMSG_PRI_LEVER_MIDDLE = 2,
+    PUSHMSG_PRI_LEVER_HIGH = 3,
+};
+enum PUSHMSG_TYPE_ENUM
+{
+    PUSHMSG_TYPE_DEBUGINFO = 0,
+    PUSHMSG_TYPE_NOTICE_NEWMSG = 1,
+    PUSHMSG_TYPE_SYSTEMINFO = 2,
+    PUSHMSG_TYPE_CRETICALINFO = 3,
+};
+#define PNR_POSTMSG_TITLE "PP Messenger"
+#define PNR_POSTMSG_PAYLOAD  "You Have new Messages"
 //推送消息结构体
 struct newmsg_notice_params{
     int priority;
@@ -713,6 +740,20 @@ struct disk_total_info{
     int count;
     char used_capacity[MANU_NAME_MAXLEN+1];
     char total_capacity[MANU_NAME_MAXLEN+1];
+};
+#define PNR_DISK_MAXNUM 2
+enum PNR_DISK_STATUS_ENUM
+{
+    PNR_DISK_STATUS_NONE = 0,//未挂载硬盘
+    PNR_DISK_STATUS_NOINIT = 1,//挂载未初始化
+    PNR_DISK_STATUS_RUNNING = 2,//正常使用中
+    PNR_DISK_STATUS_ERROR = 3,//磁盘故障
+};
+enum PNR_DISK_MODE_ENUM
+{
+    PNR_DISK_MODE_NONE = 0,
+    PNR_DISK_MODE_BASIC,
+    PNR_DISK_MODE_RAID1,
 };
 //磁盘详细信息
 struct dist_detail_info

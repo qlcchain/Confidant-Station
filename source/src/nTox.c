@@ -325,19 +325,17 @@ static void auto_accept_request(Tox *m, const uint8_t *public_key,
 {
 	uint8_t fraddr_bin[TOX_ADDRESS_SIZE] = {0};
     char fraddr_str[FRADDR_TOSTR_BUFSIZE] = {0};
-	uint32_t num = tox_friend_add_norequest(m, public_key, NULL);
-	
-	if (tox_friend_get_public_key(m, num, fraddr_bin, NULL)) {
-		fraddr_to_str(fraddr_bin, fraddr_str);
-	}
+	Tox_Err_Friend_Add err;
 
-    if (num != UINT32_MAX) {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO, "friend(%s) request accepted as friendnum (%d)", 
-            fraddr_str, num);
+	fraddr_to_str(public_key, fraddr_str);
+		
+	uint32_t num = tox_friend_add_norequest(m, public_key, &err);
+	if (num == UINT32_MAX) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox add friend(%s) failed(%d)", fraddr_str, err);
+	} else {
+		DEBUG_PRINT(DEBUG_LEVEL_INFO, "friend(%s) request accepted as friendnum (%d)", fraddr_str, num);
         save_data_new(m);
-    } else {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "failed to add friend(%s)", fraddr_str);
-    }
+	}
 }
 
 /*****************************************************************************

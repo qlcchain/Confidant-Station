@@ -112,7 +112,7 @@ int post_pack(const char *host, int port, const char *page, int len, const char 
         return ERROR;
     }
     cJSON_AddItemToObject(params, "post_param", cJSON_CreateString(post));
-    post_data = cJSON_PrintUnformatted(params);
+    post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_pack post:(%d_%d:%s)",len,re_len,post_data);
     free(post_data);

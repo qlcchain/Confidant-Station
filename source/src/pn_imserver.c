@@ -39,8 +39,16 @@
 #include "tox_seg_msg.h"
 #include "net_crypto.h"
 
+#ifdef DEV_ONESPACE
+int g_pnrdevtype = PNR_DEV_TYPE_ONESPACE;
+#elif defined (DEV_RASIPI3)
+int g_pnrdevtype = PNR_DEV_TYPE_RASIPI3;
+#elif defined (DEV_EXPRESSOBIN)
+int g_pnrdevtype = PNR_DEV_TYPE_EXPRESSOBIN;
+#else
+int g_pnrdevtype = PNR_DEV_TYPE_X86SERVER;
+#endif
 /* one of these created for each message */
-
 struct msg {
 	void *payload; /* is malloc'd */
 	size_t len;
@@ -1165,7 +1173,7 @@ void im_send_msg_deal(int direction)
                                             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
                                             post_newmsg_notice(g_daemon_tox.user_toxid,
                                                 g_imusr_array.usrnode[msg->userid].user_toxid,
-                                                "You Have new Messages",FALSE);                                    
+                                                PNR_POSTMSG_PAYLOAD,FALSE);                                    
                                             break;
                                         default:
                                             break;
@@ -5078,13 +5086,9 @@ int im_get_disk_info_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int ret = OK;
 	char buf[2048] = {0};
 	cJSON *json_test = NULL;
-	char *tmp_json_buff = NULL;
 	char *ret_buff = NULL;
-	char *errmsg = NULL;
-    cJSON *tmp_item = NULL;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
-	int index = 0;
 	int ret_code = 0;
 
 	ret_root = cJSON_CreateObject();
@@ -5209,18 +5213,14 @@ OUT:
 int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int *plws_index, struct imcmd_msghead_struct *head)
 {
-	int ret = OK;
-	char buf[2048] = {0};
-	cJSON *json_test = NULL;
-	char *tmp_json_buff = NULL;
 	char *ret_buff = NULL;
-	char *errmsg = NULL;
-    cJSON *tmp_item = NULL;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
-	int index = 0;
+	int i = 0;
 	int ret_code = 0;
-
+    struct disk_total_info totalinfo;
+    struct dist_detail_info detailinfo[PNR_DISK_MAXNUM];
+    
 	ret_root = cJSON_CreateObject();
 	if (!ret_root) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json create err");
@@ -5235,92 +5235,208 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         return ERROR;
     }
 
+    memset(&totalinfo,0,sizeof(totalinfo));
+    memset(&detailinfo[0],0,PNR_DISK_MAXNUM*sizeof(struct dist_detail_info));
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)(head->api_version)));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
-    cJSON_AddItemToObject(ret_root, "params", ret_params);
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETDISKTOTALINFO));
-
-	ret = get_file_content("/tmp/disk.err", buf, sizeof(buf));
-	if (ret) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.err failed");
-		ret_code = 1;
-		goto OUT;
-	}
-
-	json_test = cJSON_Parse(buf);
-	if (!json_test) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.err(%s) err", buf);
-		ret_code = 1;
-		goto OUT;
-	}
-
-	ret_buff = cJSON_PrintUnformatted(json_test);
-	cJSON_Delete(json_test);
-    cJSON_AddItemToObject(ret_params, "mode", cJSON_CreateString(ret_buff));
-
-	memset(buf, 0, sizeof(buf));
-	ret = get_file_content("/tmp/disk.info", buf, sizeof(buf));
-	if (ret) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.info failed");
-		ret_code = 1;
-		goto OUT;
-	}
-
-	json_test = cJSON_Parse(buf);
-	if (!json_test) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.info(%s) err", buf);
-		ret_code = 1;
-		goto OUT;
-	}
-
-	ret_buff = cJSON_PrintUnformatted(json_test);
-	cJSON_Delete(json_test);
-	cJSON_AddItemToObject(ret_params, "info", cJSON_CreateString(ret_buff));
-
-	memset(buf, 0, sizeof(buf));
-	buf[0] = '{';
-	ret = get_popen_content("/opt/bin/hdsmart.sh", &buf[1], sizeof(buf) - 2);
-	if (ret) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.size failed");
-		ret_code = 1;
-		goto OUT;
-	}
-
-	strcat(buf, "}");
-
-	json_test = cJSON_Parse(buf);
-	if (!json_test) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.size(%s) err", buf);
-		ret_code = 1;
-		goto OUT;
-	}
-
-	ret_buff = cJSON_PrintUnformatted(json_test);
-	cJSON_Delete(json_test);
-	cJSON_AddItemToObject(ret_params, "size", cJSON_CreateString(ret_buff));
-
-OUT:
-	cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-
-	ret_buff = cJSON_PrintUnformatted(ret_root);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+    }
+    else
+    {
+        ret_code = OK;
+        totalinfo.count = PNR_DISK_MAXNUM;
+        totalinfo.mode = PNR_DISK_MODE_RAID1;
+        strcpy(totalinfo.used_capacity,"756M");
+        strcpy(totalinfo.total_capacity,"1.7G");
+        detailinfo[0].slot = 0;
+        detailinfo[0].status = PNR_DISK_STATUS_RUNNING;
+        detailinfo[0].power_on = 41;
+        detailinfo[0].temperature = 37;
+        strcpy(detailinfo[0].capacity,"1.5G");
+        strcpy(detailinfo[0].device,"WDC WD10EZEX-08WN4A0");
+        strcpy(detailinfo[0].serial,"WD-WCC6Y4UV92L8");
+        
+        detailinfo[1].slot = 1;
+        detailinfo[1].status = PNR_DISK_STATUS_NOINIT;
+    }
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    if(ret_code == OK)
+    {
+        cJSON_AddItemToObject(ret_params, "Mode", cJSON_CreateNumber(totalinfo.mode));
+        cJSON_AddItemToObject(ret_params, "Count", cJSON_CreateNumber(totalinfo.count));
+        cJSON_AddItemToObject(ret_params, "UsedCapacity", cJSON_CreateString(totalinfo.used_capacity));
+        cJSON_AddItemToObject(ret_params, "TotalCapacity", cJSON_CreateString(totalinfo.total_capacity));
+        if(totalinfo.count > 0)
+        {
+            cJSON *pJsonArry = cJSON_CreateArray();
+            if(pJsonArry == NULL)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json create err");
+                cJSON_Delete(ret_params);
+                return ERROR;
+            }
+            for(i = 0;i < PNR_DISK_MAXNUM;i++)
+            {
+                cJSON *pJsonsub = cJSON_CreateObject();
+                if(pJsonsub == NULL)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                    cJSON_Delete(ret_root);
+                    return ERROR;
+                }
+                cJSON_AddItemToArray(pJsonArry,pJsonsub); 
+                cJSON_AddNumberToObject(pJsonsub,"Slot",i);
+                cJSON_AddNumberToObject(pJsonsub,"Status",detailinfo[i].status);
+                if(detailinfo[i].status == PNR_DISK_STATUS_RUNNING)
+                {
+                    cJSON_AddNumberToObject(pJsonsub,"PowerOn",detailinfo[i].power_on);
+                    cJSON_AddNumberToObject(pJsonsub,"Temperature",detailinfo[i].temperature);
+                    cJSON_AddStringToObject(pJsonsub,"Capacity",detailinfo[i].capacity);
+                    cJSON_AddStringToObject(pJsonsub,"Device",detailinfo[i].device);
+                    cJSON_AddStringToObject(pJsonsub,"Serial",detailinfo[i].serial);
+                }
+            }
+            cJSON_AddItemToObject(ret_params,"Info", pJsonArry);
+        }
+    }
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-	
     *retmsg_len = strlen(ret_buff);
-    if (*retmsg_len >= IM_JSON_MAXLEN) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad ret(%d)", *retmsg_len);
+    if(*retmsg_len < VERSION_MAXLEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d)",*retmsg_len);
         free(ret_buff);
         return ERROR;
     }
-	
-    strcpy(retmsg, ret_buff);
+    strcpy(retmsg,ret_buff);
     free(ret_buff);
-	
 	return OK;	
 }
+/*****************************************************************************
+ 函 数 名  : im_get_disk_detailinfo_deal
+ 功能描述  : 获取磁盘详细信息
+ 输入参数  : cJSON *params                      
+             char *retmsg                       
+             int *retmsg_len                    
+             int *plws_index                    
+             struct imcmd_msghead_struct *head  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2019年1月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
 
+*****************************************************************************/
+int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
+	int *plws_index, struct imcmd_msghead_struct *head)
+{
+	char *ret_buff = NULL;
+	cJSON *ret_root = NULL;
+    cJSON *ret_params = NULL;
+    cJSON *tmp_item = NULL;
+	char *tmp_json_buff = NULL;
+	int slot = -1;
+	int ret_code = 0;
+    struct dist_detail_info detailinfo;
+
+    memset(&detailinfo,0,sizeof(struct dist_detail_info));
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Slot",slot,TOX_ID_STR_LEN);
+
+    ret_root = cJSON_CreateObject();
+	if (!ret_root) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json create err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+	
+    ret_params = cJSON_CreateObject();
+	if (!ret_params) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json create err");
+        cJSON_Delete(ret_params);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)(head->api_version)));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETDISKDETAILINFO));
+    if(slot < 0 || slot >= PNR_DISK_MAXNUM)
+    {
+        ret_code = ERROR;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"get slot(%d) error",slot);
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_detailinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
+        if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+        {
+        }
+        else
+        {
+            ret_code = OK;
+            detailinfo.slot = slot;
+            detailinfo.status = PNR_DISK_STATUS_RUNNING;
+            strcpy(detailinfo.name,"/dev/sda");
+            strcpy(detailinfo.device,"WDC WD10EZEX-08WN4A0");
+            strcpy(detailinfo.serial,"WD-WCC6Y4UV92L8");
+            strcpy(detailinfo.firmware,"02.01A02");
+            strcpy(detailinfo.formfactor,"3.5 inches");
+            strcpy(detailinfo.luwwndeviceid,"5 0014ee 265bdf6ba");
+            strcpy(detailinfo.capacity,"1,000,204,886,016 bytes [1.00 TB]");
+            strcpy(detailinfo.sectorsizes,"512 bytes logical, 4096 bytes physical");
+            strcpy(detailinfo.rotationrate,"7200 rpm");
+            strcpy(detailinfo.ataversion,"ACS-3 T13/2161-D revision 3b");
+            strcpy(detailinfo.sataversion,"SATA 3.1, 6.0 Gb/s");
+            strcpy(detailinfo.smartsupport,"Available - device has SMART capability");
+        }
+    }
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    if(ret_code == OK)
+    {
+        cJSON_AddItemToObject(ret_params, "Slot", cJSON_CreateNumber(slot));
+        cJSON_AddItemToObject(ret_params, "Status", cJSON_CreateNumber(detailinfo.status));
+        if(detailinfo.status == PNR_DISK_STATUS_RUNNING)
+        {
+            cJSON_AddItemToObject(ret_params, "Name", cJSON_CreateString(detailinfo.name));
+            cJSON_AddItemToObject(ret_params, "Device", cJSON_CreateString(detailinfo.device));
+            cJSON_AddItemToObject(ret_params, "Serial", cJSON_CreateString(detailinfo.serial));
+            cJSON_AddItemToObject(ret_params, "Firmware", cJSON_CreateString(detailinfo.firmware));
+            cJSON_AddItemToObject(ret_params, "FormFactor", cJSON_CreateString(detailinfo.formfactor));
+            cJSON_AddItemToObject(ret_params, "LUWWNDeviceId", cJSON_CreateString(detailinfo.luwwndeviceid));
+            cJSON_AddItemToObject(ret_params, "Capacity", cJSON_CreateString(detailinfo.capacity));
+            cJSON_AddItemToObject(ret_params, "SectorSizes", cJSON_CreateString(detailinfo.sectorsizes));
+            cJSON_AddItemToObject(ret_params, "RotationRate", cJSON_CreateString(detailinfo.rotationrate));
+            cJSON_AddItemToObject(ret_params, "ATAVersion", cJSON_CreateString(detailinfo.ataversion));
+            cJSON_AddItemToObject(ret_params, "SATAVersion", cJSON_CreateString(detailinfo.sataversion));
+            cJSON_AddItemToObject(ret_params, "SMARTsupport", cJSON_CreateString(detailinfo.smartsupport));
+        }
+    }
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < VERSION_MAXLEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d)",*retmsg_len);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+	return OK;	
+}
 /*****************************************************************************
  函 数 名  : im_format_disk_deal
  功能描述  : 格式化磁盘
@@ -5359,8 +5475,10 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "Mode", mode, 16);
 
 	while (g_valid_disk_mode[i]) {
-		if (!strcmp(mode, g_valid_disk_mode[i]))
+		if (!strcmp(mode, g_valid_disk_mode[i])) {
 			ret_code = 0;
+			break;
+		}
 
 		i++;
 	}
@@ -5454,7 +5572,7 @@ OUT:
 int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int *plws_index, struct imcmd_msghead_struct *head)
 {
-	system("sync;reboot");
+	system("sync;/opt/bin/umounthd.sh;reboot");
 	return OK;
 }
 
@@ -5504,8 +5622,8 @@ int im_replaymsg_deal(cJSON *params, int cmd, struct imcmd_msghead_struct *head,
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Retcode",ret,0);
             if(g_imusr_array.usrnode[index].appactive_flag == PNR_APPACTIVE_STATUS_BACKEND)
             {
+                post_newmsg_notice(g_daemon_tox.user_toxid,toid,PNR_POSTMSG_PAYLOAD,FALSE); 
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d:%s)  post_newmsg_notice###",index,toid);
-                post_newmsg_notice(g_daemon_tox.user_toxid,toid,"You Have new Messages",FALSE); 
             }
             break;  
 
@@ -8927,8 +9045,15 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 }
                 break;  
   			case PNR_IM_CMDTYPE_GETDISKDETAILINFO:
+                if (im_get_disk_detailinfo_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im get disk info failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
             case PNR_IM_CMDTYPE_GETDISKTOTALINFO:
-                if (im_get_disk_info_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+                if (im_get_disk_totalinfo_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im get disk info failed");
                     return ERROR;
@@ -9408,8 +9533,15 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 }
                 break; 
             case PNR_IM_CMDTYPE_GETDISKDETAILINFO:
+                if (im_get_disk_detailinfo_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_get_disk_info_deal failed");
+                    return ERROR;
+                }
+				needret = TRUE;
+                break;
             case PNR_IM_CMDTYPE_GETDISKTOTALINFO:
-                if (im_get_disk_info_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                if (im_get_disk_totalinfo_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_get_disk_info_deal failed");
                     return ERROR;
@@ -11362,24 +11494,21 @@ int pnr_encrypt_show(char* msg,int flag)
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      pnr_post_newmsg_notice_task
+  Description:   新消息提醒推送任务
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
 
-#define PAPUSHMSG_DEVELOP_HTTPS_SERVER   "47.96.76.184"  //"192.168.137.64"
-#define PAPUSHMSG_PRODUCT_HTTPS_SERVER   "pprouter.online"
-#define PAPUSHMSG_HTTPSSERVER_PORT   9001
-#define PAPUSHMSG_HTTPSSERVER_PREURL "/v1/pareg/pushmsg"
-enum PUSHMSG_PRI_LEVER
-{
-    PUSHMSG_PRI_LEVER_LOW = 1,
-    PUSHMSG_PRI_LEVER_MIDDLE = 2,
-    PUSHMSG_PRI_LEVER_HIGH = 3,
-};
-enum PUSHMSG_TYPE_ENUM
-{
-    PUSHMSG_TYPE_DEBUGINFO = 0,
-    PUSHMSG_TYPE_NOTICE_NEWMSG = 1,
-    PUSHMSG_TYPE_SYSTEMINFO = 2,
-    PUSHMSG_TYPE_CRETICALINFO = 3,
-};
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
 static void *pnr_post_newmsg_notice_task(void *para)
 {
     struct newmsg_notice_params* pmsg = (struct newmsg_notice_params*)para;
@@ -11404,6 +11533,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     if(params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
+        free(pmsg);
         return NULL;
     }
     cJSON_AddItemToObject(params, "from", cJSON_CreateString(pmsg->from));
@@ -11417,6 +11547,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     data_len = strlen(post_data);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:post_data(%s)",post_data);
     https_post(server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSG_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
+    free(pmsg);
     free(post_data);
     params = cJSON_CreateObject();
     if(params == NULL)
@@ -11425,7 +11556,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
         return NULL;
     }
     cJSON_AddItemToObject(params, "replay", cJSON_CreateString(rec_buff));
-    post_data = cJSON_PrintUnformatted(params);
+    post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",post_data);
     free(post_data);
@@ -11450,7 +11581,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
 int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
 {
 	pthread_t task_id = 0;
-    struct newmsg_notice_params msg;
+    struct newmsg_notice_params* pmsg = NULL;
 
     if(rid == NULL || targetid == NULL || msgpay == NULL)
     {
@@ -11462,15 +11593,16 @@ int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice input params too long");
         return ERROR;
     }
-    memset(&msg,0,sizeof(msg));
-    msg.priority = PUSHMSG_PRI_LEVER_MIDDLE;
-    msg.server_flag = server_flag;
-    msg.type = PUSHMSG_TYPE_NOTICE_NEWMSG;
-    strcpy(msg.from,rid);
-    strcpy(msg.to,targetid);
-    strcpy(msg.title,"PP Messenger");
-    strcpy(msg.payload,msgpay);
-    if (pthread_create(&task_id, NULL, pnr_post_newmsg_notice_task, &msg) != 0) 
+    pmsg = (struct newmsg_notice_params*) malloc(sizeof(struct newmsg_notice_params));
+    memset(pmsg,0,sizeof(struct newmsg_notice_params));
+    pmsg->priority = PUSHMSG_PRI_LEVER_MIDDLE;
+    pmsg->server_flag = server_flag;
+    pmsg->type = PUSHMSG_TYPE_NOTICE_NEWMSG;
+    strcpy(pmsg->from,rid);
+    strcpy(pmsg->to,targetid);
+    strcpy(pmsg->title,PNR_POSTMSG_TITLE);
+    strcpy(pmsg->payload,msgpay);
+    if (pthread_create(&task_id, NULL, pnr_post_newmsg_notice_task, pmsg) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create imuser_heartbeat_daemon failed");
         return ERROR;
@@ -11516,7 +11648,7 @@ int im_debug_pushnewnotice_deal(char* pbuf)
         p_targetid = g_imusr_array.usrnode[user_index].user_toxid;
     }
     
-    post_newmsg_notice(g_daemon_tox.user_toxid,p_targetid,"You Have new Messages",FALSE);
+    post_newmsg_notice(g_daemon_tox.user_toxid,p_targetid,PNR_POSTMSG_PAYLOAD,FALSE);
     return OK;
 }
 /**********************************************************************************
