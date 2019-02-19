@@ -5220,6 +5220,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	char *ret_buff = NULL;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
+    int json_index = 0;
 	int i = 0;
 	int ret_code = 0;
     struct disk_total_info totalinfo;
@@ -5378,7 +5379,6 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
                 CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Power_On_Hours", detailinfo[slot].power_on, 0);
                 CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Temperature_Celsius", detailinfo[slot].temperature, 0);
                 detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get disk2(%d)",detailinfo[slot].temperature);
             }
             //获取磁盘信息
             memset(buf, 0, sizeof(buf));
@@ -5394,8 +5394,16 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         		ret_code = 1;
         		goto OUT;
         	}
-            subjson_cache = cJSON_GetArrayItem(json_cache,1);
-        	if (!json_cache) {
+            if(totalinfo.mode == PNR_DISK_MODE_BASIC)
+            {
+                json_index = 0;
+            }
+            else
+            {
+                json_index = 1;
+            }
+            subjson_cache = cJSON_GetArrayItem(json_cache,json_index);
+        	if (!subjson_cache) {
         		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
         		ret_code = 1;
         		goto OUT;
@@ -5416,11 +5424,10 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "User Capacity", detailinfo[slot].capacity, MANU_NAME_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Device Model", detailinfo[slot].device, MANU_NAME_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Serial Number", detailinfo[slot].serial, MANU_NAME_MAXLEN);
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get disk(%d)(Serial Number:%s)",slot,detailinfo[slot].serial);
             if(totalinfo.count == PNR_DISK_MAXNUM)
             {
-                subjson_cache = cJSON_GetArrayItem(json_cache,2);
-            	if (!json_cache) {
+                subjson_cache = cJSON_GetArrayItem(json_cache,json_index+1);
+            	if (!subjson_cache) {
             		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
             		ret_code = 1;
             		goto OUT;
