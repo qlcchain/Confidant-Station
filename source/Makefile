@@ -1,0 +1,52 @@
+ifeq ($(OPENWRT_BUILD), 1)
+MOUDLE_LDFLAGS += -lm -lpthread -ldl -lcurl -luci -lcrypto -lssl -lubus -lubox -lnl-tiny -lsqlite3 -lsodium -lwebsockets -lcrypto  -lqrencode -lpng
+else
+MOUDLE_LDFLAGS += -lm -lpthread -ldl -lcurl -lsqlite3  -lsodium -lcrypt -lwebsockets -lcrypto -lqrencode -lssl -L../rootfs/usr/lib 
+endif
+TOOL_INC_DIR:=
+BIN_DIR := ./bin
+TARGET=pnr_server
+
+CROSS_COMPILE = ../gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+CROSSCOMPILE_INCLUDEPATH = ../rootfs/usr/include/
+CC := $(CROSS_COMPILE)gcc
+AR := $(CROSS_COMPILE)ar
+AS := $(CROSS_COMPILE)as
+LD := $(CROSS_COMPILE)ld
+NM := $(CROSS_COMPILE)nm
+STRIP := $(CROSS_COMPILE)strip
+
+MOUDLE_CFLAGS += -Wall -g $(CPPFLAGS) -I$(CROSSCOMPILE_INCLUDEPATH) -DDEV_ONESPACE
+
+CP := cp
+
+MODULE_MM=-MM
+MODULE_TOP_DIR:=.
+MODULE_BIN_DIR:=$(MODULE_TOP_DIR)/src
+MODULE_SRC_DIR:=$(MODULE_TOP_DIR)/src
+MODULE_INC_DIR:=-I$(MODULE_TOP_DIR)/inc $(TOOL_INC_DIR)
+MODULE_SRCS:=$(wildcard $(MODULE_SRC_DIR)/*.c)
+MODULE_OBJS:=$(addprefix $(MODULE_BIN_DIR)/, $(notdir $(patsubst %.c, %.o, $(MODULE_SRCS))))
+MODULE_DEPS:=$(MODULE_OBJS:.o=.d)
+
+all : exec
+
+exec : $(MODULE_DEPS) $(MODULE_OBJS)
+	$(CC) $(CFLAGS) $(MOUDLE_CFLAGS) -o $(TARGET)  $(MODULE_OBJS) $(LDFLAGS) $(MOUDLE_LDFLAGS)
+
+$(MODULE_OBJS) : %.o : %.d
+	$(MAKE) -f $<
+	
+$(MODULE_DEPS) : $(MODULE_BIN_DIR)/%.d : src/%.c
+	@$(CC) $(MODULE_MM) $(CFLAGS) $(MOUDLE_CFLAGS) $(MODULE_INC_DIR) $< -o $@
+	@echo '	$(CC) $(CFLAGS) $(MOUDLE_CFLAGS) $(MODULE_INC_DIR) -c $< -o $(patsubst %.d, %.o, $@)' >> $@ 
+
+install:
+	mkdir -p ${BIN_DIR}
+	$(STRIP) $(TARGET)
+	$(CP) $(TARGET) ${BIN_DIR}
+clean:
+	rm -rf $(MODULE_OBJS)
+	rm -rf $(MODULE_DEPS)
+	rm -rf $(TARGET)
+

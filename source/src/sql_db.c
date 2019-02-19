@@ -712,7 +712,7 @@ int pnr_usr_instance_insert(int index)
     }      
 	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_instance_tbl values(%d,'%s','%s','%s','%s','%s');",
              g_imusr_array.usrnode[index].user_index,g_imusr_array.usrnode[index].user_name,g_imusr_array.usrnode[index].user_nickname,
-             g_imusr_array.usrnode[index].user_toxid,g_imusr_array.usrnode[index].userdata_pathurl,g_imusr_array.usrnode[index].userdata_fullurl);
+             g_imusr_array.usrnode[index].user_toxid,g_imusr_array.usrnode[index].userdata_pathurl,g_imusr_array.usrnode[index].userinfo_fullurl);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_usr_instance_insert:sql(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {

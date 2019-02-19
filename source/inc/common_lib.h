@@ -92,6 +92,7 @@ typedef  long long int64;
 #define PNR_QRCODE_SRCLEN    (PNR_USN_KEYVER_LEN+TOX_ID_STR_LEN+PNR_USN_MAXLEN)
 #define PNR_QRCODE_MAXLEN 255
 #define PNR_USER_HASHID_MAXLEN 16
+#define PNR_DISK_MAXNUM 2
 //用户类型
 enum PNR_USER_TYPE_ENUM
 {
@@ -429,5 +430,6 @@ int dev_hwaddr_init(void);
 unsigned int pnr_BKDRHash(char *str);
 int pnr_uidhash_get(int u_index,int f_num,char* tox_id,unsigned int* hashnum,char* p_ret_hashstr);
 int pnr_htoi(char* s);
+int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,int* percent);
 #endif
 

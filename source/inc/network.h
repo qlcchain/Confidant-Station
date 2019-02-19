@@ -131,7 +131,7 @@ typedef enum Net_Packet_Type {
 
 
 #define TOX_PORTRANGE_FROM 33445
-#define TOX_PORTRANGE_TO   33945
+#define TOX_PORTRANGE_TO   33545
 #define TOX_PORT_DEFAULT   TOX_PORTRANGE_FROM
 
 /* Redefinitions of variables for safe transfer over wire. */

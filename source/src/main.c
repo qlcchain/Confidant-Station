@@ -76,6 +76,7 @@ extern const char *data_file_name;
 extern Tox *qlinkNode;
 extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
 extern char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1];
+extern int g_format_reboot_time;
 
 void *server_discovery_thread(void *args);
 int im_debug_imcmd_deal(char* pcmd);
@@ -715,6 +716,9 @@ void *cron_thread(void *para)
 			}
 		}
 
+		if (g_format_reboot_time > 0 && nowtime >= g_format_reboot_time)
+			system("sync;/opt/bin/umounthd.sh;reboot");
+		
 		sleep(1);
 	}
 }

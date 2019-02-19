@@ -610,6 +610,88 @@ int get_meminfo(void)
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"MemTotal(%d) MemFree(%d)",g_mem_total,g_mem_free);
     return OK;
 }
+/**********************************************************************************
+  Function:      get_disk_capacity
+  Description:  获取磁盘容量
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,int* percent)
+{
+    if(used_capacity == NULL || total_capacity == NULL)
+    {
+        return ERROR;
+    }
+#ifdef DEV_ONESPACE
+    char cmd[CMD_MAXLEN] = {0};
+    char recv[CMD_MAXLEN] = {0};
+    FILE *fp = NULL;
+    char* pbuf = NULL;
+    int stok_flag = 0;
+
+    if(disk_count <0 || disk_count > PNR_DISK_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"input bad disk_count(%d)",disk_count);
+        return ERROR;
+    }
+
+    if(disk_count == 0)
+    {   
+        snprintf(cmd,CMD_MAXLEN,"df -h |grep /dev/root");
+    }
+    else
+    {
+        snprintf(cmd,CMD_MAXLEN,"df -h |grep sata");
+    }
+    if (!(fp = popen(cmd, "r"))) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_disk_capacity cmd(%s) failed",cmd);
+        return ERROR;
+    }
+    if (fgets(recv,CMD_MAXLEN,fp) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_disk_capacity cmd =%s ret failed",cmd);
+        pclose(fp);
+        return ERROR;
+    }  
+    pclose(fp); 
+    pbuf = strtok(recv," ");
+    while(pbuf != NULL)
+    {
+        stok_flag++;
+        if(stok_flag == 2)
+        {
+            strcpy(total_capacity,pbuf);
+        }
+        if(stok_flag == 3)
+        {
+            strcpy(used_capacity,pbuf);
+        }
+        if(stok_flag == 5)
+        {
+            *percent = atoi(pbuf);
+            break;
+        }
+        pbuf = strtok(NULL," ");
+    }
+    if(stok_flag != 5)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_disk_capacity:recv(%s)",recv);
+        return ERROR;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_disk_capacity:get disk(%s %s %d)",used_capacity,total_capacity,*percent);
+#endif
+    return OK;
+}
 
 /**********************************************************************************
   Function:      get_file_md5value

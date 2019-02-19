@@ -231,32 +231,30 @@ enum PNR_DEV_TYPE_ENUM
     PNR_DEV_TYPE_EXPRESSOBIN = 4,
 };
 #ifdef DEV_ONESPACE
-#define PNR_DB_USERFILE_HEAD     "/root"
-#define DAEMON_PNR_TOP_DIR "/root/pnrouter/"
-#define DAEMON_PNR_USERDATA_DIR   "/root/pnrouter/userdata/"
-#define DAEMON_CONFIG_INI  "/root/pnrouter/pnrouter_conf.ini"
-#define DB_TOP_FILE  "/root/pnrouter/pnrouter.db"
-#define DB_FRIENDLIST_FILE  "/root/pnrouter/pnrouter_friends.db"
-#define DB_MSGLOG_FILE  "/root/pnrouter/pnrouter_msglog.db"
-#define DB_MSGCACHE_FILE "/root/pnrouter/pnrouter_msgcache.db"
+#define PNR_DB_USERFILE_HEAD     "/media"
+#define DAEMON_PNR_TOP_DIR "/media/pnrouter/"
+#define DAEMON_PNR_USERDATA_DIR   "/media/pnrouter/userdata/"
+#define DAEMON_PNR_USERINFO_DIR   "/media/pnrouter/userinfo/"
+#define DAEMON_CONFIG_INI  "/media/pnrouter/pnrouter_conf.ini"
+#define DB_TOP_FILE  "/media/pnrouter/pnrouter.db"
+#define DB_FRIENDLIST_FILE  "/media/pnrouter/pnrouter_friends.db"
 #define PNR_ADMINUSER_QRCODEFILE  "/www/luci-static/resources/adminuser_qrcode.png"
-#define PNR_P2PID_FILE  "/root/pnrouter/p2pid.txt"
-#define PNR_DAEMON_TOX_DATAFILE "/root/pnrouter/data.ini"
-#define PNR_DAEMON_TOX_DATABAKFILE "/root/pnrouter/data.ini_bak"
-#define WS_SERVER_INDEX_FILETOPPATH  "/root/pnrouter/"
-//#define WS_SERVER_INDEX_FILEPATH  "/root/pnrouter/mount-origin"
-#define WS_SERVER_INDEX_FILEPATH	"/root/pnrouter/userdata"
-#define WS_SERVER_SSLCERT_FILEPATH  "/root/pnrouter/mount-origin/localhost-100y.cert"
-#define WS_SERVER_PRIVATEKEY_FILEPATH  "/root/pnrouter/mount-origin/localhost-100y.key"
+#define PNR_P2PID_FILE  "/media/pnrouter/p2pid.txt"
+#define PNR_DAEMON_TOX_DATAFILE "/media/pnrouter/data.ini"
+#define PNR_DAEMON_TOX_DATABAKFILE "/media/pnrouter/data.ini_bak"
+#define WS_SERVER_INDEX_FILETOPPATH  "/media/pnrouter/"
+//#define WS_SERVER_INDEX_FILEPATH  "/media/pnrouter/mount-origin"
+#define WS_SERVER_INDEX_FILEPATH	"/media/pnrouter/userdata"
+#define WS_SERVER_SSLCERT_FILEPATH  "/media/pnrouter/mount-origin/localhost-100y.cert"
+#define WS_SERVER_PRIVATEKEY_FILEPATH  "/media/pnrouter/mount-origin/localhost-100y.key"
 #else
 #define PNR_DB_USERFILE_HEAD     "/user"
 #define DAEMON_PNR_TOP_DIR "/usr/pnrouter/"
 #define DAEMON_PNR_USERDATA_DIR   "/usr/pnrouter/userdata/"
+#define DAEMON_PNR_USERINFO_DIR   "/usr/pnrouter/userinfo/"
 #define DAEMON_CONFIG_INI  "/usr/pnrouter/pnrouter_conf.ini"
 #define DB_TOP_FILE  "/usr/pnrouter/pnrouter.db"
 #define DB_FRIENDLIST_FILE  "/usr/pnrouter/pnrouter_friends.db"
-#define DB_MSGLOG_FILE  "/usr/pnrouter/pnrouter_msglog.db"
-#define DB_MSGCACHE_FILE "/usr/pnrouter/pnrouter_msgcache.db"
 #define PNR_ADMINUSER_QRCODEFILE  "/www/luci-static/resources/adminuser_qrcode.png"
 #define PNR_P2PID_FILE  "/usr/pnrouter/p2pid.txt"
 #define PNR_DAEMON_TOX_DATAFILE "/usr/pnrouter/data.ini"
@@ -505,7 +503,8 @@ struct im_user_struct
     char user_name[PNR_USERNAME_MAXLEN+1];
     char user_nickname[PNR_USERNAME_MAXLEN+1];
     char userdata_pathurl[PNR_FILEPATH_MAXLEN];
-    char userdata_fullurl[PNR_FILEPATH_MAXLEN];//全路径名称
+    char userinfo_pathurl[PNR_FILEPATH_MAXLEN];//用户账户信息相关目录
+    char userinfo_fullurl[PNR_FILEPATH_MAXLEN];//用户data文件全路径名称
     struct Tox* ptox_handle;
     struct per_session_data__minimal *pss;
     struct im_friends_struct friends[PNR_IMUSER_FRIENDS_MAXNUM+1];
@@ -738,10 +737,10 @@ struct newmsg_notice_params{
 struct disk_total_info{
     int mode;
     int count;
+    int used_percent;
     char used_capacity[MANU_NAME_MAXLEN+1];
     char total_capacity[MANU_NAME_MAXLEN+1];
 };
-#define PNR_DISK_MAXNUM 2
 enum PNR_DISK_STATUS_ENUM
 {
     PNR_DISK_STATUS_NONE = 0,//未挂载硬盘
@@ -754,6 +753,8 @@ enum PNR_DISK_MODE_ENUM
     PNR_DISK_MODE_NONE = 0,
     PNR_DISK_MODE_BASIC,
     PNR_DISK_MODE_RAID1,
+    PNR_DISK_MODE_RAID0,
+    PNR_DISK_MODE_BUTT
 };
 //磁盘详细信息
 struct dist_detail_info
@@ -762,6 +763,7 @@ struct dist_detail_info
     int status;
     int power_on;
     int temperature;
+    char modelfamily[MANU_NAME_MAXLEN+1];
     char capacity[MANU_NAME_MAXLEN+1];
     char device[MANU_NAME_MAXLEN+1];
     char serial[MANU_NAME_MAXLEN+1];

@@ -173,8 +173,12 @@ pthread_mutex_t tox_msglock[PNR_IMUSER_MAXNUM+1];
 
 // valid disk modes
 char *g_valid_disk_mode[] = {
-	"BASIC", "RAID1", "RAID0", "LVM", "RAIDADD", "LVMADD", NULL
+	0,"BASIC", "RAID1", "RAID0", "LVM", "RAIDADD", "LVMADD", NULL
 };
+
+pthread_mutex_t g_formating_lock = PTHREAD_MUTEX_INITIALIZER;
+char g_formating = 0;
+int g_format_reboot_time = 0;
 
 extern sqlite3 *g_db_handle;
 extern sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1];
@@ -903,7 +907,7 @@ int lws_send_onemsg(int id,struct lws *wsi,int* break_flag)
 int im_get_friend_info(int userid, char *to, int *friendid, int *friendnum)
 {
 	*friendnum = check_and_add_friends(g_tox_linknode[userid], to, 
-		g_imusr_array.usrnode[userid].userdata_fullurl);
+		g_imusr_array.usrnode[userid].userinfo_fullurl);
 	if (*friendnum < 0) {
 		return ERROR;
 	}
@@ -5243,9 +5247,203 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETDISKTOTALINFO));
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
+    	int ret = OK;
+    	char buf[2048] = {0};
+        char value_cache[MANU_NAME_MAXLEN+1]= {0};
+    	cJSON *json_cache = NULL;
+        cJSON *subjson_cache= NULL;
+        cJSON *subjson_item = NULL;
+    	char *tmp_json_buff = NULL;
+        cJSON *tmp_item = NULL;
+        int slot = 0;
+        //首先获取当前磁盘配置模式和数量
+        ret = get_file_content("/tmp/disk.err", buf, sizeof(buf));
+        if (ret) {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.err failed");
+            ret_code = 1;
+            goto OUT;
+        }
+    
+        json_cache = cJSON_Parse(buf);
+        if (!json_cache) {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.err(%s) err", buf);
+            ret_code = 1;
+            goto OUT;
+        }
+        CJSON_GET_VARINT_BYKEYWORD(json_cache, tmp_item, tmp_json_buff, "count", totalinfo.count, 0);
+        if(totalinfo.count < 0 || totalinfo.count > PNR_DISK_MAXNUM)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares get count(%d) err", totalinfo.count);
+            ret_code = 1;
+            goto OUT;
+        }
+        CJSON_GET_VARSTR_BYKEYWORD(json_cache, tmp_item, tmp_json_buff, "mode", value_cache, MANU_NAME_MAXLEN);
+        for(i=PNR_DISK_MODE_BASIC;i<PNR_DISK_MODE_BUTT; i++)
+        {
+            if(strcasecmp(value_cache,g_valid_disk_mode[i]) == OK)
+            {
+                totalinfo.mode = i;
+                break;
+            }
+        }
+        if(i >= PNR_DISK_MODE_BUTT)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares get mode(%s) err", value_cache);
+            ret_code = 1;
+            goto OUT;
+        }
+        if(get_disk_capacity(totalinfo.count,totalinfo.used_capacity,totalinfo.total_capacity,&totalinfo.used_percent) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_disk_capacity err");
+            ret_code = 1;
+            goto OUT;
+        }
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get count(%d)",totalinfo.count);
+        if(totalinfo.count > 0)
+        {
+            //获取实时温度信息
+            memset(buf, 0, sizeof(buf));
+        	buf[0] = '{';
+        	ret = get_popen_content("/opt/bin/hdsmart.sh", &buf[1], sizeof(buf) - 2);
+        	if (ret) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.size failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}
+        	strcat(buf, "}");
+        	json_cache = cJSON_Parse(buf);
+        	if (!json_cache) 
+            {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart(%s) err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            subjson_cache = cJSON_GetObjectItem(json_cache, "hds");
+        	if (!subjson_cache)
+            {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get subjson_cache failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}   
+            subjson_item = cJSON_GetArrayItem(subjson_cache,0);
+        	if (!subjson_item)
+            {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get tmp_item 0 failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", slot, 0);
+            if(slot < 0 || slot >= PNR_DISK_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get slot (%d) failed",slot);
+        		ret_code = 1;
+        		goto OUT;
+            }
+            subjson_item = cJSON_GetObjectItem(subjson_item, "smart");
+        	if (!subjson_item)
+            {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get tmp_item 0 failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}  
+            CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Power_On_Hours", detailinfo[slot].power_on, 0);
+            CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Temperature_Celsius", detailinfo[slot].temperature, 0);
+            detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+            if(totalinfo.count == PNR_DISK_MAXNUM)
+            {
+                subjson_item = cJSON_GetArrayItem(subjson_cache,1);
+            	if (!subjson_item)
+                {
+            		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get tmp_item 0 failed");
+            		ret_code = 1;
+            		goto OUT;
+            	}
+                CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", slot, 0);
+                if(slot < 0 || slot >= PNR_DISK_MAXNUM)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get slot (%d) failed",slot);
+            		ret_code = 1;
+            		goto OUT;
+                }
+                subjson_item = cJSON_GetObjectItem(subjson_item, "smart");
+            	if (!subjson_item)
+                {
+            		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart get tmp_item 0 failed");
+            		ret_code = 1;
+            		goto OUT;
+            	}  
+                CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Power_On_Hours", detailinfo[slot].power_on, 0);
+                CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Temperature_Celsius", detailinfo[slot].temperature, 0);
+                detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get disk2(%d)",detailinfo[slot].temperature);
+            }
+            //获取磁盘信息
+            memset(buf, 0, sizeof(buf));
+        	ret = get_file_content("/tmp/disk.info", buf, sizeof(buf));
+        	if (ret) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.info failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}
+        	json_cache= cJSON_Parse(buf);
+        	if (!json_cache) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.info(%s) err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            subjson_cache = cJSON_GetArrayItem(json_cache,1);
+        	if (!json_cache) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            subjson_item = cJSON_GetObjectItem(subjson_cache, "info");
+        	if (!subjson_item) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_item 1 err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", slot, 0);
+            if(slot < 0 || slot >= PNR_DISK_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart disk.info slot (%d) failed",slot);
+                ret_code = 1;
+                goto OUT;
+            }
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "User Capacity", detailinfo[slot].capacity, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Device Model", detailinfo[slot].device, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Serial Number", detailinfo[slot].serial, MANU_NAME_MAXLEN);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get disk(%d)(Serial Number:%s)",slot,detailinfo[slot].serial);
+            if(totalinfo.count == PNR_DISK_MAXNUM)
+            {
+                subjson_cache = cJSON_GetArrayItem(json_cache,2);
+            	if (!json_cache) {
+            		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+            		ret_code = 1;
+            		goto OUT;
+            	}
+                subjson_item = cJSON_GetObjectItem(subjson_cache, "info");
+                if (!subjson_item) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_item 2 err", buf);
+                    ret_code = 1;
+                    goto OUT;
+                }
+                CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", slot, 0);
+                if(slot < 0 || slot >= PNR_DISK_MAXNUM)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares hdsmart disk.info slot (%d) failed",slot);
+                    ret_code = 1;
+                    goto OUT;
+                }
+                CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "User Capacity", detailinfo[slot].capacity, MANU_NAME_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Device Model", detailinfo[slot].device, MANU_NAME_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Serial Number", detailinfo[slot].serial, MANU_NAME_MAXLEN);
+                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get disk(%d)(Serial Number:%s)",slot,detailinfo[slot].serial);
+            }
+        }        
     }
     else
     {
@@ -5265,6 +5463,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         detailinfo[1].slot = 1;
         detailinfo[1].status = PNR_DISK_STATUS_NOINIT;
     }
+OUT:
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     if(ret_code == OK)
     {
@@ -5382,6 +5581,82 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_detailinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
         if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
         {
+        	int ret = OK;
+        	char buf[2048] = {0};
+            char value_cache[MANU_NAME_MAXLEN+1]= {0};
+        	cJSON *json_cache = NULL;
+            cJSON *subjson_cache= NULL;
+            cJSON *subjson_item = NULL;
+        	char *tmp_json_buff = NULL;
+            cJSON *tmp_item = NULL;
+            int tmp_slot = 0;
+            //获取磁盘信息
+            memset(buf, 0, sizeof(buf));
+        	ret = get_file_content("/tmp/disk.info", buf, sizeof(buf));
+        	if (ret) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.info failed");
+        		ret_code = 1;
+        		goto OUT;
+        	}
+        	json_cache= cJSON_Parse(buf);
+        	if (!json_cache) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares disk.info(%s) err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            subjson_cache = cJSON_GetArrayItem(json_cache,1);
+        	if (!json_cache) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            subjson_item = cJSON_GetObjectItem(subjson_cache, "info");
+        	if (!subjson_item) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+        		ret_code = 1;
+        		goto OUT;
+        	}
+            CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", tmp_slot, 0);
+            if(slot != tmp_slot)
+            {
+                subjson_cache = cJSON_GetArrayItem(json_cache,2);
+            	if (!json_cache) {
+            		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+            		ret_code = 1;
+            		goto OUT;
+            	}
+                subjson_item = cJSON_GetObjectItem(subjson_cache, "info");
+            	if (!subjson_item) {
+            		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+            		ret_code = 1;
+            		goto OUT;
+            	}
+                CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", tmp_slot, 0);
+                if(slot != tmp_slot)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares get tmp_slot(%d) err", tmp_slot);
+                    ret_code = 1;
+                    goto OUT;
+                }
+            }
+            ret_code = OK;
+            detailinfo.slot = slot;
+            detailinfo.status = PNR_DISK_STATUS_RUNNING;
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_cache, tmp_item, tmp_json_buff, "name", detailinfo.name, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Device Model", detailinfo.device, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Serial Number", detailinfo.serial, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Firmware Version", detailinfo.firmware, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Form Factor", detailinfo.formfactor, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "LU WWN Device Id", detailinfo.luwwndeviceid, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Model Family", detailinfo.modelfamily, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "User Capacity", detailinfo.capacity, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Sector Sizes", detailinfo.sectorsizes, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Rotation Rate", detailinfo.rotationrate, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "ATA Version is", detailinfo.ataversion, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "SATA Version is", detailinfo.sataversion, MANU_NAME_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "SMART support is", detailinfo.smartsupport, MANU_NAME_MAXLEN);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_detailinfo_deal:get slot(%d) name(%s)Seriral(%s)",
+                detailinfo.slot,detailinfo.name,detailinfo.serial);
         }
         else
         {
@@ -5389,6 +5664,7 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             detailinfo.slot = slot;
             detailinfo.status = PNR_DISK_STATUS_RUNNING;
             strcpy(detailinfo.name,"/dev/sda");
+            strcpy(detailinfo.modelfamily,"Western Digital Blue");
             strcpy(detailinfo.device,"WDC WD10EZEX-08WN4A0");
             strcpy(detailinfo.serial,"WD-WCC6Y4UV92L8");
             strcpy(detailinfo.firmware,"02.01A02");
@@ -5402,6 +5678,7 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             strcpy(detailinfo.smartsupport,"Available - device has SMART capability");
         }
     }
+OUT:
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     if(ret_code == OK)
     {
@@ -5415,6 +5692,7 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             cJSON_AddItemToObject(ret_params, "Firmware", cJSON_CreateString(detailinfo.firmware));
             cJSON_AddItemToObject(ret_params, "FormFactor", cJSON_CreateString(detailinfo.formfactor));
             cJSON_AddItemToObject(ret_params, "LUWWNDeviceId", cJSON_CreateString(detailinfo.luwwndeviceid));
+            cJSON_AddItemToObject(ret_params, "ModelFamily", cJSON_CreateString(detailinfo.modelfamily));
             cJSON_AddItemToObject(ret_params, "Capacity", cJSON_CreateString(detailinfo.capacity));
             cJSON_AddItemToObject(ret_params, "SectorSizes", cJSON_CreateString(detailinfo.sectorsizes));
             cJSON_AddItemToObject(ret_params, "RotationRate", cJSON_CreateString(detailinfo.rotationrate));
@@ -5473,13 +5751,12 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	char cmd[512] = {0};
 
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "Mode", mode, 16);
-
+    i = 1;
 	while (g_valid_disk_mode[i]) {
 		if (!strcmp(mode, g_valid_disk_mode[i])) {
 			ret_code = 0;
 			break;
 		}
-
 		i++;
 	}
 
@@ -5508,8 +5785,22 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 		strcat(cmd, cJSON_GetObjectItem(diskerr_j, "dev2")->valuestring);
 	}
 
-	system(cmd);
+	//close db files before umount /sata
+	for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) {
+		if (g_msglogdb_handle[i])
+			sqlite3_close(g_msglogdb_handle[i]);
 
+		if (g_msgcachedb_handle[i])
+			sqlite3_close(g_msgcachedb_handle[i]);
+	}
+
+	pthread_mutex_lock(&g_formating_lock);
+	g_formating = 1;
+	pthread_mutex_unlock(&g_formating_lock);
+	
+	system(cmd);
+	g_format_reboot_time = time(NULL) + 5;
+	
 OUT:
 	ret_root = cJSON_CreateObject();
 	if (!ret_root) {
@@ -5572,7 +5863,7 @@ OUT:
 int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int *plws_index, struct imcmd_msghead_struct *head)
 {
-	system("sync;/opt/bin/umounthd.sh;reboot");
+	//system("sync;/opt/bin/umounthd.sh;reboot");
 	return OK;
 }
 
@@ -8683,6 +8974,13 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_msghead_parses failed");
         return ERROR;
     }
+
+	pthread_mutex_lock(&g_formating_lock);
+	if (g_formating == 1 && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REBOOT) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "formating...");
+		return ERROR;
+	}
+	pthread_mutex_unlock(&g_formating_lock);
 	
     memset(retmsg,0,IM_JSON_MAXLEN);
     //这里按照api接口版本分批处理
@@ -9157,6 +9455,13 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "msg head parse failed");
         return ERROR;
     }
+
+	pthread_mutex_lock(&g_formating_lock);
+	if (g_formating == 1 && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REBOOT) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "formating...");
+		return ERROR;
+	}
+	pthread_mutex_unlock(&g_formating_lock);
 	
 	//request other segment
 	if (msg_head.offset > 0) {
@@ -10355,10 +10660,18 @@ int im_server_init(void)
         strcpy(g_imusr_array.usrnode[i].userdata_pathurl,DAEMON_PNR_USERDATA_DIR);
         strcat(g_imusr_array.usrnode[i].userdata_pathurl,g_imusr_array.usrnode[i].user_name);
         strcat(g_imusr_array.usrnode[i].userdata_pathurl,"/");
+        strcpy(g_imusr_array.usrnode[i].userinfo_pathurl,DAEMON_PNR_USERINFO_DIR);
+        strcat(g_imusr_array.usrnode[i].userinfo_pathurl,g_imusr_array.usrnode[i].user_name);
+        strcat(g_imusr_array.usrnode[i].userinfo_pathurl,"/");
 
 		if(access(g_imusr_array.usrnode[i].userdata_pathurl,F_OK) != OK)
         {
             snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userdata_pathurl);
+            system(cmd);
+		}
+		if(access(g_imusr_array.usrnode[i].userinfo_pathurl,F_OK) != OK)
+        {
+            snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userinfo_pathurl);
             system(cmd);
 		}
 
@@ -10386,11 +10699,11 @@ int im_server_init(void)
             }
 		}
 		
-        strcpy(g_imusr_array.usrnode[i].userdata_fullurl,g_imusr_array.usrnode[i].userdata_pathurl);
-        strcat(g_imusr_array.usrnode[i].userdata_fullurl,PNR_DATAFILE_DEFNAME);
+        strcpy(g_imusr_array.usrnode[i].userinfo_fullurl,g_imusr_array.usrnode[i].userinfo_pathurl);
+        strcat(g_imusr_array.usrnode[i].userinfo_fullurl,PNR_DATAFILE_DEFNAME);
         /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_server_init(%d): user(%s) datapath(%s) datafile(%s)",
             g_imusr_array.usrnode[i].user_index,g_imusr_array.usrnode[i].user_name,
-            g_imusr_array.usrnode[i].userdata_pathurl,g_imusr_array.usrnode[i].userdata_fullurl);*/
+            g_imusr_array.usrnode[i].userdata_pathurl,g_imusr_array.usrnode[i].userinfo_fullurl);*/
 
 		//消息队列初始化
         INIT_LIST_HEAD(&g_lws_msglist[i].list);
@@ -10552,7 +10865,7 @@ int imuser_friendstatus_push(int index,int online_status)
            {
            		//避免好友关系丢失导致无法接收消息
 				check_and_add_friends(g_tox_linknode[index], g_imusr_array.usrnode[index].friends[i].user_toxid, 
-					g_imusr_array.usrnode[index].userdata_fullurl);
+					g_imusr_array.usrnode[index].userinfo_fullurl);
                
                //im_pushmsg_callback(index,PNR_IM_CMDTYPE_ONLINESTATUSPUSH,FALSE,(void *)&user);
            }
@@ -11287,7 +11600,7 @@ int im_debug_imcmd_deal(char* pcmd)
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d:%s) tryto add friend(%s)",user_index,
                 g_imusr_array.usrnode[user_index].user_toxid,friend_id);
             toxfriend_id = check_and_add_friends(g_imusr_array.usrnode[user_index].ptox_handle,
-                friend_id,g_imusr_array.usrnode[user_index].userdata_fullurl);
+                friend_id,g_imusr_array.usrnode[user_index].userinfo_fullurl);
             if (toxfriend_id < 0) 
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"add fail");

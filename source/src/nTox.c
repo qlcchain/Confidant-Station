@@ -922,7 +922,7 @@ static void tox_connection_status(Tox *tox, TOX_CONNECTION connection_status,
 		       if (friend_id == 0) {
 		       		//避免好友关系丢失导致无法接收消息
 					check_and_add_friends(tox, g_imusr_array.usrnode[*index].friends[i].user_toxid, 
-						g_imusr_array.usrnode[*index].userdata_fullurl);
+						g_imusr_array.usrnode[*index].userinfo_fullurl);
 				}
 			}
 		}
@@ -1263,7 +1263,7 @@ static int save_data_new(Tox *m)
             res = 0;
             return res;
         }
-        data_filename = g_imusr_array.usrnode[userindex].userdata_fullurl;
+        data_filename = g_imusr_array.usrnode[userindex].userinfo_fullurl;
     }
     pthread_mutex_lock(&(g_imusr_array.usrnode[userindex].userlock));
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"save_data_new(%s)",data_filename);
@@ -1376,8 +1376,8 @@ int CreatedP2PNetwork_new(int user_index)
 		return ERROR;
 	
 	puser = &g_imusr_array.usrnode[user_index];
-    tox_datafile_check(user_index,puser->userdata_fullurl,&newdata_flag);
-	m = load_data_new(puser->userdata_fullurl);
+    tox_datafile_check(user_index,puser->userinfo_fullurl,&newdata_flag);
+	m = load_data_new(puser->userinfo_fullurl);
 	if (!m) {
 		m = tox_new(NULL, NULL);
 	}
@@ -1417,7 +1417,7 @@ int CreatedP2PNetwork_new(int user_index)
 	DEBUG_PRINT(DEBUG_LEVEL_INFO,"new user(%d:%s) tox(%p)online",puser->user_index,puser->user_toxid,m);
 
 	if (idstring[0])
-		writep2pidtofile_new(idstring,puser->userdata_pathurl);
+		writep2pidtofile_new(idstring,puser->userinfo_pathurl);
 
 	int nodeslist_ret = load_DHT_nodeslist();
 	if (nodeslist_ret) {
@@ -1778,7 +1778,7 @@ int insert_tox_msgnode(int userid, char *from, char *to,
     }
 
     toxfriend_id = check_and_add_friends(g_tox_linknode[userid], to, 
-		g_imusr_array.usrnode[userid].userdata_fullurl);
+		g_imusr_array.usrnode[userid].userinfo_fullurl);
     if (toxfriend_id < 0) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d)find friend(%s) ret %d error",userid,to,toxfriend_id);
         pnr_msgcache_dbdelete(msgid, 0);
@@ -1869,7 +1869,7 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
     }
 
     toxfriend_id = check_and_add_friends(g_tox_linknode[userid], to, 
-		g_imusr_array.usrnode[userid].userdata_fullurl);
+		g_imusr_array.usrnode[userid].userinfo_fullurl);
     if (toxfriend_id < 0) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d)find friend(%s) ret %d error",userid,to,toxfriend_id);
         pnr_msgcache_dbdelete(msgid, 0);
