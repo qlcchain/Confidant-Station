@@ -158,16 +158,25 @@ int get_encrypt_ipinfo(char *out)
 #ifdef OPENWRT_ARCH
 	ret = uci_get_config_value("network", "interface", "wan", "ifname", iface, 15, "/etc/config");
 #elif DEV_ONESPACE
-    ret = strcpy(iface, "eth1");
+    ret = strcpy(iface, "eth0");
 #else
     return 0;
 #endif
 	if (ret) {
 		get_dev_ip(iface, text);
 		if (!is_valid_ip(text)) {
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get wan ip err(%s)!\n", text);
-			return -1;
-		}
+#ifdef DEV_ONESPACE
+            ret = strcpy(iface, "eth1");
+            get_dev_ip(iface, text);
+            if (!is_valid_ip(text)) {
+    			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get wandev(%s) ip err(%s)!\n", iface,text);
+    			return -1;
+    		}
+#else
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get wandev(%s) ip err(%s)!\n", iface,text);
+                    return -1;
+#endif
+        }
 
 		strncat(text, ";", TEXT_BUF_LEN - strlen(text) - 1);
         strncat(text, g_daemon_tox.user_toxid, TEXT_BUF_LEN - strlen(text) - 1);
@@ -195,7 +204,7 @@ int get_encrypt_ipinfo(char *out)
 		return -1;
 	}
 }
-
+extern int g_pnrdevtype;
 /*****************************************************************************
  函 数 名  : server_discovery_thread
  功能描述  : 服务器发现线程
@@ -220,6 +229,7 @@ void *server_discovery_thread(void *args)
     AES_KEY ctx;
     char text[TEXT_BUF_LEN] = {0};
 	char mac[32] = {0};
+	char mac1[32] = {0};
     char textenc[TEXT_BUF_LEN] = {0};
     char textb64[TEXT_BUF_LEN * 2] = {0};
 	char textb64send[TEXT_BUF_LEN * 2] = {0};
@@ -228,13 +238,14 @@ void *server_discovery_thread(void *args)
 	int ifgetip = 0;
 	int type = 0;
 	socklen_t addrlen;
-
+    int opt=SO_REUSEADDR;
+    
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (sock == -1) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "create socket err!(%d)\n", errno);
         return NULL;
     }
-
+    setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt));
 	memset(&local_addr, 0, sizeof(struct sockaddr_in));
     local_addr.sin_family = AF_INET;
     local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -245,9 +256,7 @@ void *server_discovery_thread(void *args)
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bind socket err!(%d)\n", errno);
         return NULL;
 	}
-
 	setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(struct timeval)); 
-
     while (1) {
 		if (!g_daemon_tox.user_toxid[0]) {
             sleep(1);
@@ -256,8 +265,11 @@ void *server_discovery_thread(void *args)
 
 		if (!ifgetip) {
 			get_dev_mac("eth0", mac);
-				
-			ret = get_encrypt_ipinfo(textb64send);
+            if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+            {
+			    get_dev_mac("eth1", mac1);
+			}
+            ret = get_encrypt_ipinfo(textb64send);
 			if (ret < 0) {
 				DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get encrypt ipinfo err!\n");
 				sleep(1);
@@ -298,10 +310,22 @@ void *server_discovery_thread(void *args)
 				break;
 
 			case 2:
-				if (strncasecmp(text, mac, 17)) {
-					DEBUG_PRINT(DEBUG_LEVEL_INFO, "rcv mac(%s)", text);
-					continue;
-				}
+                if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+                {
+                    if ((strncasecmp(text, mac1, 17) != OK) && (strncasecmp(text, mac, 17) != OK))
+                    {
+    					DEBUG_PRINT(DEBUG_LEVEL_INFO, "rcv mac(%s)", text);
+    					continue;
+				    }
+                }
+                else
+                {
+                    if(strncasecmp(text, mac, 17) != OK)
+                    {
+    					DEBUG_PRINT(DEBUG_LEVEL_INFO, "rcv mac(%s)", text);
+    					continue;
+				    }
+                }
 				break;
 			}
 			

@@ -70,6 +70,8 @@ int get_friendid_bytoxid(int userid,char* friend_name);
 int check_and_add_friends(Tox * plinknode,char * friendid_p,char* datafile);
 int insert_tox_msgnode(int userid, char *from, char *to,
     char *pmsg, int msglen, int type, int logid, int msgid, char* srckey, char* dstkey);
+int insert_tox_msgnode_v3(int userid, char *from, char *to,
+    char *pmsg, int msglen, int type, int logid, int msgid,char* sign, char* nonce, char* prikey);
 int tox_datafile_check(int user_index,char* datafile,int* new_flag);
 int tox_datafile_backup(int user_index,char* datafile);
 int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath,int msgid,int filefrom);

@@ -10,6 +10,7 @@
 #include <curl/curl.h>
 #include <sys/file.h>
 #include <sys/stat.h> 
+#include "sodium.h"
 #ifdef OPENWRT_ARCH
 #include <uci.h>
 #endif
@@ -17,7 +18,7 @@
 #include "aes.h"
 
 char log_path[64];
-int g_debug_level = DEBUG_LEVEL_ERROR;
+int g_debug_level = DEBUG_LEVEL_NORMAL;
 int g_mem_total = 0;
 int g_mem_free = 0;
 
@@ -610,6 +611,7 @@ int get_meminfo(void)
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"MemTotal(%d) MemFree(%d)",g_mem_total,g_mem_free);
     return OK;
 }
+extern int g_pnrdevtype;
 /**********************************************************************************
   Function:      get_disk_capacity
   Description:  获取磁盘容量
@@ -631,7 +633,6 @@ int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,in
     {
         return ERROR;
     }
-#ifdef DEV_ONESPACE
     char cmd[CMD_MAXLEN] = {0};
     char recv[CMD_MAXLEN] = {0};
     FILE *fp = NULL;
@@ -643,14 +644,26 @@ int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,in
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"input bad disk_count(%d)",disk_count);
         return ERROR;
     }
-
-    if(disk_count == 0)
-    {   
-        snprintf(cmd,CMD_MAXLEN,"df -h |grep /dev/root");
-    }
-    else
+    
+    switch(g_pnrdevtype)
     {
-        snprintf(cmd,CMD_MAXLEN,"df -h |grep sata");
+        case PNR_DEV_TYPE_X86SERVER:
+            snprintf(cmd,CMD_MAXLEN,"df -h |grep /dev/?da");
+            break;
+        case PNR_DEV_TYPE_ONESPACE:
+            if(disk_count == 0)
+            {   
+                snprintf(cmd,CMD_MAXLEN,"df -h |grep /dev/root");
+            }
+            else
+            {
+                snprintf(cmd,CMD_MAXLEN,"df -h |grep sata");
+            }
+            break;
+        case PNR_DEV_TYPE_RASIPI3:
+        case PNR_DEV_TYPE_EXPRESSOBIN:
+            snprintf(cmd,CMD_MAXLEN,"df -h |grep /usr");
+            break;
     }
     if (!(fp = popen(cmd, "r"))) 
     {
@@ -689,7 +702,6 @@ int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,in
         return ERROR;
     }
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_disk_capacity:get disk(%s %s %d)",used_capacity,total_capacity,*percent);
-#endif
     return OK;
 }
 
@@ -934,6 +946,69 @@ int pnr_base64_decode(const char *indata, int inlen, char *outdata, int *outlen)
     return ret;
 }
 /**********************************************************************************
+  Function:      get_localip_byname
+  Description:  根据devname获取ip地址
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int get_localip_byname(char* devname,char* local_ip)
+{
+    char cmd[CMD_MAXLEN] = {0};
+    char recv[CMD_MAXLEN] = {0};
+    FILE *fp = NULL;
+    int len = 0;
+    if(devname == NULL)
+    {
+        return ERROR;
+    }
+#ifdef DEV_ONESPACE
+    snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"inet \" | awk '{print $2}'",devname);
+#else
+    snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"inet addr\" | awk '{print $2}'",devname);
+#endif
+    if (!(fp = popen(cmd, "r"))) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd(%s) failed",cmd);
+        return ERROR;
+    }
+    if (fgets(recv,CMD_MAXLEN,fp) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd =%s ret failed",cmd);
+        pclose(fp);
+        return ERROR;
+    }  
+    pclose(fp); 
+    len = strlen(recv);
+    if(len > MAC_LEN && len <= IPSTR_MAX_LEN)
+    {
+        if(recv[len-1] == '\n')
+        {
+            recv[len-1] = '\0';
+            len--;
+        }
+#ifdef DEV_ONESPACE
+        strcpy(local_ip,recv);
+#else
+        strcpy(local_ip,recv);
+#endif
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_localip_byname ret(%s)",recv);
+        return ERROR;
+    }
+    return OK;
+}
+/**********************************************************************************
   Function:      get_hwaddr_byname
   Description:  根据devname获取mac地址
   Calls:
@@ -1010,6 +1085,8 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
 }
 char g_dev_hwaddr[MACSTR_MAX_LEN] = {0};
 char g_dev_hwaddr_full[MACSTR_MAX_LEN] = {0};
+char g_dev1_hwaddr[MACSTR_MAX_LEN] = {0};
+char g_dev1_hwaddr_full[MACSTR_MAX_LEN] = {0};
 /**********************************************************************************
   Function:      pnr_create_usersn
   Description:  生成新的user sn
@@ -1034,7 +1111,7 @@ int pnr_create_usersn(int user_type,int user_index,char* p_usn)
     }
     if(g_dev_hwaddr[0] == '\0')
     {
-        get_hwaddr_byname(DEV_ETH_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
+        get_hwaddr_byname(DEV_ETH0_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
         //这里是虚拟机测试用
         if(g_dev_hwaddr[0] == '\0')
         {
@@ -1629,7 +1706,11 @@ int dev_hwaddr_init(void)
 {
     if(g_dev_hwaddr[0] == '\0')
     {
-        get_hwaddr_byname(DEV_ETH_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
+        get_hwaddr_byname(DEV_ETH0_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
+        if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+        {
+            get_hwaddr_byname(DEV_ETH1_KEYNAME,g_dev1_hwaddr_full,g_dev1_hwaddr);
+        }
         //这里是虚拟机测试用
         if(g_dev_hwaddr[0] == '\0')
         {
@@ -1707,4 +1788,139 @@ int pnr_htoi(char* s)
     }  
     return n;  
 }  
+/*****************************************************************************
+ 函 数 名  : pnr_sign_check
+ 功能描述  : 签名验证
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_sign_check(char* sign,int sign_len,char* pubkey,int base64encode_flag)
+{
+    unsigned char sign_bin[PNR_RSA_KEY_MAXLEN+1] = {0};
+    unsigned char key_bin[PNR_RSA_KEY_MAXLEN+1] = {0};
+    unsigned char decode_bin[PNR_RSA_KEY_MAXLEN+1] = {0};
+    unsigned long long sign_binlen = 0;
+    unsigned long long key_binlen = 0;
+    unsigned long long decode_len = 0;
+    
+    if(sign == NULL || pubkey == NULL || sign_len > PNR_RSA_KEY_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_sign_check input err");
+        return ERROR;
+    }
+    if(base64encode_flag == TRUE)
+    {
+        pnr_base64_decode(sign,sign_len,(char*)sign_bin,(int*)&sign_binlen);
+    }
+    else
+    {
+        strcpy((char*)sign_bin,sign);
+        sign_binlen = (unsigned long long)sign_len;
+    }
+    pnr_base64_decode(pubkey,strlen(pubkey),(char*)key_bin,(int*)&key_binlen);
+    if(crypto_sign_open(decode_bin,&decode_len,sign_bin,sign_binlen,key_bin) == OK)
+    {
+        return OK;
+    }
+    return ERROR;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_check_process_byname
+ 功能描述  : 根据进程名称检测进程是否在
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_check_process_byname(char* pname,int* pid)
+{
+    char cmd[CMD_MAXLEN] = {0};
+    char recv[CMD_MAXLEN] = {0};
+    
+    FILE *fp = NULL;
+
+    if(pname == NULL || pid == NULL)
+    {
+        return ERROR;
+    }
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE || g_pnrdevtype == PNR_DEV_TYPE_X86SERVER)
+    {
+        snprintf(cmd,CMD_MAXLEN,"ps -ef |grep \"%s\"|grep -v grep | awk '{print $2}' ",pname);
+    }
+    else
+    {
+        snprintf(cmd,CMD_MAXLEN,"ps |grep \"%s\"|grep -v grep | awk '{print $3}'",pname);
+    }
+    if (!(fp = popen(cmd, "r"))) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen cmd(%s) failed",cmd);
+        return ERROR;
+    }
+    if (fgets(recv,CMD_MAXLEN,fp) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"failed cmd =%s",cmd);
+        pclose(fp);
+        return ERROR;
+    }  
+    *pid = atoi(recv);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_check_process_byname: cmd(%s) get pid(%d)",cmd,*pid);
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_check_frp_connstatus
+ 功能描述  : 检测frp连接是否正常
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_check_frp_connstatus(void)
+{
+    char cmd[CMD_MAXLEN] = {0};
+    char recv[CMD_MAXLEN] = {0};
+    
+    FILE *fp = NULL;
+    snprintf(cmd,CMD_MAXLEN,"tail -n 1 /tmp/frp.log ");
+    if (!(fp = popen(cmd, "r"))) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen cmd(%s) failed",cmd);
+        return FALSE;
+    }
+    if (fgets(recv,CMD_MAXLEN,fp) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"failed cmd =%s",cmd);
+        pclose(fp);
+        return FALSE;
+    }  
+    if(strstr(recv,PNR_FRPC_CONNSTATUS_OKKEY) != NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"frp connect ok");
+        return TRUE;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"frp connect faile(%s)",recv);
+    return FALSE;
+}
 

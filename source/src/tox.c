@@ -672,13 +672,19 @@ uint32_t tox_iteration_interval(const Tox *tox)
     const Messenger *m = tox->m;
     return messenger_run_interval(m);
 }
-
+extern int g_udpdebug_flag;
 void tox_iterate(Tox *tox, void *user_data)
 {
     mono_time_update(tox->mono_time);
 
     Messenger *m = tox->m;
     struct Tox_Userdata tox_data = { tox, user_data };
+    //if(g_udpdebug_flag & 0x02)
+    //{
+        //int userindex = *(int*)user_data;
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"tox_iterate:user(%d)udp_disabled(%d)",userindex,m->options.udp_disabled); 
+    //}
+   
     do_messenger(m, &tox_data);
     do_groupchats(m->conferences_object, &tox_data);
 }
@@ -1156,29 +1162,30 @@ static void set_message_error(int ret, Tox_Err_Friend_Send_Message *error)
 uint32_t tox_friend_send_message(Tox *tox, uint32_t friend_number, Tox_Message_Type type, const uint8_t *message,
                                  size_t length, Tox_Err_Friend_Send_Message *error)
 {
+    Tox_Err_Friend_Send_Message new_error;
     if(tox == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"tox handle null");
         return 0;
     }
     if (!message) {
-        SET_ERROR_PARAMETER(error, TOX_ERR_FRIEND_SEND_MESSAGE_NULL);
+        SET_ERROR_PARAMETER(&new_error, TOX_ERR_FRIEND_SEND_MESSAGE_NULL);
         return 0;
     }
 
     if (!length) {
-        SET_ERROR_PARAMETER(error, TOX_ERR_FRIEND_SEND_MESSAGE_EMPTY);
+        SET_ERROR_PARAMETER(&new_error, TOX_ERR_FRIEND_SEND_MESSAGE_EMPTY);
         return 0;
     }
     if(tox == NULL)
     {
-        SET_ERROR_PARAMETER(error, TOX_ERR_FRIEND_SEND_MESSAGE_EMPTY);
+        SET_ERROR_PARAMETER(&new_error, TOX_ERR_FRIEND_SEND_MESSAGE_EMPTY);
         return 0;
     }
     Messenger *m = tox->m;
     uint32_t message_id = 0;
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"tox_friend_send_message(%d:%s)",length,message);
-    set_message_error(m_send_message_generic(m, friend_number, type, message, length, &message_id), error);
+    set_message_error(m_send_message_generic(m, friend_number, type, message, length, &message_id), &new_error);
+    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"tox_friend_send_message(%d:%s) ret(%d)",length,message,new_error);
     return message_id;
 }
 

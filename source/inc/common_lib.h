@@ -48,8 +48,9 @@ typedef  long long int64;
 #define ID_TYPE_STRING_MAXLEN 4
 #define ID_CODE_STRING_MAXLEN 128
 #define DEFAULT_DES_KEYLEN   8
-#define PNR_FILENAME_MAXLEN 128
-#define PNR_FILEPATH_MAXLEN 256
+#define PNR_FILENAME_MAXLEN 160
+#define PNR_FILEINFO_MAXLEN 94
+#define PNR_FILEPATH_MAXLEN 320
 #define PNR_USERNAME_MAXLEN 128
 #define LOGINTIME_PAYLOAD "XXXXXXXXXXXXXXXXXXX" //yyyy-MM-dd HH:mm:ss
 #define LOGINTIME_PAYLOAD_LEN 19 //yyyy-MM-dd HH:mm:ss
@@ -77,7 +78,8 @@ typedef  long long int64;
 #define PNR_TOTAL_STORAGE_SPACE  "TotalStroageSpace"
 #define PNR_FREE_STORAGE_SPACE  "FreeStroageSpace"
 #define PNR_RSA_KEY_MAXLEN 255
-#define DEV_ETH_KEYNAME  "eth0"
+#define DEV_ETH0_KEYNAME  "eth0"
+#define DEV_ETH1_KEYNAME  "eth1"
 #define PNR_USN_KEY_VERSION  0x010001
 #define PNR_USN_KEY_VERSION_STR  "010001"
 #define PNR_USN_KEYVER_LEN   6
@@ -93,6 +95,15 @@ typedef  long long int64;
 #define PNR_QRCODE_MAXLEN 255
 #define PNR_USER_HASHID_MAXLEN 16
 #define PNR_DISK_MAXNUM 2
+
+#define PNR_FRPC_CONFIG_FILE "/etc/frpc.ini"
+#define PNR_FRPC_CONFIG_TMPFILE "/tmp/frpc.ini"
+#define PNR_REPEAT_TIME_15SEC    15// 15second
+#define PNR_REPEAT_TIME_30SEC    30// 30second
+#define PNR_REPEAT_TIME_1MIN    60// 1min
+#define PNR_REPEAT_TIME_15MIN   900//15min
+#define PNR_FRPC_CONNSTATUS_OKKEY "proxy success"
+
 //用户类型
 enum PNR_USER_TYPE_ENUM
 {
@@ -101,14 +112,44 @@ enum PNR_USER_TYPE_ENUM
     PNR_USER_TYPE_TEMP,
     PNR_USER_TYPE_BUTT
 };
+enum PNR_DEV_TYPE_ENUM
+{
+    PNR_DEV_TYPE_X86SERVER = 1,
+    PNR_DEV_TYPE_ONESPACE = 2,
+    PNR_DEV_TYPE_RASIPI3 = 3,
+    PNR_DEV_TYPE_EXPRESSOBIN = 4,
+};
+#define PNR_QRCODE_HEADOFFSET  7
+enum PNR_QRCODE_TYPE_ENUM
+{
+    PNR_QRCODE_TYPE_USERINFO = 0,
+    PNR_QRCODE_TYPE_ACCOUNTINFO = 1,
+    PNR_QRCODE_TYPE_DEVINFO = 2,
+    PNR_QRCODE_TYPE_APPKEY = 3,
+    PNR_QRCODE_TYPE_BUTT
+};
 
+enum {
+	PNR_BUF_LEN_128		= 128,
+	PNR_BUF_LEN_256		= 256,
+	PNR_BUF_LEN_512		= 512,
+	PNR_BUF_LEN_1024	= 1024,
+};
+
+#define PNR_TOXINSTANCE_CREATETIME   10
 #define PNR_DATAFILE_DEFNAME     "data.ini"
 #ifdef OPENWRT_ARCH 
 #define PNR_IMUSER_MAXNUM 100
+#define PNR_GROUP_MAXNUM 30
+#define PNR_GROUP_USER_MAXNUM 50
 #elif DEV_ONESPACE
 #define PNR_IMUSER_MAXNUM 100
+#define PNR_GROUP_MAXNUM 30
+#define PNR_GROUP_USER_MAXNUM 50
 #else
 #define PNR_IMUSER_MAXNUM 300
+#define PNR_GROUP_MAXNUM 50
+#define PNR_GROUP_USER_MAXNUM 100
 #endif
 #define PNR_IMUSER_FRIENDS_MAXNUM 200//单个用户最大200个好友
 #define PNR_INDEX_HASHSTR_LEN 3
@@ -220,6 +261,31 @@ struct arg_opts_struct {
                 else\
                 {\
                     var = atoi(tmp_json_buff);\
+                }\
+                free(tmp_json_buff);\
+            }\
+        }\
+        else\
+        {\
+            var = 0;\
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get key(%s) failed",key);\
+        }\
+    }
+#define CJSON_GET_VARLONG_BYKEYWORD(item,tmpItem,tmp_json_buff,key,var,len) \
+    {\
+        tmpItem=cJSON_GetObjectItem(item,key);\
+        if(tmpItem != NULL)\
+        {\
+            tmp_json_buff = cJSON_PrintUnformatted(tmpItem);\
+            if(tmp_json_buff != NULL)\
+            {\
+                if(tmp_json_buff[0] == '\"')\
+                {\
+                    var = atol(tmp_json_buff+1);\
+                }\
+                else\
+                {\
+                    var = atol(tmp_json_buff);\
                 }\
                 free(tmp_json_buff);\
             }\
@@ -387,6 +453,55 @@ struct stroage_info_struct
     char used_percent[STROAGE_BUFFER_STRINGLEN];
 };
 
+enum PNRDEV_NETCONN_TYPE
+{
+    PNRDEV_NETCONN_UNKNOWN = 0,
+    PNRDEV_NETCONN_PUBDIRECT = 1,
+    PNRDEV_NETCONN_FRPPROXY = 2,
+};
+enum PNRDEV_FRPCONNCT_TYPE
+{
+    PNRDEV_FRPCONNCT_OFF = 0,
+    PNRDEV_FRPCONNCT_SSHSEVER = 1,
+    PNRDEV_FRPCONNCT_PNRSEVER = 2,
+};
+#define PNR_ATTACH_INFO_MAXLEN 512
+struct pnrdev_netconn_info
+{
+    int pubnet_mode;
+    int frp_mode;
+    int conn_status;
+    int pnr_port;
+    int ssh_port;
+    int frp_port;
+    char pub_ipstr[IPSTR_MAX_LEN+1];
+    char attach[PNR_ATTACH_INFO_MAXLEN+1];
+};
+struct pnrdev_register_info
+{
+    int dev_type;
+    char rid[TOX_ID_STR_LEN+1];
+    char eth0_mac[MACSTR_MAX_LEN+1];
+    char eth1_mac[MACSTR_MAX_LEN+1];
+    char eth0_localip[IPSTR_MAX_LEN+1];
+    char eth1_localip[IPSTR_MAX_LEN+1];
+    char version[PNR_QRCODE_MAXLEN+1];
+};
+struct pnrdev_register_resp
+{
+    int ret;
+    int index;
+    int pubnet_mode;
+    int frp_mode;
+    int renew_flag;
+    int pnr_port;
+    int ssh_port;
+    int frp_port;
+    char pub_ipstr[IPSTR_MAX_LEN+1];
+    char rid[TOX_ID_STR_LEN+1];
+    char eth0_mac[MACSTR_MAX_LEN+1];
+};
+
 //function declaration
 int get_cmd_ret(char* pcmd);
 //unsigned int ip_aton(const char* ip);
@@ -431,5 +546,10 @@ unsigned int pnr_BKDRHash(char *str);
 int pnr_uidhash_get(int u_index,int f_num,char* tox_id,unsigned int* hashnum,char* p_ret_hashstr);
 int pnr_htoi(char* s);
 int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,int* percent);
+int pnr_sign_check(char* sign,int sign_len,char* pubkey,int base64encode_flag);
+int pnr_devinfo_get(struct pnrdev_register_info* pinfo);
+int pnr_check_process_byname(char* pname,int* pid);
+int get_localip_byname(char* devname,char* local_ip);
+int pnr_check_frp_connstatus(void);
 #endif
 

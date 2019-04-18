@@ -19,15 +19,28 @@ enum DB_VERSION_ENUM
 	DB_VERSION_V1=1,
 	DB_VERSION_V2=2,
     DB_VERSION_V3=3,
+    DB_VERSION_V4=4,
+    DB_VERSION_V5=5,
+    DB_VERSION_V6=6,
+    DB_VERSION_V7=7,
+    DB_VERSION_V8=8,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
 #define DB_TEMPACCOUNT_USN_KEYWORD     "temp_account_usn"
 #define DB_DEVLOGINEKEY_KEYWORD     "dev_loginkey"
+#define DB_DEVNAME_KEYWORD     "dev_name"
+#define DB_PUBNETMODE_KEYWORD "pubnet_mode"
+#define DB_FRPMODE_KEYWORD "frp_mode"
+#define DB_FRPPORT_KEYWORD "frp_port"
+#define DB_PUBNET_IPSTR_KEYWORD "pubnet_ip"
+#define DB_PUBNET_PORT_KEYWORD  "pubnet_port"
+#define DB_PUBNET_SSHPORT_KEYWORD "pubnet_sshport"
 //默认设备登陆密码，qlcadmin的sha256加密
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
-#define DB_CURRENT_VERSION    DB_VERSION_V3
-
+//默认设备名称，base64转码
+#define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
+#define DB_CURRENT_VERSION    DB_VERSION_V8
 struct db_string_ret
 {
     int buf_len;
@@ -36,6 +49,7 @@ struct db_string_ret
 
 int sql_db_init(void);
 int sql_friendsdb_init(void);
+int sql_groupinfodb_init(void);
 int sql_msglogdb_init(int index);
 int pnr_msglog_getid(int index, int *logid);
 int pnr_msglog_delid(int index, int logid);
@@ -55,10 +69,14 @@ int pnr_friend_dbupdate_remarks_bytoxid(char* from_toxid,char* to_toxid,char* re
 int pnr_friend_get_remark(char *userid, char *friendid, char *value, int len);
 int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id, int msgstatus,
     char* from_toxid,char* to_toxid,char* pmsg,char* skey,char* dkey,char* pext,int ext2);
+int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,int log_id,int msgstatus, 
+    char* from_toxid,char* to_toxid,char* pmsg,char* sign,char* nonce,char* prikey,char* pext, int ext2);
 int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int log_id,int msgstatus, 
     char* from_toxid,char* to_toxid,char* pmsg,char* skey,char* dkey,char* pext, int ext2);
 int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatus,
     char* from_toxid,char* to_toxid,char* pmsg,char* skey,char* dkey,char* pext,int ext2);
+int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgstatus,
+    char* from_toxid,char* to_toxid,char* pmsg,char* sign,char* nonce,char* prikey,char* pext, int ext2);
 int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id, 
     char* from_toxid,char* to_toxid);
 int pnr_account_dbupdate_lastactive_bytoxid(char* p_toxid);
@@ -78,7 +96,9 @@ int pnr_account_dbinsert(struct pnr_account_struct* p_account);
 int pnr_account_tmpuser_dbinsert(struct pnr_account_struct* p_account);
 int pnr_account_dbupdate(struct pnr_account_struct* p_account);
 int pnr_account_dbupdate_bytoxid(struct pnr_account_struct* p_account);
+int pnr_account_dbupdate_dbinfo_bytoxid(struct pnr_account_struct* p_account);
 int pnr_account_get_byusn(struct pnr_account_struct* p_account);
+int pnr_account_dbget_byuserkey(struct pnr_account_struct* p_account);
 int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account);
 int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id);
 int pnr_tox_datafile_dbget(void* obj, int n_columns, char** column_values,char** column_names);
@@ -89,8 +109,32 @@ int pnr_msgcache_dbdelete_by_logid(int index, struct im_sendmsg_msgstruct *msg);
 int pnr_msglog_dbupdate_stauts_byid(int index,int db_id,int msgstatus);
 int pnr_msglog_dbget_logid_byid(int index,int id,int* logid);
 int pnr_msglog_dbget_dbid_bylogid(int index,int log_id,char* from,char* to,int* db_id);
+int pnr_msglog_dbget_byid(int index,int db_id,struct im_sendmsg_msgstruct* pmsg);
+int pnr_msglog_dbupdate_filename_byid(int uindex,int dbid,char* filename, char* filepath);
 int pnr_devloginkey_dbupdate(char* loginkey);
 int pnr_account_dbupdate_idcode_byusn(struct pnr_account_struct* p_account);
 int pnr_friend_get_pubkey_bytoxid(char *userid, char *friendid, char *pubkey);
+int pnr_devname_dbupdate(char* new_name);
+int pnr_userdev_mapping_dbupdate(char* user_id,char* dev_id,char* dev_name);
+int32 pnr_usrdev_mappinginfo_sqlget(struct im_userdev_mapping_struct* p_info);
+int pnr_account_dbcheck_bypubkey(struct pnr_account_struct* p_account);
+int pnr_userdev_mapping_dbupdate_bydevid(char* dev_id,char* dev_name);
+int pnr_userinfo_dbget_byuserid(struct pnr_userinfo_struct* puser);
+int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser);
+int pnr_groupuser_dbinsert(int gid,int uid,int uindex,int type,int msgid,char* utoxid,char* name,char* userkey);
+int pnr_groupuser_dbdelete_byuid(int gid,int uid);
+int pnr_groupuser_gremark_dbupdate_byid(int gid,int uindex,char* gname);
+int pnr_group_dbinsert(int gid,int uindex,int verify,char* utoxid,char* name,char* group_hid);
+int pnr_group_dbdelete_bygid(int gid);
+int pnr_groupverify_dbupdate_bygid(int gid,int verify);
+int pnr_groupname_dbupdate_bygid(int gid,char* gname);
+int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,char* msg,char* attend,char* ext,char* ext2,char* p_filekey);
+int pnr_groupmsg_dbdelete_bymsgid(int gid,int msgid);
+int pnr_groupmsg_dbget_lastmsgid(int gid,int* pmsgid);
+int pnr_groupmsg_dbget_bymsgid(int gid,int msgid,struct group_user_msg* pmsg);
+int pnr_groupoper_dbget_insert(int gid,int action,int fromid,int toid,char* gname,char* from,char* to,char* ext);
+int pnr_netconfig_dbget(struct pnrdev_netconn_info* pinfo);
+int dbupdate_strvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,char* key_var);
+int dbupdate_intvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,int key_var);
 #endif
 

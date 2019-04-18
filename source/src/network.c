@@ -202,6 +202,7 @@ static int inet_pton(int family, const char *addrString, void *addrbuf)
 #if TOX_INET_ADDRSTRLEN < INET_ADDRSTRLEN
 #error "TOX_INET_ADDRSTRLEN should be greater or equal to INET_ADDRSTRLEN (#INET_ADDRSTRLEN)"
 #endif
+#include "common_lib.h"
 
 static int make_proto(int proto);
 static int make_socktype(int type);
@@ -457,7 +458,7 @@ struct Networking_Core {
     /* Our UDP socket. */
     Socket sock;
 };
-
+extern int g_udpdebug_flag;
 Family net_family(const Networking_Core *net)
 {
     return net->family;
@@ -555,15 +556,17 @@ static int receivepacket(const Logger *log, Socket sock, IP_Port *ip_port, uint8
 
         if (fail_or_len < 0 && error != TOX_EWOULDBLOCK) {
             const char *strerror = net_new_strerror(error);
-            LOGGER_ERROR(log, "Unexpected error reading from socket: %u, %s", error, strerror);
+            //LOGGER_ERROR(log, "Unexpected error reading from socket: %u, %s", error, strerror);
             net_kill_strerror(strerror);
         }
-
+        //if(g_udpdebug_flag & 0x01)
+        //{
+            //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Unexpected error reading from socket(%d): %u",sock.socket, error);
+        //}
         return -1; /* Nothing received. */
     }
 
     *length = (uint32_t)fail_or_len;
-
     if (addr.ss_family == AF_INET) {
         struct sockaddr_in *addr_in = (struct sockaddr_in *)&addr;
 
@@ -621,12 +624,20 @@ void networking_poll(Networking_Core *net, void *userdata)
     uint32_t length;
 
     while (receivepacket(net->log, net->sock, &ip_port, data, &length) != -1) {
+        //if(g_udpdebug_flag & 0x01)
+        //{
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO, "udp socket(%d) port(%d) rec packet(%d)", net->sock.socket,net->port, length);
+        //}
         if (length < 1) {
             continue;
         }
 
         if (!(net->packethandlers[data[0]].function)) {
             LOGGER_WARNING(net->log, "[%02u] -- Packet has no handler", data[0]);
+            //if(g_udpdebug_flag)
+            //{
+                //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%02u] -- Packet has no handler", data[0]);
+            //}
             continue;
         }
 
@@ -654,18 +665,15 @@ int networking_at_startup(void)
 #ifdef USE_RANDOMBYTES_STIR
     randombytes_stir();
 #else
-
     if (sodium_init() == -1) {
         return -1;
     }
-
 #endif /*USE_RANDOMBYTES_STIR*/
 
 #endif/*VANILLA_NACL*/
 
 #ifdef OS_WIN32
     WSADATA wsaData;
-
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
         return -1;
     }
@@ -725,7 +733,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
     if (error) {
         *error = 2;
     }
-
     /* maybe check for invalid IPs like 224+.x.y.z? if there is any IP set ever */
     if (!net_family_is_ipv4(ip.family) && !net_family_is_ipv6(ip.family)) {
         LOGGER_ERROR(log, "invalid address family: %u\n", ip.family.value);
@@ -764,7 +771,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
 
         return nullptr;
     }
-
     /* Functions to increase the size of the send and receive UDP buffers.
      */
     int n = 1024 * 1024 * 2;
@@ -796,7 +802,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
 
         return nullptr;
     }
-
     /* Bind our socket to port PORT and the given IP address (usually 0.0.0.0 or ::) */
     uint16_t *portptr = nullptr;
     struct sockaddr_storage addr;
@@ -829,7 +834,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
         free(temp);
         return nullptr;
     }
-
     if (net_family_is_ipv6(ip.family)) {
         const int is_dualstack = set_socket_dualstack(temp->sock);
         LOGGER_DEBUG(log, "Dual-stack socket: %s",
@@ -869,7 +873,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
     uint16_t port_to_try = port_from;
     *portptr = net_htons(port_to_try);
     int tries;
-
     for (tries = port_from; tries <= port_to; ++tries) {
         int res = bind(temp->sock.socket, (struct sockaddr *)&addr, addrsize);
 
@@ -890,7 +893,6 @@ Networking_Core *new_networking_ex(const Logger *log, IP ip, uint16_t port_from,
             if (error) {
                 *error = 0;
             }
-
             return temp;
         }
 

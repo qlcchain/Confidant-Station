@@ -305,7 +305,7 @@ static int curl_fetch_nodes_JSON(struct Recv_Curl_Data *recv_data)
         }
         */
         if (ret != CURLE_OK) {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "HTTPS lookup error (libcurl error %d)\n", ret);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "HTTPS lookup error (libcurl error %d)", ret);
             goto on_exit;
         }
     }

@@ -71,12 +71,50 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_ROUTERLOGIN,
     PNR_IM_CMDTYPE_RESETROUTERKEY,
     PNR_IM_CMDTYPE_RESETUSERIDCODE,
+    PNR_IM_CMDTYPE_RESETROUTERNAME,
     PNR_IM_CMDTYPE_GETDISKDETAILINFO,
     PNR_IM_CMDTYPE_GETDISKTOTALINFO,
     PNR_IM_CMDTYPE_FORMATDISK,
     PNR_IM_CMDTYPE_REBOOT,
+    PNR_IM_CMDTYPE_CREATEGROUP,
+    PNR_IM_CMDTYPE_INVITEGROUP,
+    PNR_IM_CMDTYPE_GROUPINVITEPUSH,
+    PNR_IM_CMDTYPE_GROUPINVITEDEAL,
+    PNR_IM_CMDTYPE_VERIFYGROUP,
+    PNR_IM_CMDTYPE_VERIFYGROUPPUSH,
+    PNR_IM_CMDTYPE_GROUPQUIT,
+    PNR_IM_CMDTYPE_GROUPLISTPULL,
+    PNR_IM_CMDTYPE_GROUPUSERPULL,
+    PNR_IM_CMDTYPE_GROUPMSGPULL,
+    PNR_IM_CMDTYPE_GROUPSENDMSG,
+    PNR_IM_CMDTYPE_GROUPSENDFILEPRE,
+    PNR_IM_CMDTYPE_GROUPSENDFILEDONE,
+    PNR_IM_CMDTYPE_GROUPDELMSG,
+    PNR_IM_CMDTYPE_GROUPMSGPUSH,
+    PNR_IM_CMDTYPE_GROUPCONFIG,
+    PNR_IM_CMDTYPE_GROUPSYSPUSH,
+    PNR_IM_CMDTYPE_FILERENAME,
+    PNR_IM_CMDTYPE_FILEFORWARD,
+    PNR_IM_CMDTYPE_FILEFORWARD_PUSH,
+    PNR_IM_CMDTYPE_UPLOADAVATAR,
+    PNR_IM_CMDTYPE_UPDATEAVATAR,
+    PNR_IM_CMDTYPE_PULLTMPACCOUNT,
+
+    //rid独有的消息
+    PNR_IM_CMDTYPE_SYSDEBUGMSG = 0xF1,
+    PNR_IM_CMDTYPE_USRDEBUGMSG = 0xF2,
     PNR_IM_CMDTYPE_BUTT ,   
 };
+enum PNR_SYSDEBUG_CMDTYPE_ENUM
+{
+    PNR_SYSDEBUG_CMDTYPE_CHECK_SYSINFO = 0x01,
+    PNR_SYSDEBUG_CMDTYPE_CHECK_NETINFO = 0x02,
+    PNR_SYSDEBUG_CMDTYPE_REFLUSH_DEVREG = 0x03,
+    PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO = 0x04,
+    PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER = 0x05,
+    PNR_SYSDEBUG_CMDTYPE_BUTT,
+};
+
 enum PNR_IM_SYSCHDATAFILE_TYPEENUM
 {
     PNR_IM_SYSCHDATAFILE_NONEED = 0,
@@ -124,11 +162,15 @@ enum PNR_DEBUGCMD_ENUM
     PNR_DEBUGCMD_DEBUG_IMCMD,
     PNR_DEBUGCMD_PUSHNEWMSG_NOTICE,
     PNR_DEBUGCMD_SET_FUNCENABLE,
+    PNR_DEBUGCMD_SET_SIMULATION,        // 7 
+    PNR_DEBUGCMD_DEVINFO_REG,
     PNR_DEBUGCMD_BUTT,
 };
 enum PNR_FUNCENABLE_ENUM
 {
     PNR_FUNCENABLE_NOTICE_NEWMSG = 1,
+    PNR_FUNC_SET_LOGDEBUG_LEVER = 2,
+    PNR_FUNC_SET_UDP_RECDEBUGFLAG = 3,
     PNR_FUNCENABLE_BUTT,
 };
 enum PNR_FILESEND_RETCODE_ENUM
@@ -148,6 +190,8 @@ enum {
 	PNR_FILE_OWNER_SELF = 1,
 	PNR_FILE_OWNER_FRIEND = 2,
     PNR_FILE_OWNER_UPLOAD = 3,
+    PNR_FILE_AVATAR = 4,
+    PNR_FILE_GROUP = 5,
 };
 enum PNR_APPACTIVE_STATUS_ENUM
 {
@@ -201,11 +245,44 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_DELETEFILE		"DelFile"
 #define PNR_IMCMD_ROUTERLOGIN        "RouterLogin"
 #define PNR_IMCMD_RESETROUTERKEY        "ResetRouterKey"
+#define PNR_IMCMD_RESETROUTERNAME        "ResetRouterName"
 #define PNR_IMCMD_RESETUSERIDCODE        "ResetUserIdcode"
 #define PNR_IMCMD_GETDISKDETAILINFO        "GetDiskDetailInfo"
 #define PNR_IMCMD_GETDISKTOTALINFO        "GetDiskTotalInfo"
 #define PNR_IMCMD_FORMATDISK		"FormatDisk"
 #define PNR_IMCMD_REBOOT			"Reboot"
+#define PNR_IMCMD_CREATEGROUP       "CreateGroup"
+#define PNR_IMCMD_INVITEGROUP       "InviteGroup"
+#define PNR_IMCMD_GROUPINVITEPUSH       "GroupInvitePush"
+#define PNR_IMCMD_GROUPINVITEDEAL       "GroupInviteDeal"
+#define PNR_IMCMD_VERIFYGROUP       "GroupVerify"
+#define PNR_IMCMD_VERIFYGROUPPUSH       "GroupVerifyPush"
+#define PNR_IMCMD_GROUPQUIT       "GroupQuit"
+#define PNR_IMCMD_GROUPLISTPULL       "GroupListPull"
+#define PNR_IMCMD_GROUPUSERPULL       "GroupUserPull"
+#define PNR_IMCMD_GROUPMSGPULL       "GroupMsgPull"
+#define PNR_IMCMD_GROUPSENDMSG       "GroupSendMsg"
+#define PNR_IMCMD_GROUPSENDFILEPRE       "GroupSendFilePre"
+#define PNR_IMCMD_GROUPSENDFILEDONE       "GroupSendFileDone"
+#define PNR_IMCMD_GROUPDELMSG       "GroupDelMsg"
+#define PNR_IMCMD_GROUPMSGPUSH       "GroupMsgPush"
+#define PNR_IMCMD_GROUPCONFIG       "GroupConfig"
+#define PNR_IMCMD_GROUPSYSPUSH       "GroupSysPush"
+#define PNR_IMCMD_FILERENAME       "FileRename"
+#define PNR_IMCMD_FILEFORWARD       "FileForward"
+#define PNR_IMCMD_UPLOADAVATAR       "UploadAvatar"
+#define PNR_IMCMD_UPDATEAVATAR       "UpdateAvatar"
+#define PNR_IMCMD_PULLTMPACCOUNT       "PullTmpAccount"
+#define PNR_IMCMD_DELUSER   "DelUser"
+//rid特有命令
+#define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
+#define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
+
+#define PNR_CMDTYPE_MSG_REGISTER "register user : "
+#define PNR_CMDTYPE_MSG_DESTROY "user destroy account byself"
+#define PNR_CMDTYPE_MSG_DELACCOUNT "user del account owner"
+#define PNR_CMDTYPE_EXT_SUCCESS "success"
+#define PNR_CMDTYPE_EXT_FAILED "failed"
 
 #define PNR_IMCMD_PARAMS_KEYWORD_MAXLEN   32
 #define PNR_IMCMD_PARAMS_VALUE_MAXLEN   128
@@ -213,23 +290,16 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_PRARMS_MAXNUM       10
 #define PNR_IMCMD_MSG_MAXLEN  2048
 #define APPID_MAXLEN   32
-
+#define PNR_FILEINFO_ATTACH_FLAG  ','
 #define PNR_IMCMD_PULLMSG_MAXNUM  20
 #define PNR_API_VERSION_V1     1
 #define PNR_API_VERSION_V2     2
 #define PNR_API_VERSION_V3     3
+#define PNR_API_VERSION_V4     4
 
 #define SEG_CONTENT_LEN	(1024*1024*2)
 #define MAX_FILE_BUFF	(1024*1024*3)
 #define IM_MSG_MAGIC	0x0dadc0de
-
-enum PNR_DEV_TYPE_ENUM
-{
-    PNR_DEV_TYPE_X86SERVER = 1,
-    PNR_DEV_TYPE_ONESPACE = 2,
-    PNR_DEV_TYPE_RASIPI3 = 3,
-    PNR_DEV_TYPE_EXPRESSOBIN = 4,
-};
 #ifdef DEV_ONESPACE
 #define PNR_DB_USERFILE_HEAD     "/media"
 #define DAEMON_PNR_TOP_DIR "/media/pnrouter/"
@@ -238,15 +308,21 @@ enum PNR_DEV_TYPE_ENUM
 #define DAEMON_CONFIG_INI  "/media/pnrouter/pnrouter_conf.ini"
 #define DB_TOP_FILE  "/media/pnrouter/pnrouter.db"
 #define DB_FRIENDLIST_FILE  "/media/pnrouter/pnrouter_friends.db"
+#define DB_GROUPINFO_FILE  "/media/pnrouter/pnrouter_group.db"
 #define PNR_ADMINUSER_QRCODEFILE  "/www/luci-static/resources/adminuser_qrcode.png"
 #define PNR_P2PID_FILE  "/media/pnrouter/p2pid.txt"
 #define PNR_DAEMON_TOX_DATAFILE "/media/pnrouter/data.ini"
 #define PNR_DAEMON_TOX_DATABAKFILE "/media/pnrouter/data.ini_bak"
 #define WS_SERVER_INDEX_FILETOPPATH  "/media/pnrouter/"
+#define PNR_GROUP_DATA_PATH  "gpdata/"
 //#define WS_SERVER_INDEX_FILEPATH  "/media/pnrouter/mount-origin"
 #define WS_SERVER_INDEX_FILEPATH	"/media/pnrouter/userdata"
-#define WS_SERVER_SSLCERT_FILEPATH  "/media/pnrouter/mount-origin/localhost-100y.cert"
-#define WS_SERVER_PRIVATEKEY_FILEPATH  "/media/pnrouter/mount-origin/localhost-100y.key"
+#define WS_SERVER_SSLCERT_FILEPATH  "/media/pnrouter/localhost-100y.cert"
+#define WS_SERVER_PRIVATEKEY_FILEPATH  "/media/pnrouter/localhost-100y.key"
+#define PNR_AVATAR_DIR "avatar/"
+#define PNR_FILECACHE_DIR "cache/"
+#define PNR_AVATAR_FULLDIR "/media/pnrouter/userdata/avatar/"
+#define PNR_FILECACHE_FULLDIR "/media/pnrouter/userdata/cache/"
 #else
 #define PNR_DB_USERFILE_HEAD     "/user"
 #define DAEMON_PNR_TOP_DIR "/usr/pnrouter/"
@@ -255,15 +331,21 @@ enum PNR_DEV_TYPE_ENUM
 #define DAEMON_CONFIG_INI  "/usr/pnrouter/pnrouter_conf.ini"
 #define DB_TOP_FILE  "/usr/pnrouter/pnrouter.db"
 #define DB_FRIENDLIST_FILE  "/usr/pnrouter/pnrouter_friends.db"
+#define DB_GROUPINFO_FILE  "/usr/pnrouter/pnrouter_group.db"
 #define PNR_ADMINUSER_QRCODEFILE  "/www/luci-static/resources/adminuser_qrcode.png"
 #define PNR_P2PID_FILE  "/usr/pnrouter/p2pid.txt"
 #define PNR_DAEMON_TOX_DATAFILE "/usr/pnrouter/data.ini"
 #define PNR_DAEMON_TOX_DATABAKFILE "/usr/pnrouter/data.ini_bak"
 #define WS_SERVER_INDEX_FILETOPPATH  "/usr/pnrouter/"
+#define PNR_GROUP_DATA_PATH  "gpdata/"
 //#define WS_SERVER_INDEX_FILEPATH  "/usr/pnrouter/mount-origin"
 #define WS_SERVER_INDEX_FILEPATH	"/usr/pnrouter/userdata"
-#define WS_SERVER_SSLCERT_FILEPATH  "/usr/pnrouter/mount-origin/localhost-100y.cert"
-#define WS_SERVER_PRIVATEKEY_FILEPATH  "/usr/pnrouter/mount-origin/localhost-100y.key"
+#define WS_SERVER_SSLCERT_FILEPATH  "/usr/pnrouter/localhost-100y.cert"
+#define WS_SERVER_PRIVATEKEY_FILEPATH  "/usr/pnrouter/localhost-100y.key"
+#define PNR_AVATAR_DIR "avatar/"
+#define PNR_FILECACHE_DIR "cache/"
+#define PNR_AVATAR_FULLDIR "/usr/pnrouter/userdata/avatar/"
+#define PNR_FILECACHE_FULLDIR "/usr/pnrouter/userdata/cache/"
 #endif
 
 /* one of these is created for each client connecting to us */
@@ -301,13 +383,14 @@ struct per_session_data__minimal_bin {
 struct imcmd_msghead_struct
 {
     int im_cmdtype;
-    int timestamp;
+    long timestamp;
     int api_version;
     int iftox;
     int forward;
 	int friendnum;
 	int offset;
-	double msgid;
+    int repeat_flag;
+	long msgid;
     void *toxmsg;
     //int cmd;
     int no_parse_msgid;
@@ -351,7 +434,8 @@ enum {
 };
 enum{
     PNR_PUSHLOGOUT_REASON_RELOGIN = 1,
-    PNR_PUSHLOGOUT_REASON_SYSTEM,
+    PNR_PUSHLOGOUT_REASON_SYSTEM = 2,
+    PNR_PUSHLOGOUT_REASON_DELUSER = 3,
 };
 #define PNR_PUSHLOGOUT_RELOGIN_STRING  "relogin"
 //缓存消息结构体
@@ -399,17 +483,33 @@ struct im_friends_struct
     int tox_onlinestatus;//tox好友的状态
     int tox_friendnum;
     int exsit_flag;
-	int oneway;	//是否单向好友
-	int sended;	//已发送
+    int oneway;	//是否单向好友
+    int sended;	//已发送
+    int local;//是否是本地好友
     unsigned int hashid;
-	pthread_mutex_t lock_sended;
+    pthread_mutex_t lock_sended;
     char u_hashstr[PNR_USER_HASHID_MAXLEN+1];
     char user_nickname[PNR_USERNAME_MAXLEN+1];
     char user_remarks[PNR_USERNAME_MAXLEN+1];
     char user_toxid[TOX_ID_STR_LEN+1];
+    char user_devid[TOX_ID_STR_LEN+1];
+    char user_devname[PNR_USERNAME_MAXLEN+1];
     char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
 };
-
+struct im_userdev_mapping_struct
+{
+    int id;
+    int userindex;
+    char user_toxid[TOX_ID_STR_LEN+1];
+    char user_devid[TOX_ID_STR_LEN+1];
+    char user_devname[PNR_USERNAME_MAXLEN+1];
+};
+//用户好友列表
+struct pnr_usermapping_struct
+{
+    int user_num;
+    struct im_userdev_mapping_struct user[PNR_IMUSER_MAXNUM+1];
+};
 struct im_friend_msgstruct
 {
     int result;
@@ -418,9 +518,154 @@ struct im_friend_msgstruct
     char nickname[PNR_USERNAME_MAXLEN+1];
     char friend_nickname[PNR_USERNAME_MAXLEN+1];
     char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
+    char sign[PNR_RSA_KEY_MAXLEN+1];
     char friend_msg[PNR_FRIEND_MSG_MAXLEN+1];
 };
+//群组功能相关接口
+#define PNR_GROUP_MANAGER_MAXNUM 5
+#define PNR_GROUP_USERKEY_MAXLEN 128
+#define PNR_GROUP_EXTINFO_MAXLEN 1024
+#define PNR_GROUP_USERMSG_MAXLEN 1024
+#define PNR_GROUP_EXTINFO_MAXNUM 10
 
+//群用户结构
+enum GROUP_USER_TYPE_ENUM
+{
+    GROUP_USER_OWNER=0,
+    GROUP_USER_MANAGER= 0x01,
+    GROUP_USER_NORMAL= 0x02,
+    GROUP_USER_BUTT,
+};
+struct group_user
+{
+    int gindex;
+    int userindex;
+    int type;
+    int last_msgid;//最后一次读取
+    int init_msgid;//入群的时候群logid
+    char username[PNR_USERNAME_MAXLEN+1];
+    char user_remarks[PNR_USERNAME_MAXLEN+1];
+    char group_remarks[PNR_USERNAME_MAXLEN+1];
+    char toxid[TOX_ID_STR_LEN+1];
+    char userkey[PNR_GROUP_USERKEY_MAXLEN+1];//用户群密钥
+    char user_pubkey[PNR_GROUP_USERKEY_MAXLEN+1];//用户自己的公钥
+};
+
+struct group_info
+{
+    int id;
+    int init_flag;
+    int ownerid;
+    int verify;
+    int manager_num;
+    int user_num;
+    int last_msgid;
+    char group_name[PNR_USERNAME_MAXLEN+1];
+    char group_hid[TOX_ID_STR_LEN+1];
+    char owner[TOX_ID_STR_LEN+1];
+    char group_filepath[PNR_FILEPATH_MAXLEN+1];
+    struct group_user user[PNR_GROUP_USER_MAXNUM+1];
+};
+//邀请入群信息
+struct group_invite_info
+{
+    int msg_id;
+    char groud_hid[TOX_ID_STR_LEN+1];
+    char inviter[TOX_ID_STR_LEN+1];
+    char user[TOX_ID_STR_LEN+1];
+    char aduitor[TOX_ID_STR_LEN+1];
+    char user_pubkey[PNR_GROUP_USERKEY_MAXLEN+1];
+    char user_groupkey[PNR_GROUP_USERKEY_MAXLEN+1];
+    char inviter_name[PNR_USERNAME_MAXLEN+1];
+    char user_name[PNR_USERNAME_MAXLEN+1];
+    char group_name[PNR_USERNAME_MAXLEN+1];
+    char msg[PNR_GROUP_EXTINFO_MAXLEN+1];
+};
+struct gpuser_map_struct
+{
+    int uindex;
+    char userid[TOX_ID_STR_LEN+1];
+    char userkey[PNR_GROUP_USERKEY_MAXLEN+1];
+};
+struct gpuser_maplist
+{
+    int usernum;
+    struct gpuser_map_struct gpuser[PNR_GROUP_EXTINFO_MAXNUM+1];
+};
+enum GROUP_OPER_ACTION_ENUM
+{
+    GROUP_OPER_ACTION_ADDUSER = 0,
+    GROUP_OPER_ACTION_DELUSER,
+    GROUP_OPER_ACTION_DISOLVE,
+};
+//群用户消息结构
+struct group_user_msg
+{
+    int gid;
+    int msgid;
+    int timestamp;
+    int type;
+    int from_uid;
+    int to_uid;
+    int attend_all;
+    char from[TOX_ID_STR_LEN+1];
+    char to[TOX_ID_STR_LEN+1];
+    char to_key[PNR_GROUP_USERKEY_MAXLEN+1];
+    char file_key[PNR_GROUP_USERKEY_MAXLEN+1];
+    char group_name[PNR_GROUP_USERKEY_MAXLEN+1];
+    char msgpay[PNR_GROUP_USERMSG_MAXLEN+1];
+    char attend[PNR_GROUP_EXTINFO_MAXLEN+1];
+    char ext1[PNR_GROUP_EXTINFO_MAXLEN+1];//ext1存储文件相对路径
+    char ext2[PNR_GROUP_EXTINFO_MAXLEN+1];//ext2存储文件信息 格式为:  fid:fsize:md5:fileinfo
+};
+enum GROUP_SYSMSG_ENUM
+{
+    GROUP_SYSMSG_REMARK_GROUPNAME = 0x01,
+    GROUP_SYSMSG_VERIFY_MODIFY = 0x02,
+    GROUP_SYSMSG_DELMSG_BYSELF = 0x03,
+    GROUP_SYSMSG_DELMSG_BYADMIN = 0x04,
+    GROUP_SYSMSG_NEWUSER = 0xF1,    
+    GROUP_SYSMSG_SELFOUT = 0xF2,
+    GROUP_SYSMSG_KICKOFF = 0xF3,
+    GROUP_SYSMSG_DISGROUP = 0xF4,
+};
+enum GROUP_CONFIG_CMDTYPE_ENUM
+{
+    GROUP_CONFIG_CMDTYPE_SET_GNAME = 0x01,
+    GROUP_CONFIG_CMDTYPE_SET_VERIFY = 0x02,
+    GROUP_CONFIG_CMDTYPE_KICKUSER = 0x03,
+    GROUP_CONFIG_CMDTYPE_SET_GREMARK = 0xF1,
+    GROUP_CONFIG_CMDTYPE_SET_USERREMARK = 0xF2,
+    GROUP_CONFIG_CMDTYPE_SET_GNICKNAME = 0xF3,
+};
+enum GROUP_CONFIG_RETCODE_ENUM
+{
+    GROUP_CONFIG_RETCODE_OK = 0,
+    GROUP_CONFIG_RETCODE_BADPARAMS,
+    GROUP_CONFIG_RETCODE_NOPOWER,
+    GROUP_CONFIG_RETCODE_OTHERERR
+};
+struct group_sys_msg
+{
+    int type;
+    int msgid;
+    int result;
+    int from_uid;
+    int to_uid;
+    int gid;
+    char group_hid[TOX_ID_STR_LEN+1];//操作者
+    char from_user[TOX_ID_STR_LEN+1];//操作者
+    char to_user[TOX_ID_STR_LEN+1];//被操作者
+    char msgtargetuser[TOX_ID_STR_LEN+1];//消息接收方
+    char msgpay[PNR_GROUP_USERMSG_MAXLEN+1];
+};
+struct group_fileinfo_struct
+{
+    int filesize;
+    char fileid[PNR_FILEINFO_MAXLEN+1];
+    char md5[PNR_MD5_VALUE_MAXLEN+1];
+    char attach_info[PNR_FILEINFO_MAXLEN+1];
+};
 enum IM_MSGTYPE_ENUM
 {
 	PNR_IM_MSGTYPE_TEXT = 0,
@@ -429,7 +674,7 @@ enum IM_MSGTYPE_ENUM
 	PNR_IM_MSGTYPE_SYSTEM = 3,
 	PNR_IM_MSGTYPE_MEDIA = 4,
 	PNR_IM_MSGTYPE_FILE = 5,
-	PNR_IM_MSGTYPE_CUSTOME = 6
+	PNR_IM_MSGTYPE_AVATAR = 6
 };
 #define PNR_IM_MSGTYPE_FILEALL   0xF0//包含IMAGE，AUDIO，MEDIA，FILE
 #define PNR_IM_MSGTYPE_ALL   0xF1//包含IMAGE，AUDIO，MEDIA，FILE TEXT
@@ -481,6 +726,7 @@ enum USER_ONLINE_TYPE_ENUM {
     USER_ONLINE_TYPE_TOX
 };
 
+#define IM_MSGID_CACHENUM 10
 //每个im用户的结构体
 struct im_user_struct
 {
@@ -498,10 +744,13 @@ struct im_user_struct
     unsigned int cachelog_dbid;
     pthread_t tox_tid;
     pthread_mutex_t userlock;
+    int lastmsgid_index;
+    long cache_msgid[IM_MSGID_CACHENUM];
     char u_hashstr[PNR_USER_HASHID_MAXLEN+1];
     char user_toxid[TOX_ID_STR_LEN+1];
     char user_name[PNR_USERNAME_MAXLEN+1];
     char user_nickname[PNR_USERNAME_MAXLEN+1];
+    char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
     char userdata_pathurl[PNR_FILEPATH_MAXLEN];
     char userinfo_pathurl[PNR_FILEPATH_MAXLEN];//用户账户信息相关目录
     char userinfo_fullurl[PNR_FILEPATH_MAXLEN];//用户data文件全路径名称
@@ -509,15 +758,33 @@ struct im_user_struct
     struct per_session_data__minimal *pss;
     struct im_friends_struct friends[PNR_IMUSER_FRIENDS_MAXNUM+1];
 	struct im_sendfile_struct file[PNR_MAX_SENDFILE_NUM];
+    int groudnode[PNR_GROUP_MAXNUM+1];
 };
-
+#define USERINFO_MAXLEN 1024
+struct pnr_userinfo_struct
+{
+    int id;
+    int index;
+    int local;
+    char userid[TOX_ID_STR_LEN+1];
+    char devid[TOX_ID_STR_LEN+1];
+    char avatar[PNR_FILENAME_MAXLEN];
+    char md5[PNR_MD5_VALUE_MAXLEN+1];
+    char info[USERINFO_MAXLEN+1];
+};
 struct im_user_array_struct
 {
     int max_user_num;
     int cur_user_num;
     struct im_user_struct usrnode[PNR_IMUSER_MAXNUM+1];
 };
-
+enum PNR_ACCOUNT_STATUS_ENUM
+{
+    PNR_ACCOUNT_STATUS_NOREADY = 0,
+    PNR_ACCOUNT_STATUS_ACTIVE = 1,
+    PNR_ACCOUNT_STATUS_INVALID = 2,
+    PNR_ACCOUNT_STATUS_BUTT
+};
 //pnr 账号结构
 struct pnr_account_struct
 {
@@ -526,12 +793,14 @@ struct pnr_account_struct
     int type;
     int active;
     int lastactive;
+    int createtime;
     char user_sn[PNR_USN_MAXLEN+1];
     char nickname[PNR_USERNAME_MAXLEN+1];
     char mnemonic[PNR_USERNAME_MAXLEN+1];
     char identifycode[PNR_IDCODE_MAXLEN+1];
     char loginkey[PNR_LOGINKEY_MAXLEN+1];
     char toxid[TOX_ID_STR_LEN+1];
+    char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
 };
 
 struct pnr_tox_datafile_struct
@@ -546,6 +815,7 @@ struct pnr_tox_datafile_struct
 };
 struct pnr_account_array_struct
 {
+    int admin_user_index;
     int normal_user_num;
     int temp_user_num;
     int admin_user_num;
@@ -555,7 +825,8 @@ struct pnr_account_array_struct
     char defadmin_user_qrcode[PNR_QRCODE_MAXLEN+1];
     struct pnr_account_struct account[PNR_IMUSER_MAXNUM+1];
 };
-
+#define PNR_GROUPID_PREFIX    "group"
+#define PNR_GROUPID_PREFIX_LEN 5
 enum PNR_CREATE_NORMALUSER_RETCODE_ENUM
 {
     PNR_CREATE_NORMALUSER_RETCODE_OK = 0,
@@ -573,6 +844,7 @@ enum PNR_LOGIN_RETCODE_ENUM
     PNR_LOGIN_RETCODE_BAD_LOGINKEY,
     PNR_LOGIN_RETCODE_BAD_IDCODE,
     PNR_LOGIN_RETCODE_OTHERS,
+	PNR_LOGIN_RETCODE_USER_INVAILD,
     PNR_LOGIN_RETCODE_BUTT
 };
 enum PNR_LOGINIDENTIFY_RETCODE_ENUM
@@ -603,6 +875,7 @@ enum PNR_RECOVERY_RETCODE_ENUM
     PNR_RECOVERY_RETCODE_BAD_RID,
     PNR_RECOVERY_RETCODE_TEMP_USER,
     PNR_RECOVERY_RETCODE_OTHERS_ERROR,
+    PNR_RECOVERY_RETCODE_QRCODE_USED,
     PNR_RECOVERY_RETCODE_BUTT
 };
 enum PNR_RECOVERYIDENTIFY_RETCODE_ENUM
@@ -652,6 +925,47 @@ enum PNR_RESETLOGINKEY_RETCODE_ENUM
     PNR_RESETLOGINKEY_RETCODE_OTHERS,
     PNR_RESETLOGINKEY_RETCODE_BUTT
 };
+enum PNR_RESETDEVNAME_RETCODE_ENUM
+{
+    PNR_RESETDEVNAME_RETCODE_OK = 0,
+    PNR_RESETDEVNAME_RETCODE_BADRID = 1,
+    PNR_RESETDEVNAME_RETCODE_BADUID = 2,
+    PNR_RESETDEVNAME_RETCODE_OTHERS,
+    PNR_RESETDEVNAME_RETCODE_BUTT
+};
+enum PNR_FILERENAME_RETCODE_ENUM
+{
+    PNR_FILERENAME_RETCODE_OK = 0,
+    PNR_FILERENAME_RETCODE_BADUID = 1,
+    PNR_FILERENAME_RETCODE_BADFILENAME =2,
+    PNR_FILERENAME_RETCODE_RENEWFILEEXSIT =3,
+    PNR_FILERENAME_RETCODE_BUTT
+};
+enum PNR_FILEFORWARD_RETCODE_ENUM
+{
+    PNR_FILEFORWARD_RETCODE_OK = 0,
+    PNR_FILEFORWARD_RETCODE_BADUID = 1,
+    PNR_FILEFORWARD_RETCODE_BADFILENAME =2,
+    PNR_FILEFORWARD_RETCODE_TARGETNOTONLINE = 3,
+    PNR_FILEFORWARD_RETCODE_BUTT
+};
+enum PNR_UPLOAD_AVATAR_RETCODE_ENUM
+{
+    PNR_UPLOAD_AVATAR_RETCODE_OK = 0,
+    PNR_UPLOAD_AVATAR_RETCODE_BADUID = 1,
+    PNR_UPLOAD_AVATAR_RETCODE_FILENAME_ERR =2,
+    PNR_UPLOAD_AVATAR_RETCODE_NOCHANGE = 3,
+    PNR_UPLOAD_AVATAR_RETCODE_BUTT
+};
+enum PNR_UPDATE_AVATAR_RETCODE_ENUM
+{
+    PNR_UPDATE_AVATAR_RETCODE_OK = 0,
+    PNR_UPDATE_AVATAR_RETCODE_BADUID = 1,
+    PNR_UPDATE_AVATAR_RETCODE_NOCHANGE = 2,
+    PNR_UPDATE_AVATAR_RETCODE_FILE_NOEXSIT =3,
+    PNR_UPDATE_AVATAR_RETCODE_BUTT
+};
+
 enum PNR_RESETIDCODE_RETCODE_ENUM
 {
     PNR_RESETIDCODE_RETCODE_OK = 0,
@@ -661,6 +975,91 @@ enum PNR_RESETIDCODE_RETCODE_ENUM
     PNR_RESETIDCODE_RETCODE_OTHERS,
     PNR_RESETIDCODE_RETCODE_BUTT
 };
+enum PNR_CREATEGROUP_RETCODE_ENUM
+{
+    PNR_CREATEGROUP_RETCODE_OK = 0,
+    PNR_CREATEGROUP_RETCODE_BADUID = 1,
+    PNR_CREATEGROUP_RETCODE_BADPARAMS,
+    PNR_CREATEGROUP_RETCODE_GROUPOVER,
+    PNR_CREATEGROUP_RETCODE_BUTT
+};
+enum PNR_GROUPINVITE_RETCODE_ENUM
+{
+    PNR_GROUPINVITE_RETCODE_OK = 0,
+    PNR_GROUPINVITE_RETCODE_BADUID,
+    PNR_GROUPINVITE_RETCODE_BADPARAMS,
+    PNR_GROUPINVITE_RETCODE_GROUPOVER,
+    PNR_GROUPINVITE_RETCODE_BUTT
+};
+enum PNR_GROUPVERIFY_RETCODE_ENUM
+{
+    PNR_GROUPVERIFY_RETCODE_OK = 0,
+    PNR_GROUPVERIFY_RETCODE_BADGID,
+    PNR_GROUPVERIFY_RETCODE_BADUID,
+    PNR_GROUPVERIFY_RETCODE_BADPARAMS,
+    PNR_GROUPVERIFY_RETCODE_BUTT
+};
+enum PNR_GROUPQUIT_RETCODE_ENUM
+{
+    PNR_GROUPQUIT_RETCODE_OK = 0,
+    PNR_GROUPQUIT_RETCODE_BADPARAMS,
+    PNR_GROUPQUIT_RETCODE_NONEED_QUIT,
+    PNR_GROUPQUIT_RETCODE_BUTT
+};
+enum PNR_GROUPPULL_RETCODE_ENUM
+{
+    PNR_GROUPPULL_RETCODE_OK = 0,
+    PNR_GROUPPULL_RETCODE_ERR,
+    PNR_GROUPPULL_RETCODE_BUTT
+};
+enum PNR_GROUPPULL_MSGTYPE_ENUM
+{
+    PNR_GROUPPULL_MSGTYPE_ALL = 0,
+    PNR_GROUPPULL_MSGTYPE_TEXT = 1,
+    PNR_GROUPPULL_MSGTYPE_FILE,
+    PNR_GROUPPULL_MSGTYPE_BUTT
+};
+enum PNR_GROUPSENDMSG_RETCODE_ENUM
+{
+    PNR_GROUPSENDMSG_RETCODE_OK = 0,
+    PNR_GROUPSENDMSG_RETCODE_BADPARAMS,
+    PNR_GROUPSENDMSG_RETCODE_BADUSER,
+    PNR_GROUPSENDMSG_RETCODE_BUTT
+};
+enum PNR_GROUP_MSGPUSH_ATTEND_ENUM
+{
+    PNR_GROUP_MSGPUSH_ATTEND_NONE = 0,
+    PNR_GROUP_MSGPUSH_ATTEND_ALL,
+    PNR_GROUP_MSGPUSH_ATTEND_ONLY
+};
+enum PNR_GROUP_DELMSG_TYPE_ENUM
+{
+    PNR_GROUP_DELMSG_TYPE_SELF = 0,
+    PNR_GROUP_DELMSG_TYPE_ADMIN,
+};
+enum PNR_GROUP_DELMSG_RETURN_ENUM
+{
+    PNR_GROUP_DELMSG_RETURN_OK = 0,
+    PNR_GROUP_DELMSG_RETURN_BADPRARMS,
+    PNR_GROUP_DELMSG_RETURN_NOPOWER,
+    PNR_GROUP_DELMSG_RETURN_BUTT
+};
+enum PNR_GROUP_SENDFILE_RETURN_ENUM
+{
+    PNR_GROUP_SENDFILE_RETURN_OK,
+    PNR_GROUP_SENDFILE_RETURN_BADPRARMS,
+    PNR_GROUP_SENDFILE_RETURN_BADMD5,  
+    PNR_GROUP_SENDFILE_RETURN_BUTT,
+};
+enum PNR_ACCOUNT_DELETE_RETURN_ENUM
+{
+    PNR_ACCOUNT_DELETE_RETURN_OK,
+    PNR_ACCOUNT_DELETE_RETURN_NOOWNER,
+    PNR_ACCOUNT_DELETE_RETURN_BADUSER,  
+    PNR_ACCOUNT_DELETE_RETURN_BUTT,
+};
+
+#define WS_SENDFILE_HEADLEN    952
 struct im_user_msg_sendfile {
 	uint32_t magic;
 	uint32_t action;
@@ -676,6 +1075,8 @@ struct im_user_msg_sendfile {
 	char toid[TOX_ID_STR_LEN + 1];
     char srckey[PNR_RSA_KEY_MAXLEN+1];
     char dstkey[PNR_RSA_KEY_MAXLEN+1];
+    char porperty_flag;//是否是群会话属性
+    char pad[1];
 	char content[SEG_CONTENT_LEN];
 };
 
@@ -708,6 +1109,8 @@ enum {
 #define PAPUSHMSG_PRODUCT_HTTPS_SERVER   "pprouter.online"
 #define PAPUSHMSG_HTTPSSERVER_PORT   9001
 #define PAPUSHMSG_HTTPSSERVER_PREURL "/v1/pareg/pushmsg"
+#define PAPUSHMSGS_HTTPSSERVER_PREURL "/v1/pareg/pushmsgs"
+#define PNR_HTTPSSERVER_DEVREGISTER "/v1/pprmap/devreg"
 enum PUSHMSG_PRI_LEVER
 {
     PUSHMSG_PRI_LEVER_LOW = 1,
@@ -721,8 +1124,11 @@ enum PUSHMSG_TYPE_ENUM
     PUSHMSG_TYPE_SYSTEMINFO = 2,
     PUSHMSG_TYPE_CRETICALINFO = 3,
 };
-#define PNR_POSTMSG_TITLE "PP Messenger"
+#define PNR_POSTMSG_TITLE "Confidant"
 #define PNR_POSTMSG_PAYLOAD  "You Have new Messages"
+#define PNR_POST_USER_MAXNUM 100
+#define PNR_POST_USERSTR_MAXLEN  10000
+#define PNR_POST_MSGS_VER1  1
 //推送消息结构体
 struct newmsg_notice_params{
     int priority;
@@ -731,8 +1137,23 @@ struct newmsg_notice_params{
     char from[TOX_ID_STR_LEN+1];
     char to[TOX_ID_STR_LEN+1];
     char title[PNR_USERNAME_MAXLEN+1];
+    char dev[PNR_USERNAME_MAXLEN+1];
     char payload[CMD_MAXLEN+1];
 };
+//批量推送消息结构体
+struct newmsgs_notice_params{
+    int priority;
+    int server_flag;
+    int type;
+    int to_num;
+    int version;
+    char from[TOX_ID_STR_LEN+1];
+    char title[PNR_USERNAME_MAXLEN+1];
+    char dev[PNR_USERNAME_MAXLEN+1];
+    char tos[PNR_POST_USERSTR_MAXLEN+1];
+    char payload[CMD_MAXLEN+1];
+};
+
 //磁盘统计信息
 struct disk_total_info{
     int mode;
@@ -800,4 +1221,12 @@ int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag);
 int im_debug_setfunc_deal(char* pcmd);
 int pnr_relogin_push(int index,int curtox_flag,int cur_fnum,struct per_session_data__minimal *cur_pss);
 int pnr_encrypt_show(char* msg,int flag);
+int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* dev_name);
+int im_simulation_setfunc_deal(char* pcmd);
+int im_group_fileinfo_analyze(char* fileinfo,struct group_fileinfo_struct* pfinfo);
+int post_devinfo_upload_once(void* param);
+void post_devinfo_upload_task(void *para);
+void post_newmsgs_loop_task(void *para);
+static int pnr_post_attach_touser(char* uid);
+int pnr_router_node_friend_init(void);
 #endif

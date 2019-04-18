@@ -77,7 +77,8 @@ extern Tox *qlinkNode;
 extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
 extern char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1];
 extern int g_format_reboot_time;
-
+extern char g_dev_nickname[PNR_USERNAME_MAXLEN+1];
+extern int g_pnrdevtype;
 void *server_discovery_thread(void *args);
 int im_debug_imcmd_deal(char* pcmd);
 
@@ -111,11 +112,12 @@ void print_usage(void)
 void print_version(void)
 {
     printf("version:%s.%s.%s\n"
-		"build:%s\n",
+		"build:%s ~ %s\n",
         PNR_SERVER_TOPVERSION,
         PNR_SERVER_MIDVERSION,
         PNR_SERVER_LOWVERSION,
-        PNR_SERVER_BUILD_TIME);
+        PNR_SERVER_BUILD_TIME,
+	PNR_SERVER_BUILD_HASH);
 }
 
 /**********************************************************************************
@@ -327,6 +329,12 @@ int daemon_init(void)
     }
 
 	setrlimit(RLIMIT_NOFILE, &resource);
+    //这里如果是onespace，需要先执行下rngd，要不然 sodium_init会很慢
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+        system("/usr/bin/rngd -r/dev/urandom");
+        system("echo 180 > /proc/sys/net/ipv4/netfilter/ip_conntrack_udp_timeout");
+    }
 
     //建立文件目录
     if(access(DAEMON_PNR_TOP_DIR,F_OK) != OK)
@@ -351,7 +359,6 @@ int daemon_init(void)
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_server_init failed");
 		return ERROR;
 	}
-
 	snprintf(sql_cmd,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_IMUSER_MAXNUM_KEYWORDK);
     if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&g_imusr_array.max_user_num,&errMsg))
 	{
@@ -368,9 +375,18 @@ int daemon_init(void)
 		sqlite3_free(errMsg);
 		return ERROR;
 	}
+    db_ret.buf_len = PNR_USERNAME_MAXLEN;
+    db_ret.pbuf = g_dev_nickname;
+	snprintf(sql_cmd,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_DEVNAME_KEYWORD);
+    if(sqlite3_exec(g_db_handle,sql_cmd,dbget_singstr_result,&db_ret,&errMsg))
+	{
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get g_dev_nickname failed");
+		sqlite3_free(errMsg);
+		return ERROR;
+	}
     dev_hwaddr_init();
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get g_imusr_maxnum %d,cur_num %d,g_devadmin_loginkey(%d:%s)",
-        g_imusr_array.max_user_num,g_imusr_array.cur_user_num,db_ret.buf_len,g_devadmin_loginkey);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get g_imusr_maxnum %d,cur_num %d,g_dev_nickname(%d:%s)",
+        g_imusr_array.max_user_num,g_imusr_array.cur_user_num,db_ret.buf_len,g_dev_nickname);
     return OK;
 }
 
@@ -565,7 +581,7 @@ void msg_deal(char * pbuf,int msg_len)
 	}
 	pbuf ++;
 	msg_len -= 2;
-	DEBUG_PRINT(DEBUG_LEVEL_INFO,"msg_deal len(%d) msg_type(%d) msg(%s)",msg_len,msg_type,pbuf); 
+	DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"msg_deal len(%d) msg_type(%d) msg(%s)",msg_len,msg_type,pbuf); 
 	switch(msg_type)
 	{
 	    case PNR_DEBUGCMD_SHOW_GLOBALINFO:
@@ -586,6 +602,13 @@ void msg_deal(char * pbuf,int msg_len)
         //动态设置某些系统功能的开关
         case PNR_DEBUGCMD_SET_FUNCENABLE:
             im_debug_setfunc_deal(pbuf);
+            break;
+        //使能模拟用户测试
+        case PNR_DEBUGCMD_SET_SIMULATION:
+            im_simulation_setfunc_deal(pbuf);
+            break;
+        case PNR_DEBUGCMD_DEVINFO_REG:
+            post_devinfo_upload_once(pbuf);
             break;
 		default:
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msg_type param %d",msg_type);  
@@ -622,7 +645,7 @@ static int fifo_msg_handle(void)
 	while(1)
     {	
     	line_len = read(fpipe, line, BUF_LINE_MAX_LEN);
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"fifo_msg_handle read ret(%d)",line_len);  
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"fifo_msg_handle read ret(%d)",line_len);  
         //消息结构体是类似 "3 XXXX"
 		if(line_len >= 3)
 		{
@@ -830,7 +853,21 @@ int32 main(int argc,char *argv[])
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create cron failed");
         goto out;
 	}
-
+    //设备注册任务
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+	    if (pthread_create(&tid, NULL,post_devinfo_upload_task, NULL) != 0) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create post_devinfo_upload_task failed");
+            goto out;
+        }
+    }    
+    //消息推送轮询任务
+    if (pthread_create(&tid, NULL,post_newmsgs_loop_task, NULL) != 0) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create post_newmsgs_loop_task failed");
+        goto out;
+    }
     fifo_msg_handle();
     while(1)
     {

@@ -96,7 +96,7 @@ extern struct imuser_toxmsg_struct g_tox_msglist[PNR_IMUSER_MAXNUM+1];
 extern pthread_mutex_t tox_msglock[PNR_IMUSER_MAXNUM+1];
 extern struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
 char  homeDirPath[100] = {DAEMON_PNR_TOP_DIR};
-
+extern int g_udpdebug_flag;
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey);
 int friend_Message_process(Tox* m, int friendnum, char *message);
 int map_msg(char *type);
@@ -296,8 +296,7 @@ static void print_formatted_message(Tox *m, char *message, int friendnum)
     
     getfriendname_terminated(m, friendnum, name);
 
-    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rec friend(%s) msg(%s)", name, message);
-		
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rec friend(%s) msg(%s)", name, message);
 	friend_Message_process(m, friendnum, message);
 }
 
@@ -366,57 +365,67 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
     cJSON *item = NULL;
 	char *itemstr = NULL;
 	struct im_friend_msgstruct friend;
-
+    struct im_userdev_mapping_struct devinfo;
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "recv friend msg:%s", data);
-	
 	cJSON *rootJson = cJSON_Parse((char *)data);
 	if (!rootJson) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse json err(%s)", data);
 		return;
 	}
-
 	cJSON *params = cJSON_GetObjectItem(rootJson, "params");
 	if (!params) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get params err(%s)", data);
 		return;
 	}
-
 	cJSON *action = cJSON_GetObjectItem(params, "Action");
 	if (!action || !action->valuestring) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get action err(%s)", data);
 		cJSON_Delete(rootJson);
 		return;
 	}
-
 	pnr_msgcache_getid(*userindex, &msgid);
 	cJSON_AddItemToObject(rootJson, "msgid", cJSON_CreateNumber(msgid));
 	pmsg = cJSON_PrintUnformatted(rootJson);
-
-	if (!strcmp(action->valuestring, PNR_IMCMD_ADDFRIENDREPLY)) {
+	if (!strcmp(action->valuestring, PNR_IMCMD_ADDFRIENDREPLY)) 
+    {
 		memset(&friend, 0, sizeof(friend));
-		
+		memset(&devinfo, 0, sizeof(devinfo));
 		CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "UserId", friend.fromuser_toxid, TOX_ID_STR_LEN);
 		CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "NickName", friend.nickname, PNR_USERNAME_MAXLEN);
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "FriendId", friend.touser_toxid, TOX_ID_STR_LEN);
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "FriendName", friend.friend_nickname, TOX_ID_STR_LEN);
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "UserKey", friend.user_pubkey, PNR_USER_PUBKEY_MAXLEN);
         CJSON_GET_VARINT_BYKEYWORD(params, item, itemstr, "Result", friend.result, 0);
-
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "Sign", friend.sign, PNR_RSA_KEY_MAXLEN);
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterId", devinfo.user_devid, TOX_ID_STR_LEN);
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterName", devinfo.user_devname, PNR_USERNAME_MAXLEN);
         //这里需要反向一下
         if (friend.result == OK) {
             pnr_friend_dbinsert(friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
             im_nodelist_addfriend(*userindex, friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
+            pnr_check_update_devinfo_bytoxid(*userindex,friend.fromuser_toxid,devinfo.user_devid,devinfo.user_devname);
         }
-
 		pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid,
             PNR_IM_CMDTYPE_ADDFRIENDREPLY, pmsg, strlen(pmsg), NULL, NULL, 0, 
             PNR_MSG_CACHE_TYPE_TOXA, 0, "", "");
-	} else if (!strcmp(action->valuestring, PNR_IMCMD_ADDFRIENDPUSH)) {
-		pnr_msgcache_dbinsert(msgid, "", g_imusr_array.usrnode[*userindex].user_toxid, 
+	} 
+    else if (!strcmp(action->valuestring,PNR_IMCMD_ADDFRIENDPUSH)) 
+    {
+		memset(&friend, 0, sizeof(friend));
+		memset(&devinfo, 0, sizeof(devinfo));
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "FriendId", friend.touser_toxid, TOX_ID_STR_LEN);
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterId", devinfo.user_devid, TOX_ID_STR_LEN);
+        CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterName", devinfo.user_devname, PNR_USERNAME_MAXLEN);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_userdev_mapping_dbupdate: user(%s) devid(%s) devname(%s)",
+            friend.touser_toxid,devinfo.user_devid,devinfo.user_devname);
+        if(pnr_userdev_mapping_dbupdate(friend.touser_toxid,devinfo.user_devid,devinfo.user_devname) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_userdev_mapping_dbupdate failed");
+        }
+        pnr_msgcache_dbinsert(msgid, "", g_imusr_array.usrnode[*userindex].user_toxid, 
 			PNR_IM_CMDTYPE_ADDFRIENDPUSH, pmsg, strlen(pmsg), NULL, NULL, 0, 
 			PNR_MSG_CACHE_TYPE_TOXA, 0, "", "");
 	}
-
 	free(pmsg);
 	cJSON_Delete(rootJson);
 }
@@ -448,6 +457,7 @@ static void print_message(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE type,
     memcpy(null_string, string, length);
     null_string[length] = 0;
     print_formatted_message(m, (char *)null_string, friendnumber);
+    //free(null_string);
 }
 
 /*****************************************************************************
@@ -478,6 +488,7 @@ static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE ty
     null_string[length] = 0;
     
     im_tox_rcvmsg_deal(m, (char *)null_string, length, friendnumber);
+    //free(null_string);
 }
 
 /*****************************************************************************
@@ -578,24 +589,17 @@ static Tox *load_data(void)
             fclose(data_file);
             return 0;
         }
-
         tox_options_default(&options);
-
         options.savedata_type = TOX_SAVEDATA_TYPE_TOX_SAVE;
         options.savedata_data = data;
         options.savedata_length = size;
-		
         Tox *m = tox_new(&options, NULL);
-
         if (fclose(data_file) < 0) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"[!] load_data close file(%s) failed!",data_file_name);
         }
-
+        free(data);
         return m;
-    } else {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"[!] load_data open file(%s) failed!",data_file_name);
-    }
-	free(data);
+    } 
     return tox_new(NULL, NULL);
 }
 
@@ -636,6 +640,8 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	char filepath[512] = {0};
 	int dirindex = 0;
 	char *realfilename = filename;
+    int gid =0;
+    char* ptmp = NULL;
 	
 	//tox save file to app's dir
 	if (*index == 0) {
@@ -683,12 +689,36 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	
 	if (filename) {
 		if (*index == 0) {
-			if (strncmp(filename, "u:", 2)) {
-				snprintf(filepath, sizeof(filepath), "%ss/%s", 
-	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, filename);
-			} else {
+            //tox发送文件只能根据附带的文件命来判定是那种文件类型
+            if(strncmp(filename, "group", 5) == OK){
+                ptmp=filename+5;
+                gid =atoi(ptmp);
+                if(gid< 0|| gid >= PNR_GROUP_MAXNUM)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad filename(%s)",filename);
+                    return;
+                }
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"get gid(%d) ptmp(%s)",gid,ptmp);
+                ptmp = strchr(filename,':');
+                if(ptmp == NULL)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad filename(%s)",filename);
+                    return;
+                }
+				realfilename = ptmp + 1;
+				snprintf(filepath, sizeof(filepath), "%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
+            }
+			else if(strncmp(filename, "a:", 2) == OK){
+				realfilename = filename + 2;
+				snprintf(filepath, sizeof(filepath), "%s%s%s",DAEMON_PNR_USERDATA_DIR,PNR_FILECACHE_DIR,realfilename);
+            }
+			else if (strncmp(filename, "u:", 2) == OK) {
 				realfilename = filename + 2;
 				snprintf(filepath, sizeof(filepath), "%su/%s", 
+	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);
+			} else {
+				realfilename = filename;
+				snprintf(filepath, sizeof(filepath), "%ss/%s", 
 	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);				
 			}
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"###rec filename(%s),filepath(%s)",filename,filepath);
@@ -727,14 +757,18 @@ static void file_print_control(Tox *tox, uint32_t friend_number, uint32_t file_n
 	TOX_FILE_CONTROL control, void *user_data)
 {
 	int *index = (int *)user_data;
+    if(*index < 0 || *index > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"file_print_control:get index(%d) err",*index);
+        return;
+    }
 	File_Sender *sender = &file_senders[*index][0];
 	
     if (control == TOX_FILE_CONTROL_CANCEL) {
         unsigned int i;
-
         for (i = 0; i < NUM_FILE_SENDERS; ++i) {
             /* This is slow */
-            if (sender[i].file && sender[i].msg->friendnum == friend_number 
+            if (sender[i].file && sender[i].msg && sender[i].msg->friendnum == friend_number 
 				&& sender[i].filenumber == file_number) {
                 fclose(sender[i].file);
                 
@@ -926,7 +960,6 @@ static void tox_connection_status(Tox *tox, TOX_CONNECTION connection_status,
 				}
 			}
 		}
-		
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%s) online proto(%d)", name, connection_status);
         break;
     }
@@ -949,6 +982,7 @@ int CreatedP2PNetwork(void)
 
     qlinkNode = m;
     g_daemon_tox.ptox_handle = m;
+    strcpy(g_daemon_tox.userinfo_fullurl,data_file_name);
     tox_callback_friend_request(m, auto_accept_request);
 	tox_callback_friend_message(m, print_message_app);
     tox_callback_friend_name(m, on_friend_name);
@@ -985,6 +1019,8 @@ int CreatedP2PNetwork(void)
 
     //在rid起来之后创建admin用户的二维码    
     adminaccount_qrcode_init();
+    //连接有好友关系的其他rid
+    //pnr_router_node_friend_init();
     while (1) {
         do_tox_connection(m);
 
@@ -1127,7 +1163,7 @@ int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath
 	filesize = ftell(pf);
 	fseek(pf, 0, SEEK_SET);
 
-	snprintf(pushfilename, 255, "%s:%s:%d:%d",fromid, fname,msgid,filefrom);
+	snprintf(pushfilename, 255, "%s:%s:%d:%d",fromid,fname,msgid,filefrom);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"imtox_send_file_to_app:send file(%s)",pushfilename);
 	filenum = tox_file_send(tox, friendnum, 
         TOX_FILE_KIND_DATA, filesize, 0, (uint8_t *)pushfilename, strlen(pushfilename), 0);
@@ -1605,7 +1641,7 @@ int add_friends_force(Tox *plinknode, char *friendid, char *msg)
         uint32_t num = tox_friend_add(plinknode, bin_string, (const uint8_t *)msg, strlen(msg), &error);
         free(bin_string);
         char numstring[100] = {0};
-
+        DEBUG_PRINT(DEBUG_LEVEL_INFO, "add_friends_force:send msg(%d:%s) ret(%d)",strlen(msg), msg ,error);
         switch (error) {
             case TOX_ERR_FRIEND_ADD_TOO_LONG:
                 sprintf(numstring, "[i] Message is too long.");
@@ -1645,7 +1681,6 @@ int add_friends_force(Tox *plinknode, char *friendid, char *msg)
                 break;
         }
 
-        DEBUG_PRINT(DEBUG_LEVEL_INFO, "%s", numstring);
 		return num;
     } else {
 		return -1;
