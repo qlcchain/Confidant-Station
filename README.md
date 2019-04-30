@@ -1,14 +1,14 @@
-# PPR---Pretty Private Router
+# Confidant Station
 
-## What is PPR?
-PPR is used to work together with PPM to provide secure messanger service.
+## What is Confidant Station?
+Confidant Station is used to work together with Confidant APP to provide secure messanger service
 
 
 ## How to use?
 
-1. Purchase a PPR router.
-2. Install PPM on your phone.
+1. Purchase a Confidant Station.
+2. Install Confidant App on your phone.
 3. Enjoy the private messaging.
 
 ## Issues
-Any question of PPR and PPM, Add it in issue list.
+Any question of Confidant Station and APP, report it in issue list.
