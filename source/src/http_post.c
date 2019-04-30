@@ -21,7 +21,7 @@
 #include <cJSON.h>
 //#include "https_post.h"
 
-
+extern pthread_mutex_t g_postlock;
 #define HTTP_HEADERS_MAXLEN 	1024 	// Headers 的最大长度
 
 /*
@@ -88,46 +88,33 @@ int client_connect_tcp(char *server,int port)
  */
 int post_pack(const char *host, int port, const char *page, int len, const char *content, char *data)
 {
-	int re_len = strlen(page) + strlen(host) + strlen(HttpsPostHeaders) + len + HTTP_HEADERS_MAXLEN;
-    char temp_buf[BUF_LINE_MAX_LEN+1] = {0};
+	int sdate_len = strlen(page) + strlen(host) + strlen(HttpsPostHeaders) + len + HTTP_HEADERS_MAXLEN;
+    char temp_buf[URL_MAX_LEN+1] = {0};
 	char *post = NULL;
-	post = malloc(re_len+1);
+    int re_len = 0;
+	post = malloc(sdate_len+1);
 	if(post == NULL){
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"post_pack:malloc(%d) failed",re_len);
 		return -1;
 	}
 	memset(post, 0, re_len+1);
 	sprintf(post, "POST %s HTTP/1.0\r\n", page);
-    snprintf(temp_buf,BUF_LINE_MAX_LEN,"Host: %s:%d\r\n", host, port);
+    snprintf(temp_buf,URL_MAX_LEN,"Host: %s:%d\r\n", host, port);
     strcat(post,temp_buf);
     strcat(post,HttpsPostHeaders);
-    snprintf(temp_buf,BUF_LINE_MAX_LEN,"Content-Length: %d\r\n\r\n", len);
+    memset(temp_buf,0,URL_MAX_LEN);
+    snprintf(temp_buf,URL_MAX_LEN,"Content-Length: %d\r\n\r\n", len);
     strcat(post,temp_buf);
     strcat(post,content);
-
 	re_len = strlen(post);
-    if(re_len > HTTP_HEADERS_MAXLEN)
+    if(re_len > sdate_len)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"post_pack:re_len(%d) failed",re_len);
-		return -1;
-    }
-	strncpy(data, post, re_len);
-    data[re_len] = 0;
-
-    cJSON * params = NULL;
-    char* post_data = NULL;
-    params = cJSON_CreateObject();
-    if(params == NULL)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
         free(post);
 		return -1;
     }
-    cJSON_AddItemToObject(params, "post_param", cJSON_CreateString(post));
-    post_data = cJSON_PrintUnformatted_noescape(params);
-    cJSON_Delete(params);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_pack post:(%d_%d:%s)",len,re_len,post_data);
-    free(post_data);
+	strcpy(data, post);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_pack post:(%d_%d:%s)",len,re_len,post);
 	free(post);
 	return re_len;
 }
@@ -264,14 +251,17 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -1;
 	}
     memset(sdata,0,ssize+1);
+    //这里必须加锁，否则会coerdump
+    pthread_mutex_lock(&g_postlock);
 	// 1、建立TCP连接
 	sockfd = client_connect_tcp(host, port);
 	if(sockfd < 0){
 		free(sdata);
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"https_post:client_connect_tcp failed");
+        pthread_mutex_unlock(&g_postlock);
 		return -2;
 	}
-
+    pthread_mutex_unlock(&g_postlock);
 	// 2、SSL初始化, 关联Socket到SSL
 	ssl = ssl_init(sockfd);
 	if(ssl == NULL){

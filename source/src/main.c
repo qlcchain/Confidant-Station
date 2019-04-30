@@ -70,6 +70,7 @@ struct arg_opts_struct g_arg_opts;
 char g_post_ret_buf[POST_RET_MAX_LEN] = {0};
 extern sqlite3 *g_db_handle;
 extern sqlite3 *g_friendsdb_handle;
+extern sqlite3 *g_groupdb_handle;
 extern sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1];
 extern struct im_user_array_struct g_imusr_array;
 extern const char *data_file_name;
@@ -332,7 +333,6 @@ int daemon_init(void)
     //这里如果是onespace，需要先执行下rngd，要不然 sodium_init会很慢
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
-        system("/usr/bin/rngd -r/dev/urandom");
         system("echo 180 > /proc/sys/net/ipv4/netfilter/ip_conntrack_udp_timeout");
     }
 
@@ -610,6 +610,9 @@ void msg_deal(char * pbuf,int msg_len)
         case PNR_DEBUGCMD_DEVINFO_REG:
             post_devinfo_upload_once(pbuf);
             break;
+        case PNR_DEBUGCMD_RNODE_MSGSEND:
+            pnr_rnode_debugmsg_send(pbuf);
+            break;
 		default:
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msg_type param %d",msg_type);  
 			break;
@@ -716,7 +719,7 @@ static int fifo_msg_handle(void)
 *****************************************************************************/
 void *cron_thread(void *para)
 {
-	char sql[1024];
+	char sql[1024] = {0};
 	int8 *err = NULL;
 	int deadtime, nowtime;
 	int i = 0;
@@ -877,6 +880,7 @@ int32 main(int argc,char *argv[])
 out:
 	sqlite3_close(g_db_handle);
 	sqlite3_close(g_friendsdb_handle);
+	sqlite3_close(g_groupdb_handle);
     return OK;
 }
 

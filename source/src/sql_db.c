@@ -22,6 +22,85 @@ extern struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
 extern File_Sender file_senders[PNR_IMUSER_MAXNUM+1][NUM_FILE_SENDERS];
 extern File_Rcv file_rcv[PNR_IMUSER_MAXNUM+1][NUM_FILE_RCV];
 extern Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
+extern pthread_mutex_t g_user_msgidlock[PNR_IMUSER_MAXNUM+1];
+/***********************************************************************************
+  Function:      sql_db_repair
+  Description:  模块的数据库修复
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int sql_db_repair(int uindex,int db_num,int db_tbl_index)
+{
+	int ret = 0;
+	int8 *errMsg = NULL;
+    sqlite3 * p_dbhandler = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    char src_dbfile[PNR_FILENAME_MAXLEN+1] = {0};
+    char bak_dbfile[PNR_FILENAME_MAXLEN+1] = {0};
+
+    if((db_num < PNR_DBFILE_INDEX_GENERDB || db_num >= PNR_DBFILE_INDEX_BUTT)
+        ||(db_tbl_index < PNR_DBTABLE_INDEX_GENERDB_GENERCONF || db_tbl_index >= PNR_DBTABLE_INDEX_BUTT))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_db_repair bad db_num(%d) tbl_inde(%d)",db_num,db_tbl_index);
+        return ERROR;
+    }
+     
+    //数据库备份
+    switch(db_num)
+    {
+        case PNR_DBFILE_INDEX_GENERDB:
+            strcpy(src_dbfile,DB_TOP_FILE);
+            p_dbhandler = g_db_handle;
+            break;
+        case PNR_DBFILE_INDEX_FRIENDDB:
+            strcpy(src_dbfile,DB_FRIENDLIST_FILE);
+            p_dbhandler = g_friendsdb_handle;
+            break;
+        case PNR_DBFILE_INDEX_GROUPDB:
+            strcpy(src_dbfile,DB_GROUPINFO_FILE);
+            p_dbhandler = g_groupdb_handle;
+            break;
+        case PNR_DBFILE_INDEX_MSGLOGDB:
+            if(uindex <=0 || uindex > PNR_IMUSER_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_db_repair bad uindex (%d)",uindex );
+                return ERROR;
+            }
+            snprintf(src_dbfile,PNR_FILENAME_MAXLEN,"%spnrouter_msglog.db", g_imusr_array.usrnode[uindex].userdata_pathurl);
+            p_dbhandler = g_msglogdb_handle[uindex];
+            break;
+        case PNR_DBFILE_INDEX_MSGCACHEDB:
+            if(uindex <=0 || uindex > PNR_IMUSER_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_db_repair bad uindex (%d)",uindex );
+                return ERROR;
+            }
+            snprintf(src_dbfile,PNR_FILENAME_MAXLEN,"%spnrouter_msgcache.db", g_imusr_array.usrnode[uindex].userdata_pathurl);
+            p_dbhandler = g_msgcachedb_handle[uindex];
+            break;
+        default:
+            return ERROR;
+    }
+    if(p_dbhandler)
+    {
+	    sqlite3_close(p_dbhandler);
+    }
+    strcpy(bak_dbfile,src_dbfile);
+    strcat(bak_dbfile,"_bak");
+    snprintf(sql_cmd,SQL_CMD_LEN,"cp -f %s %s",src_dbfile,bak_dbfile);
+   
+	return ret;
+}
+
 /**********************************************************************************
   Function:      dbupdate_intvalue_byname
   Description:   数据库更新整形参数
@@ -170,7 +249,7 @@ int sql_db_sync(int cur_db_version)
     {
         //初始化全局user_account_tbl表
         snprintf(sql_cmd,SQL_CMD_LEN,"create table user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,"
-            "userindex,nickname,loginkey,toxid,info,extinfo,pubkey);");
+            "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime);");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -314,6 +393,24 @@ int sql_db_sync(int cur_db_version)
         }
         cur_db_version++;
     }
+    if(cur_db_version == DB_VERSION_V8)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"ALTER TABLE user_account_tbl ADD COLUMN createtime;");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"UPDATE user_account_tbl SET createtime=lastactive;");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -429,8 +526,8 @@ int sql_adminaccount_init(void)
     {
         return ERROR;
     }
-    //user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo);
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'','','','','','');",
+    //user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime);
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'','','','','','',0);",
              PNR_USER_TYPE_ADMIN,FALSE,PNR_ADMINUSER_DEFAULT_IDCODE,"",account_sn,PNR_ADMINUSER_PSN_INDEX);
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -603,6 +700,7 @@ int sql_msglogdb_init(int index)
 {
     int8* errMsg = NULL;
     int8 sql_cmd[SQL_CMD_LEN] = {0};
+    int db_id = 0;
 	char dbfile[128] = {0};
 
 	snprintf(dbfile, sizeof(dbfile), "%spnrouter_msglog.db", g_imusr_array.usrnode[index].userdata_pathurl);
@@ -641,6 +739,16 @@ int sql_msglogdb_init(int index)
 	        sqlite3_free(errMsg);
 	        return ERROR;
 	    }
+        //初始化filelist_tbl表
+		snprintf(sql_cmd,SQL_CMD_LEN,"create table filelist_tbl("
+		    "userindex,timestamp,id integer primary key autoincrement,version,"
+		    "msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey);");
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
 	} 
     else 
 	{
@@ -672,6 +780,28 @@ int sql_msglogdb_init(int index)
         return ERROR;
     }
     g_imusr_array.usrnode[index].msglog_dbid++;
+    //获取当前db的id最大值,来判断是否有filelist表
+    memset(sql_cmd,0,SQL_CMD_LEN);
+    snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from filelist_tbl;");
+    if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&db_id,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        memset(sql_cmd,0,SQL_CMD_LEN);
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table filelist_tbl("
+		    "userindex,timestamp,id integer primary key autoincrement,version,"
+		    "msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey);");
+        if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        else
+        {
+            return OK;
+        }
+    }
     return OK;
 }
 
@@ -798,7 +928,7 @@ int sql_db_init(void)
     }
     //初始化user_account_tbl
     snprintf(sql_cmd,SQL_CMD_LEN,"create table user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,info,extinfo,pubkey);");
+                "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -1038,6 +1168,39 @@ int pnr_usr_instance_insert(int index)
              g_imusr_array.usrnode[index].user_index,g_imusr_array.usrnode[index].user_name,g_imusr_array.usrnode[index].user_nickname,
              g_imusr_array.usrnode[index].user_toxid,g_imusr_array.usrnode[index].userdata_pathurl,g_imusr_array.usrnode[index].userinfo_fullurl);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_usr_instance_insert:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_usr_instance_insert
+  Description:  插入pnr user实例化信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_usr_instance_dbdelete_bytoxid(char* toxid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(toxid == NULL)
+    {
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from user_instance_tbl where toxid='%s';",toxid);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -1395,6 +1558,39 @@ int pnr_friend_get_pubkey_bytoxid(char *userid, char *friendid, char *pubkey)
 	return OK;
 }
 /*****************************************************************************
+ 函 数 名  : pnr_friend_del_bytoxid
+ 功能描述  pnr_friend_delete_bytoxid
+ 输入参数  : char *userid      
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2019年1月14日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_friend_delete_bytoxid(char *userid)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(userid == NULL)
+    {
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from friends_tbl where userid='%s';",userid);
+    if(sqlite3_exec(g_friendsdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/*****************************************************************************
  函 数 名  : pnr_msglog_getid
  功能描述  : 添加一条msglod，并获取表ID
  输入参数  : int *msgid  
@@ -1429,10 +1625,10 @@ int pnr_msglog_getid(int index, int *logid)
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_msglog_getid: insert ok");
 	*logid = sqlite3_last_insert_rowid(g_msglogdb_handle[index]);
 #else
-    pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[index]));
     *logid = (int)g_imusr_array.usrnode[index].msglog_dbid;
     g_imusr_array.usrnode[index].msglog_dbid++;
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[index]));
 #endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msglog_getid(%d)",index,*logid);
     return OK;
@@ -1527,7 +1723,7 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
 		}
 	}
 	
-    pthread_mutex_lock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
 
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
@@ -1546,11 +1742,11 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+        pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
     g_imusr_array.usrnode[recode_userindex].msglog_dbid++;
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
     return OK;
 }
 
@@ -1612,7 +1808,7 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
 		}
 	}
 	
-    pthread_mutex_lock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
     snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
@@ -1630,10 +1826,10 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+        pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
     return OK;
 }
 
@@ -1770,7 +1966,7 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
 		}
 	}
 	
-    pthread_mutex_lock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
     snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
     "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
@@ -1780,11 +1976,11 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+        pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
     g_imusr_array.usrnode[recode_userindex].msglog_dbid++;
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
     return OK;
 }
 /***********************************************************************************
@@ -1851,7 +2047,7 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
 		}
 	}
 	
-    pthread_mutex_lock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey,sign,nonce,prikey);
     snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
         "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
@@ -1861,10 +2057,10 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+        pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[recode_userindex].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
     return OK;
 }
 /***********************************************************************************
@@ -2323,10 +2519,10 @@ int pnr_msgcache_getid(int index, int *msgid)
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_msgcache_getid: insert ok");
 	*msgid = sqlite3_last_insert_rowid(g_msgcachedb_handle[index]);
 #else
-    pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+    pthread_mutex_lock(&(g_user_msgidlock[index]));
     *msgid = (int)g_imusr_array.usrnode[index].cachelog_dbid;
     g_imusr_array.usrnode[index].cachelog_dbid++;
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+    pthread_mutex_unlock(&(g_user_msgidlock[index]));
 #endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msgcache_getid(%d)",index,*msgid);
     return OK;
@@ -2369,7 +2565,12 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     char *p_newskey = "";
     char *p_newdkey = "";
     int msg_totallen = 0;
-    
+
+    if(len <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:len(%d) err",len);
+        return ERROR;
+    }
     //id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey
     if (filepath) {
         ret = stat(filepath, &fstat);
@@ -2469,6 +2670,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 		return ERROR;
 	}
     memset(msg, 0, msg_totallen);
+    INIT_LIST_HEAD(&msg->list);
 	msg->userid = userid;
 	msg->msgid = msgid;
 	msg->msglen = len;
@@ -2490,7 +2692,9 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     if (!list_empty(&g_lws_cache_msglist[userid].list)) {
 		list_for_each_safe(tmsg, n, &g_lws_cache_msglist[userid].list, struct lws_cache_msg_struct, list) {
 			if (tmsg->logid && tmsg->logid == logid) {
-				goto OUT;
+				DEBUG_PRINT(DEBUG_LEVEL_INFO,"msg cache repeat, no add");
+                free(msg);
+                goto OUT;
 			}
 		}
 		
@@ -2505,7 +2709,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 
 OUT:
     pthread_mutex_unlock(&lws_cache_msglock[userid]);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,msg->msglen);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,len);    
 	return OK;
 }
 /*****************************************************************************
@@ -2547,7 +2751,11 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
     char *p_nonce = "";
     char *p_prikey = "";
     int msg_totallen = 0;
-    
+    if(len <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:len(%d) err",len);
+        return ERROR;
+    }
     //id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey
     if (filepath) {
         ret = stat(filepath, &fstat);
@@ -3455,7 +3663,7 @@ int pnr_account_init_fromdb(void)
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_server start!!!get temp account usn %s",g_account_array.temp_user_sn);
     //获取账户信息
 	snprintf(sql, SQL_CMD_LEN, "select type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey from user_account_tbl;");
+                "userindex,nickname,loginkey,toxid,pubkey,lastactive,createtime from user_account_tbl;");
     if(sqlite3_get_table(g_db_handle, sql, &dbResult, &nRow, &nColumn, &errMsg) == SQLITE_OK)
     {
         offset = nColumn; //字段值从offset开始呀
@@ -3487,6 +3695,8 @@ int pnr_account_init_fromdb(void)
                         strncpy(g_account_array.account[tmpid].toxid,dbResult[offset+8],TOX_ID_STR_LEN);
                         strncpy(g_account_array.account[tmpid].user_pubkey,dbResult[offset+9],PNR_USER_PUBKEY_MAXLEN);
                     }
+                    g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
+                    g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
                     break;
                 case PNR_USER_TYPE_NORMAL:
                     tmpid = g_account_array.total_user_num+1;
@@ -3510,7 +3720,9 @@ int pnr_account_init_fromdb(void)
                         strncpy(g_account_array.account[tmpid].loginkey,dbResult[offset+7],PNR_LOGINKEY_MAXLEN);
                         strncpy(g_account_array.account[tmpid].toxid,dbResult[offset+8],TOX_ID_STR_LEN);
                         strncpy(g_account_array.account[tmpid].user_pubkey,dbResult[offset+9],PNR_USER_PUBKEY_MAXLEN);
-                    }                    
+                    }    
+                    g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
+                    g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
                     break;
                 case PNR_USER_TYPE_TEMP:
                     tmpid = g_account_array.total_user_num+1;
@@ -3534,7 +3746,9 @@ int pnr_account_init_fromdb(void)
                         strncpy(g_account_array.account[tmpid].loginkey,dbResult[offset+7],PNR_LOGINKEY_MAXLEN);
                         strncpy(g_account_array.account[tmpid].toxid,dbResult[offset+8],TOX_ID_STR_LEN);
                         strncpy(g_account_array.account[tmpid].user_pubkey,dbResult[offset+9],PNR_USER_PUBKEY_MAXLEN);
-                    }                    
+                    }   
+                    g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
+                    g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
                     break;
                 default:
                     break;
@@ -3601,7 +3815,7 @@ int pnr_account_dbinsert(struct pnr_account_struct* p_account)
         }
     }
     //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',0,'','','','','','');",
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',0,'','','','','','',0);",
              p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -3779,6 +3993,40 @@ int pnr_userdev_mapping_dbupdate_bydevid(char* dev_id,char* dev_name)
     }    
     return OK;
 }
+/***********************************************************************************
+  Function:      pnr_userdev_mapping_dbdelte_byusrid
+  Description:  根据用户toxid删除用户和设备对应关系信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_userdev_mapping_dbdelte_byusrid(char* usrid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[MSGSQL_CMD_LEN] = {0};
+    if (usrid == NULL) 
+    {
+        return ERROR;
+    }
+    memset(sql_cmd,0,SQL_CMD_LEN);
+    snprintf(sql_cmd, SQL_CMD_LEN, "delete from userdev_mapping_tbl where usrid='%s';",usrid);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_userdev_mapping_dbdelte_byusrid:sql_cmd(%s)",sql_cmd);
+    if (sqlite3_exec(g_db_handle, sql_cmd, 0, 0, &errMsg)) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }    
+    return OK;
+}
 
 /*****************************************************************************
  函 数 名  : pnr_account_tmpuser_dbinsert
@@ -3804,9 +4052,9 @@ int pnr_account_tmpuser_dbinsert(struct pnr_account_struct* p_account)
     {
         return ERROR;
     }
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s');",
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d);",
              p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,
-             p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey);
+             p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL));
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -3842,16 +4090,16 @@ int pnr_account_dbupdate(struct pnr_account_struct* p_account)
     if(p_account->type == PNR_USER_TYPE_TEMP)
     {
         //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,%d,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s');",
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,%d,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d);",
                  (int)time(NULL),p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,
-                 p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey);
+                 p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL));
     }
     else
     {
     	snprintf(sql_cmd,SQL_CMD_LEN,"update user_account_tbl set lastactive=%d,type=%d,active=%d,identifycode='%s',mnemonic='%s',"
-            "userindex=%d,nickname='%s',loginkey='%s',toxid='%s',pubkey='%s' where usersn='%s';",
-            (int)time(NULL),p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,
-            p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,p_account->user_sn);    
+            "userindex=%d,nickname='%s',loginkey='%s',toxid='%s',pubkey='%s',createtime=%d where usersn='%s';",
+            (int)time(NULL),p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->index,
+            p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL),p_account->user_sn);    
     }
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_dbupdate(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -4053,7 +4301,8 @@ int32 pnr_usr_account_dbget(void* obj, int n_columns, char** column_values,char*
         strncpy(p_account->loginkey,column_values[9],PNR_LOGINKEY_MAXLEN);
         strncpy(p_account->toxid,column_values[10],TOX_ID_STR_LEN);
         strncpy(p_account->user_pubkey,column_values[11],PNR_USER_PUBKEY_MAXLEN);
-    }    
+    } 
+    p_account->createtime = atoi(column_values[12]);
 	return OK;
 }
 /*****************************************************************************
@@ -4120,7 +4369,8 @@ int pnr_account_get_byusn(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey from user_account_tbl where usersn='%s';",p_account->user_sn);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where usersn='%s';",p_account->user_sn);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_get_byusn:sqlite cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4155,7 +4405,7 @@ int pnr_account_dbget_byuserkey(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey from user_account_tbl where pubkey='%s';",p_account->user_pubkey);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where pubkey='%s';",p_account->user_pubkey);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4190,7 +4440,8 @@ int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey from user_account_tbl where toxid='%s';",p_account->toxid);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where toxid='%s';",p_account->toxid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_dbget_byuserid:sqlite cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4198,6 +4449,39 @@ int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account)
         return ERROR;
     }
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_dbget_byuserid:get active(%d) by toxid(%s)",p_account->active,p_account->toxid);
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_account_dbdelete_byuserid
+ 功能描述  : 根据userid删除对应账号信息
+ 输入参数  : account
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月17日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_account_dbdelete_byuserid(char* userid)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(userid == NULL)
+    {
+        return ERROR;
+    }
+	snprintf(sql_cmd, SQL_CMD_LEN, "delete from user_account_tbl where toxid='%s';",userid);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
     return OK;
 }
 /**********************************************************************************
@@ -4343,7 +4627,40 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
     }
     return OK;
 }
+/*****************************************************************************
+ 函 数 名  : pnr_userinfo_dbdelete_byuserid
+ 功能描述  : 根据userid删除对应用户信息
+ 输入参数  : account
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月17日
+    作    者   : willcao
+    修改内容   : 新生成函数
 
+*****************************************************************************/
+int pnr_userinfo_dbdelete_byuserid(char* usrid)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[CMD_MAXLEN] = {0};
+
+    if(usrid == NULL)
+    {
+        return ERROR;
+    }
+    //table userinfo_tbl(id integer primary key autoincrement,userindex,local,usrid,devid,avatar,md5,info);"
+	snprintf(sql_cmd, CMD_MAXLEN, "delete from userinfo_tbl where usrid='%s';",usrid);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
 /**********************************************************************************
   Function:      pnr_tox_datafile_dbget
   Description:   数据库查询实例类别操作
@@ -4523,6 +4840,41 @@ int pnr_tox_datafile_init_fromdb(void)
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      pnr_tox_datafile_dbdelete_bytoxid
+  Description:   数据库删除data记录
+  Calls:          
+  Called By:     main
+  Input:         
+  Output:        none
+  Return:        0:调用成功
+                     1:调用失败
+  Others: 
+  History: 1. Date:2008-10-22
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_tox_datafile_dbdelete_bytoxid(char* toxid)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(toxid == NULL)
+    {
+        return ERROR;
+    }
+    /*tox_datafile_tbl (id integer primary key autoincrement,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile)*/
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from tox_datafile_tbl where toxid='%s';",toxid);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_tox_datafile_dbdelete_bytoxid(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
 /*****************************************************************************
  函 数 名  : pnr_devloginkey_dbupdate
  功能描述  : 更新设备管理登陆密码
@@ -5297,6 +5649,355 @@ int pnr_logcache_dbinsert(int cmd,char* fromid,char* toid,char* msg,char* ext)
              (int)time(NULL),cmd,fromid,toid,p_msg,p_ext);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_logcache_dbinsert:sql(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_filelist_dbinsert
+  Description:  插入pnr file 信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbinsert(int uindex,int msgid,int filetype,int srcfrom,int size,
+                            char* from,char* to,char* filename,char* filepath,
+                            char* md5,char* fileinfo,char* skey,char* dkey)
+{
+	int8* errMsg = NULL;
+    char* p_fileinfo = "";
+    char* p_skey = "";
+    char* p_dkey = "";
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(filename  == NULL || to == NULL || filename == NULL || filepath == NULL || md5 == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:input err");
+        return ERROR;
+    }
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad");
+        return ERROR;
+    }
+    if(skey != NULL)
+    {
+        p_skey = skey;
+    }
+    if(dkey != NULL)
+    {
+        p_dkey = dkey;
+    }
+    if(fileinfo != NULL)
+    {
+        p_fileinfo = fileinfo;
+    }
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into filelist_tbl values(%d,%d,null,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','%s');",
+             uindex,(int)time(NULL),WS_FILELIST_VERSION,msgid,filetype,srcfrom,size,from,to,filename,filepath,md5,p_fileinfo,p_skey,p_dkey);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbinsert:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_filelist_dbupdate_fileinfo_bymsgid
+  Description:  更新pnr file 信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int size,
+                            char* md5,char* fileinfo,char* skey,char* dkey)
+{
+	int8* errMsg = NULL;
+    int attach_flag = FALSE;
+    char sql_tmpstr[CMD_MAXLEN] = {0};
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad");
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"update filelist_tbl set ");
+    if(size > 0)
+    {
+        attach_flag = TRUE;
+        snprintf(sql_tmpstr,CMD_MAXLEN,"size=%d",size);
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(md5)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",md5='%s'",md5);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"md5='%s'",md5);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(fileinfo)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",fileinfo='%s'",fileinfo);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"fileinfo='%s'",fileinfo);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(skey)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",skey='%s'",skey);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"skey='%s'",skey);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(dkey)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",dkey='%s'",dkey);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"dkey='%s'",dkey);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(attach_flag == FALSE)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad sql_cmd(%s)",sql_cmd);
+        return ERROR;
+    }
+    snprintf(sql_tmpstr,CMD_MAXLEN," where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    strcat(sql_cmd,sql_tmpstr);
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbupdate_fileinfo_bymsgid:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_filelist_dbupdate_filename_bymsgid
+  Description:  更新pnr file 文件名
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char* filename)
+{
+	int8* errMsg = NULL;
+    int attach_flag = FALSE;
+    char sql_tmpstr[CMD_MAXLEN] = {0};
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM || filename == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_filename_bymsgid:bad params");
+        return ERROR;
+    }
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update filelist_tbl set filename='%s' where userindex=%d and srcfrom=%d and msgid=%d",filename,uindex,srcfrom,msgid);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbupdate_filename_bymsgid:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/**********************************************************************************
+  Function:      pnr_filelist_dbinfo_dbget
+  Description:   数据库查询用户信息操作
+  Calls:          
+  Called By:     main
+  Input:         
+  Output:        none
+  Return:        0:调用成功
+                     1:调用失败
+  Others: 
+  History: 1. Date:2008-10-22
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int32 pnr_filelist_dbinfo_dbget(void* obj, int n_columns, char** column_values,char** column_names)
+{
+    int i =0;
+    if(n_columns < 8)
+    {
+        return ERROR;
+    }
+	struct pnr_file_dbinfo_struct* p_file = (struct pnr_file_dbinfo_struct*)obj;
+    if(p_file == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinfo_dbget obj is null");
+        return ERROR;
+    }
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    p_file->uid = atoi(column_values[i++]);
+    p_file->timestamp = atoi(column_values[i++]);
+    p_file->id = atoi(column_values[i++]);
+    p_file->info_ver = atoi(column_values[i++]);
+    p_file->msgid = atoi(column_values[i++]);
+    p_file->filetype = atoi(column_values[i++]);
+    p_file->srcfrom = atoi(column_values[i++]);
+    p_file->filesize = atoi(column_values[i++]);
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->from,column_values[i],TOX_ID_STR_LEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->to,column_values[i],TOX_ID_STR_LEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->filename,column_values[i],PNR_FILENAME_MAXLEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->filepath,column_values[i],PNR_FILEPATH_MAXLEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->md5,column_values[i],PNR_MD5_VALUE_MAXLEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->fileinfo,column_values[i],PNR_FILEINFO_MAXLEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->srckey,column_values[i],PNR_RSA_KEY_MAXLEN);
+    }
+    i++;
+    if(column_values[i] != NULL)
+    {
+        strncpy(p_file->dstkey,column_values[i],PNR_RSA_KEY_MAXLEN);
+    }
+	return OK;
+}
+/***********************************************************************************
+  Function:      pnr_filelist_dbinfo_getbyid
+  Description:  插入pnr file 信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file_dbinfo_struct* p_file_dbinfo)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM || p_file_dbinfo == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad params");
+        return ERROR;
+    }
+    memset(p_file_dbinfo,0,sizeof(p_file_dbinfo));
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select * from filelist_tbl where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbinfo_getbyid:sql(%s)",sql_cmd);
+     if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,pnr_filelist_dbinfo_dbget,p_file_dbinfo,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_filelist_dbinsert
+  Description:  插入pnr file 信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbdelete_byid(int uindex,int msgid,int srcfrom)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad params");
+        return ERROR;
+    }
+    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from filelist_tbl where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbdelete_byid:sql(%s)",sql_cmd);
+     if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,NULL,NULL,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);

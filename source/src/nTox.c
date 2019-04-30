@@ -95,8 +95,11 @@ extern Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 extern struct imuser_toxmsg_struct g_tox_msglist[PNR_IMUSER_MAXNUM+1];
 extern pthread_mutex_t tox_msglock[PNR_IMUSER_MAXNUM+1];
 extern struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
+extern struct pnr_rid_node g_rnode[PNR_IMUSER_MAXNUM+1];
 char  homeDirPath[100] = {DAEMON_PNR_TOP_DIR};
 extern int g_udpdebug_flag;
+extern pthread_mutex_t g_user_toxdatalock[PNR_IMUSER_MAXNUM+1];
+
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey);
 int friend_Message_process(Tox* m, int friendnum, char *message);
 int map_msg(char *type);
@@ -916,6 +919,46 @@ static void print_online(Tox *tox, uint32_t friendnumber, TOX_CONNECTION status,
         }
     }
 }
+static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION status, void *userdata)
+{
+    uint8_t fr_bin[TOX_ADDRESS_SIZE];
+    char fr_str[FRADDR_TOSTR_BUFSIZE];
+    int i = 0;
+    if(tox == NULL)
+    {
+        return ERROR;
+    }
+
+	if (tox_friend_get_public_key(tox, friendnumber, fr_bin, NULL)) {
+		frpuk_to_str(fr_bin, fr_str);
+	}
+    else
+    {
+        return;
+    }
+
+	if(friendnumber > 0 && friendnumber <= PNR_IMUSER_MAXNUM)
+    {
+        for(i=0;i<=PNR_IMUSER_MAXNUM;i++)
+        {
+            if(strncasecmp(fr_str,g_rnode[i].tox_id,TOX_PUBLIC_KEY_SIZE) == OK)
+            {
+                if (status)
+                {
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###rnode(%d:%d:%s) went online.",i,g_rnode[i].f_id,g_rnode[i].tox_id);
+                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETTED;
+                }
+                else
+                {
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###rnode(%d:%d:%s) went offline.",i,g_rnode[i].f_id,g_rnode[i].tox_id);
+                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETCLOSE;
+                }
+                break;
+            }   
+        }
+    }
+    return;
+}
 
 /*****************************************************************************
  函 数 名  : tox_connection_status
@@ -987,8 +1030,9 @@ int CreatedP2PNetwork(void)
 	tox_callback_friend_message(m, print_message_app);
     tox_callback_friend_name(m, on_friend_name);
     tox_callback_friend_status_message(m, print_status_change);
-    tox_callback_friend_connection_status(m, print_online);
-	tox_callback_self_connection_status(m, tox_connection_status);
+    //tox_callback_friend_connection_status(m, print_online);
+    tox_callback_friend_connection_status(m, print_online_rnode);
+    tox_callback_self_connection_status(m, tox_connection_status);
 	tox_callback_file_recv_chunk(m, write_file);
     tox_callback_file_recv_control(m, file_print_control);
     tox_callback_file_recv(m, file_request_accept);
@@ -1020,7 +1064,7 @@ int CreatedP2PNetwork(void)
     //在rid起来之后创建admin用户的二维码    
     adminaccount_qrcode_init();
     //连接有好友关系的其他rid
-    //pnr_router_node_friend_init();
+    pnr_router_node_friend_init();
     while (1) {
         do_tox_connection(m);
 
@@ -1301,13 +1345,13 @@ static int save_data_new(Tox *m)
         }
         data_filename = g_imusr_array.usrnode[userindex].userinfo_fullurl;
     }
-    pthread_mutex_lock(&(g_imusr_array.usrnode[userindex].userlock));
+    pthread_mutex_lock(&(g_user_toxdatalock[userindex]));
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"save_data_new(%s)",data_filename);
     data_file = fopen(data_filename, "w");
     if (!data_file) {
         //perror("[!] load_key");
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"save_data_new:could not load datafile(%s)",data_filename);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[userindex].userlock));
+        pthread_mutex_unlock(&(g_user_toxdatalock[userindex]));
         return 0;
     }
 
@@ -1316,7 +1360,7 @@ static int save_data_new(Tox *m)
     if(data == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"save_data_new:malloc(%d) failed",size);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[userindex].userlock));
+        pthread_mutex_unlock(&(g_user_toxdatalock[userindex]));
         return 0;
     }
     memset(data,0,size);
@@ -1334,7 +1378,7 @@ static int save_data_new(Tox *m)
         res = 0;
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"save_data_new:could not close data file");
     }
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[userindex].userlock));
+    pthread_mutex_unlock(&(g_user_toxdatalock[userindex]));
     //文件备份
     tox_datafile_backup(userindex,data_filename);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) data save version %d",userindex,g_tox_datafile[userindex].data_version);
@@ -1462,6 +1506,7 @@ int CreatedP2PNetwork_new(int user_index)
     
 	strcpy((char *)name,puser->user_name);
 	tox_self_set_name(m, name, strlen((char *)name), NULL);
+    puser->tox_status = PNR_TOX_STATUS_RUNNING;
 
 	while (1) {
 		do_tox_connection(m);
@@ -1482,12 +1527,17 @@ int CreatedP2PNetwork_new(int user_index)
 		}
 		
 		tox_iterate(m, &user_index);
+        if(puser->tox_status == PNR_TOX_STATUS_TRYTOEXIT)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"user(%d) tox exit",user_index);
+            break;
+        }
 		usleep(tox_iteration_interval(m) * 1000);
 	}
 
 	tox_kill(m);
 	m = NULL;
-   
+    puser->tox_status = PNR_TOX_STATUS_EXITED;
 	return 0;
 }
 

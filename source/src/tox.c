@@ -44,6 +44,7 @@
 #include "pn_imserver.h"
 #define SET_ERROR_PARAMETER(param, x) do { if (param) { *param = x; } } while (0)
 extern  struct im_user_array_struct g_imusr_array;
+extern pthread_mutex_t g_user_friendlock[PNR_IMUSER_MAXNUM+1];
 #if TOX_HASH_LENGTH != CRYPTO_SHA256_SIZE
 #error "TOX_HASH_LENGTH is assumed to be equal to CRYPTO_SHA256_SIZE"
 #endif
@@ -530,7 +531,7 @@ void tox_kill(Tox *tox)
     }
 
     Messenger *m = tox->m;
-    assert(m->msi_packet == nullptr && "Attempted to kill tox while toxav is still alive");
+    //assert(m->msi_packet == nullptr && "Attempted to kill tox while toxav is still alive");
     kill_groupchats(m->conferences_object);
     kill_messenger(m);
     mono_time_free(tox->mono_time);
@@ -891,9 +892,9 @@ bool tox_friend_delete(Tox *tox, uint32_t friend_number, Tox_Err_Friend_Delete *
     {
         return 0;
     }
-    pthread_mutex_lock(&(g_imusr_array.usrnode[userindex].userlock));
+    pthread_mutex_lock(&(g_user_friendlock[userindex]));
     int ret = m_delfriend(m, friend_number);
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[userindex].userlock));
+    pthread_mutex_unlock(&(g_user_friendlock[userindex]));
     // TODO(irungentoo): handle if realloc fails?
     if (ret == -1) {
         SET_ERROR_PARAMETER(error, TOX_ERR_FRIEND_DELETE_FRIEND_NOT_FOUND);

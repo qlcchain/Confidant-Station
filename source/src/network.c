@@ -649,7 +649,8 @@ void networking_poll(Networking_Core *net, void *userdata)
 /* Used for sodium_init() */
 #include <sodium.h>
 #endif
-
+pthread_mutex_t g_sodium_init_lock = PTHREAD_MUTEX_INITIALIZER;
+extern int g_pnrdevtype;
 //!TOKSTYLE-
 // Global mutable state is not allowed in Tokstyle.
 static uint8_t at_startup_ran = 0;
@@ -665,9 +666,17 @@ int networking_at_startup(void)
 #ifdef USE_RANDOMBYTES_STIR
     randombytes_stir();
 #else
+	pthread_mutex_lock(&g_sodium_init_lock);
+    //测试发现这个必须放在当前线程，否则sodium_init还是会卡住
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+        system("/usr/bin/rngd -r/dev/urandom");
+    }
     if (sodium_init() == -1) {
+        pthread_mutex_unlock(&g_sodium_init_lock);
         return -1;
     }
+	pthread_mutex_unlock(&g_sodium_init_lock);
 #endif /*USE_RANDOMBYTES_STIR*/
 
 #endif/*VANILLA_NACL*/

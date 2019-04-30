@@ -99,10 +99,12 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_UPLOADAVATAR,
     PNR_IM_CMDTYPE_UPDATEAVATAR,
     PNR_IM_CMDTYPE_PULLTMPACCOUNT,
+    PNR_IM_CMDTYPE_DELUSER,
 
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG = 0xF1,
     PNR_IM_CMDTYPE_USRDEBUGMSG = 0xF2,
+    PNR_IM_CMDTYPE_SYSDERLYMSG = 0xF3,
     PNR_IM_CMDTYPE_BUTT ,   
 };
 enum PNR_SYSDEBUG_CMDTYPE_ENUM
@@ -112,6 +114,8 @@ enum PNR_SYSDEBUG_CMDTYPE_ENUM
     PNR_SYSDEBUG_CMDTYPE_REFLUSH_DEVREG = 0x03,
     PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO = 0x04,
     PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER = 0x05,
+    PNR_SYSDEBUG_CMDTYPE_CHECK_FRIENDS = 0x06,
+    PNR_SYSDEBUG_CMDTYPE_CHECKANDADD_FRIENDS = 0x07,
     PNR_SYSDEBUG_CMDTYPE_BUTT,
 };
 
@@ -164,6 +168,7 @@ enum PNR_DEBUGCMD_ENUM
     PNR_DEBUGCMD_SET_FUNCENABLE,
     PNR_DEBUGCMD_SET_SIMULATION,        // 7 
     PNR_DEBUGCMD_DEVINFO_REG,
+    PNR_DEBUGCMD_RNODE_MSGSEND,
     PNR_DEBUGCMD_BUTT,
 };
 enum PNR_FUNCENABLE_ENUM
@@ -192,6 +197,36 @@ enum {
     PNR_FILE_OWNER_UPLOAD = 3,
     PNR_FILE_AVATAR = 4,
     PNR_FILE_GROUP = 5,
+};
+//文件来源类型
+enum PNR_FILE_SRCFROM_ENUM
+{
+    PNR_FILE_SRCFROM_MSGSEND = 1,
+    PNR_FILE_SRCFROM_MSGRECV = 2,
+    PNR_FILE_SRCFROM_SELFUPLOAD = 3,
+    PNR_FILE_SRCFROM_AVATAR = 4,
+    PNR_FILE_SRCFROM_GROUPSEND = 5,
+    PNR_FILE_SRCFROM_GROUPRECV = 6,
+    PNR_FILE_SRCFROM_BUTT,
+};
+struct pnr_file_dbinfo_struct
+{
+    int id;
+    int info_ver;
+    int uid;
+    int timestamp;
+    int msgid;
+    int filesize;
+    int filetype;
+    int srcfrom;
+    char from[TOX_ID_STR_LEN+1];
+    char to[TOX_ID_STR_LEN+1];
+    char md5[PNR_MD5_VALUE_MAXLEN+1];
+    char filename[PNR_FILENAME_MAXLEN+1];
+    char filepath[PNR_FILEPATH_MAXLEN+1];
+    char fileinfo[PNR_FILEINFO_MAXLEN+1];
+    char srckey[PNR_RSA_KEY_MAXLEN+1];
+    char dstkey[PNR_RSA_KEY_MAXLEN+1];
 };
 enum PNR_APPACTIVE_STATUS_ENUM
 {
@@ -277,6 +312,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
+#define PNR_IMCMD_SYSDERLYCMD   "SysDeRelay"
 
 #define PNR_CMDTYPE_MSG_REGISTER "register user : "
 #define PNR_CMDTYPE_MSG_DESTROY "user destroy account byself"
@@ -296,6 +332,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_API_VERSION_V2     2
 #define PNR_API_VERSION_V3     3
 #define PNR_API_VERSION_V4     4
+#define PNR_API_VERSION_V5     5
 
 #define SEG_CONTENT_LEN	(1024*1024*2)
 #define MAX_FILE_BUFF	(1024*1024*3)
@@ -347,7 +384,36 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_AVATAR_FULLDIR "/usr/pnrouter/userdata/avatar/"
 #define PNR_FILECACHE_FULLDIR "/usr/pnrouter/userdata/cache/"
 #endif
-
+enum PNR_DBFILE_INDEX_ENUM
+{
+    PNR_DBFILE_INDEX_GENERDB = 1,
+    PNR_DBFILE_INDEX_FRIENDDB,
+    PNR_DBFILE_INDEX_GROUPDB,
+    PNR_DBFILE_INDEX_MSGLOGDB,
+    PNR_DBFILE_INDEX_MSGCACHEDB,
+    PNR_DBFILE_INDEX_BUTT,
+};
+enum PNR_DBTABLE_INDEX_ENUM
+{
+    PNR_DBTABLE_INDEX_GENERDB_GENERCONF = 1,
+    PNR_DBTABLE_INDEX_GENERDB_USRACCOUNT,
+    PNR_DBTABLE_INDEX_GENERDB_USRINFO,
+    PNR_DBTABLE_INDEX_GENERDB_LOGCACHE,
+    PNR_DBTABLE_INDEX_GENERDB_USRINSTANCE,
+    PNR_DBTABLE_INDEX_GENERDB_TOXDATA,
+    PNR_DBTABLE_INDEX_GENERDB_USRDEVMAP,
+    PNR_DBTABLE_INDEX_FRIENDDB_FRIENDS,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPLIST,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPUSER,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPOPENER,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPMSG,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPREADID,
+    PNR_DBTABLE_INDEX_GROUPDB_GROUPUSRREMARK,
+    PNR_DBTABLE_INDEX_USRMSGDB_MSGTBL,
+    PNR_DBTABLE_INDEX_USRMSGDB_FILETBL,
+    PNR_DBTABLE_INDEX_USRMSGCAHCEDB_MSGTBL,
+    PNR_DBTABLE_INDEX_BUTT,
+};
 /* one of these is created for each client connecting to us */
 struct per_session_data__minimal {
 	struct per_session_data__minimal *pss_list;
@@ -438,6 +504,7 @@ enum{
     PNR_PUSHLOGOUT_REASON_DELUSER = 3,
 };
 #define PNR_PUSHLOGOUT_RELOGIN_STRING  "relogin"
+#define PNR_PUSHLOGOUT_DELACCOUNT_STRING  "account delete"
 //缓存消息结构体
 struct lws_cache_msg_struct
 {
@@ -597,6 +664,7 @@ enum GROUP_OPER_ACTION_ENUM
     GROUP_OPER_ACTION_ADDUSER = 0,
     GROUP_OPER_ACTION_DELUSER,
     GROUP_OPER_ACTION_DISOLVE,
+    GROUP_OPER_ACTION_GOWNERDEL,
 };
 //群用户消息结构
 struct group_user_msg
@@ -726,6 +794,13 @@ enum USER_ONLINE_TYPE_ENUM {
     USER_ONLINE_TYPE_TOX
 };
 
+enum PNR_TOX_STATUS_ENUM
+{
+    PNR_TOX_STATUS_NONE = 0,
+    PNR_TOX_STATUS_RUNNING,
+    PNR_TOX_STATUS_TRYTOEXIT,
+    PNR_TOX_STATUS_EXITED,
+};
 #define IM_MSGID_CACHENUM 10
 //每个im用户的结构体
 struct im_user_struct
@@ -739,11 +814,11 @@ struct im_user_struct
     int heartbeat_count;
     int appid;
     int notice_flag;
+    int tox_status;
     unsigned int hashid;
     unsigned int msglog_dbid;
     unsigned int cachelog_dbid;
     pthread_t tox_tid;
-    pthread_mutex_t userlock;
     int lastmsgid_index;
     long cache_msgid[IM_MSGID_CACHENUM];
     char u_hashstr[PNR_USER_HASHID_MAXLEN+1];
@@ -1058,8 +1133,16 @@ enum PNR_ACCOUNT_DELETE_RETURN_ENUM
     PNR_ACCOUNT_DELETE_RETURN_BADUSER,  
     PNR_ACCOUNT_DELETE_RETURN_BUTT,
 };
-
+enum PNR_REBOOT_RETURN_ENUM
+{
+    PNR_REBOOT_RETURN_OK,
+    PNR_REBOOT_RETURN_NOOWNER,
+    PNR_REBOOT_RETURN_OTHERERR,
+    PNR_REBOOT_RETURN_BUTT,
+};
 #define WS_SENDFILE_HEADLEN    952
+#define WS_FILELIST_V1  1 //这个版本新增的ver字段，添加了节点上文件保存真实名称与用户看见的逻辑名称区分
+#define WS_FILELIST_VERSION WS_FILELIST_V1
 struct im_user_msg_sendfile {
 	uint32_t magic;
 	uint32_t action;
@@ -1076,9 +1159,38 @@ struct im_user_msg_sendfile {
     char srckey[PNR_RSA_KEY_MAXLEN+1];
     char dstkey[PNR_RSA_KEY_MAXLEN+1];
     char porperty_flag;//是否是群会话属性
-    char pad[1];
+    char ver_str;//文件传输版本号
 	char content[SEG_CONTENT_LEN];
 };
+#define PNR_REAL_FILENAME_GET(filename,uid,srcfrom,fid)\  
+{\
+    snprintf(filename,PNR_FILENAME_MAXLEN,"U%03dS%02dF%u",uid,srcfrom,fid);\
+}
+#define PNR_REAL_FILEPATH_GET(filepath,uid,srcfrom,fid,gid,filename)\  
+{\
+    switch(srcfrom)\
+    {\
+        case PNR_FILE_SRCFROM_MSGSEND:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/s/U%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
+        case PNR_FILE_SRCFROM_MSGRECV:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/r/U%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
+        case PNR_FILE_SRCFROM_SELFUPLOAD:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/u/U%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
+        case PNR_FILE_SRCFROM_AVATAR:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/%s%s",PNR_FILECACHE_DIR,filename);\
+            break;\
+        case PNR_FILE_SRCFROM_GROUPSEND:\
+        case PNR_FILE_SRCFROM_GROUPRECV:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/%sg%d/U%03dS%02dF%u",PNR_GROUP_DATA_PATH,gid,uid,PNR_FILE_SRCFROM_GROUPSEND,fid);\
+            break;\
+        default:\
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad srcfrom(%d)",srcfrom);\
+            break;\
+    }\
+}
 
 struct im_user_msg_sendfile_resp {
 	uint32_t action;
@@ -1198,6 +1310,36 @@ struct dist_detail_info
     char sataversion[MANU_NAME_MAXLEN+1];
     char smartsupport[MANU_NAME_MAXLEN+1];
 };
+enum PNR_RNODEMSG_RETCODE_ENUM
+{
+    PNR_RNODEMSG_RETCODE_OK = 0,
+    PNR_RNODEMSG_RETCODE_BADRID,
+    PNR_RNODEMSG_RETCODE_BADPARAMS,
+    PNR_RNODEMSG_RETCODE_OTHERERR,
+    PNR_RNODEMSG_RETCODE_BUTT
+};
+
+enum PNR_RID_NODE_CSTATUS_ENUM
+{
+    PNR_RID_NODE_CSTATUS_NONE = 0,
+    PNR_RID_NODE_CSTATUS_CONNETTING,
+    PNR_RID_NODE_CSTATUS_CONNETTED,
+    PNR_RID_NODE_CSTATUS_CONNETCLOSE,
+    PNR_RID_NODE_CSTATUS_CONNETERR,
+    PNR_RID_NODE_CSTATUS_BUTT
+};
+
+//ppr根节点连接信息
+struct pnr_rid_node
+{
+    int f_id;
+    int c_status;//连接状态
+    int c_type; // 连接类型
+    time_t  lastact_time;
+    struct Tox* ptox_handle;
+    char tox_id[TOX_ID_STR_LEN+1];
+    char node_name[PNR_USERNAME_MAXLEN+1];
+};
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
@@ -1229,4 +1371,9 @@ void post_devinfo_upload_task(void *para);
 void post_newmsgs_loop_task(void *para);
 static int pnr_post_attach_touser(char* uid);
 int pnr_router_node_friend_init(void);
+int get_rnodefidbytoxid(char* p_toxid);
+int pnr_relogin_pushbylws(int index,int type);
+int pnr_relogin_pushbytox(int index,int type);
+static void *pnr_dev_register_task(void *para);
+int pnr_rnode_debugmsg_send(char* pcmd);
 #endif

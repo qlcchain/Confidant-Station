@@ -159,6 +159,16 @@ int g_noticepost_enable = TRUE;
 //toxdata信息数组
 struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
 struct pnr_account_array_struct g_account_array;
+struct pnr_rid_node g_rnode[PNR_IMUSER_MAXNUM+1];
+
+//用户锁
+pthread_mutex_t g_pnruser_lock[PNR_IMUSER_MAXNUM+1];
+//用户tox数据文件锁
+pthread_mutex_t g_user_toxdatalock[PNR_IMUSER_MAXNUM+1];
+//用户消息id锁
+pthread_mutex_t g_user_msgidlock[PNR_IMUSER_MAXNUM+1];
+//用户好友列表锁
+pthread_mutex_t g_user_friendlock[PNR_IMUSER_MAXNUM+1];
 
 //lws消息队列，每个用户对应一个消息列表
 struct lws_msg_struct g_lws_msglist[PNR_IMUSER_MAXNUM+1];
@@ -1049,6 +1059,37 @@ static int callback_pnr_bin(struct lws *wsi, enum lws_callback_reasons reason,
 }
 
 /**********************************************************************************
+  Function:      get_rnodeidbytoxid
+  Description:  根据toxid获取根节点id
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:没找到
+                 num:实例id
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int get_rnodefidbytoxid(char* p_toxid)
+{
+    int i =0;
+    if(p_toxid == NULL || strlen(p_toxid) != TOX_ID_STR_LEN)
+    {
+        return -1;
+    }
+    for(i=1;i<=PNR_IMUSER_MAXNUM;i++)
+    {
+        if(strcmp(p_toxid,g_rnode[i].tox_id) == OK)
+        {
+            return g_rnode[i].f_id;
+        }
+    }
+    return 0xFF;
+}
+/**********************************************************************************
   Function:      get_indexbytoxid
   Description:  根据toxid获取实例id
   Calls:
@@ -1673,7 +1714,7 @@ void im_send_msg_deal(int direction)
                                         case PNR_IM_CMDTYPE_PUSHMSG:
                                         case PNR_IM_CMDTYPE_PUSHFILE:
                                         case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
-                                        //case PNR_IM_CMDTYPE_GROUPMSGPUSH:
+                                        case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                                             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
                                             post_newmsg_notice(g_daemon_tox.user_toxid,
                                                 g_imusr_array.usrnode[msg->userid].user_toxid,
@@ -1752,7 +1793,7 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%s) friend full",from_user);
         return ERROR; 
     }
-    pthread_mutex_lock(&(g_imusr_array.usrnode[i].userlock));
+    pthread_mutex_lock(&(g_user_friendlock[i]));
     for(j=0;j<PNR_IMUSER_FRIENDS_MAXNUM;j++)
     {
         if(strcmp(g_imusr_array.usrnode[i].friends[j].user_toxid,to_user) == OK)
@@ -1760,7 +1801,7 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
         	g_imusr_array.usrnode[i].friends[j].oneway = 0;
 			strncpy(g_imusr_array.usrnode[i].friends[j].user_nickname,nickname,TOX_ID_STR_LEN);
 			strncpy(g_imusr_array.usrnode[i].friends[j].user_pubkey,userkey,PNR_USER_PUBKEY_MAXLEN);
-            pthread_mutex_unlock(&(g_imusr_array.usrnode[i].userlock));
+            pthread_mutex_unlock(&(g_user_friendlock[i]));
             return ERROR; 
         }
         else if(none_index == 0 && g_imusr_array.usrnode[i].friends[j].exsit_flag == FALSE)
@@ -1789,7 +1830,7 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_toxid,to_user,TOX_ID_STR_LEN);
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_nickname,nickname,TOX_ID_STR_LEN);
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_pubkey,userkey,PNR_USER_PUBKEY_MAXLEN);
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[i].userlock));
+    pthread_mutex_unlock(&(g_user_friendlock[i]));
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"add user(%d:%s),friend(%d:%s) nickname(%s) userkey(%s) friendnum(%d) hashid(%d:%s)",
         i,from_user,none_index,g_imusr_array.usrnode[i].friends[none_index].user_toxid,
         g_imusr_array.usrnode[i].friends[none_index].user_nickname,
@@ -1831,7 +1872,7 @@ int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
         return ERROR;
     }
 
-    pthread_mutex_lock(&(g_imusr_array.usrnode[i].userlock));
+    pthread_mutex_lock(&(g_user_friendlock[i]));
     for(j=0;j<PNR_IMUSER_FRIENDS_MAXNUM;j++)
     {
         if(strcmp(g_imusr_array.usrnode[i].friends[j].user_toxid,to_user) == OK)
@@ -1853,7 +1894,7 @@ int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d:%s) friend(%s) not found",i,from_user,to_user);
     }
-    pthread_mutex_unlock(&(g_imusr_array.usrnode[i].userlock));
+    pthread_mutex_unlock(&(g_user_friendlock[i]));
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"del user(%d:%s),friend(%s)",index,from_user,to_user);
     return OK;
 }
@@ -2084,8 +2125,18 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "FileType", cJSON_CreateNumber(ntohl(psendfile->action)));
             
 			findex = get_indexbytoxid(psendfile->fromid);
-			snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
-				g_imusr_array.usrnode[findex].userdata_pathurl, psendfile->filename);
+            if(apiversion >= PNR_API_VERSION_V5)
+            {
+                PNR_REAL_FILEPATH_GET(filepath,findex,PNR_FILE_SRCFROM_MSGSEND,psendfile->fileid,0,psendfile->filename);    
+                strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
+                strcat(fullfilename,filepath);
+                cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(filepath));
+            }
+            else
+            {
+    			snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
+				    g_imusr_array.usrnode[findex].userdata_pathurl, psendfile->filename);
+            }
             md5_hash_file(fullfilename, md5);
             filesize = im_get_file_size(fullfilename);
 			DEBUG_PRINT(DEBUG_LEVEL_INFO, "file[%s]-filemd5[%s]", fullfilename, md5);
@@ -2093,7 +2144,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "FileMD5", cJSON_CreateString(md5));
             cJSON_AddItemToObject(ret_params, "SrcKey", cJSON_CreateString(psendfile->srckey));
             cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(psendfile->dstkey));
-             //目标对象是本地的时候，修改为先记录log，然后推送数据库id，
+            //目标对象是本地的时候，修改为先记录log，然后推送数据库id，
             if(local_flag == TRUE)
             {
                 pnr_msglog_getid(index, &msgid);
@@ -4267,7 +4318,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 *plws_index = index;
             }   
-            pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+            pthread_mutex_lock(&(g_pnruser_lock[index]));
             if(active == PNR_APPACTIVE_STATUS_FRONT || active == PNR_APPACTIVE_STATUS_BACKEND)
             {
                 if(g_imusr_array.usrnode[index].appactive_flag != active)
@@ -4278,7 +4329,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             g_imusr_array.usrnode[index].heartbeat_count = 0;
             g_imusr_array.usrnode[index].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
-            pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+            pthread_mutex_unlock(&(g_pnruser_lock[index]));
             /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"hearbeat_deal: set user(%d) user_onlinestatus(%d) user_online_type(%d)",
                 index,g_imusr_array.usrnode[index].user_onlinestatus,g_imusr_array.usrnode[index].user_online_type);*/
         }
@@ -4939,7 +4990,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_code == PNR_MSGSEND_RETCODE_OK && index != 0
         && g_imusr_array.usrnode[index].friendnum > 0)
     {
-        pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_lock(&(g_user_friendlock[index]));
         cJSON_AddItemToObject(ret_params, "FriendNum", cJSON_CreateNumber(g_imusr_array.usrnode[index].friendnum));
         cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
         for(i=0;i<PNR_IMUSER_FRIENDS_MAXNUM;i++)
@@ -4951,7 +5002,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
                     cJSON_Delete(ret_root);
-                    pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+                    pthread_mutex_unlock(&(g_user_friendlock[index]));
                     return ERROR;
                 }
            		cJSON_AddItemToArray(pJsonArry,pJsonsub); 
@@ -4966,7 +5017,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     g_imusr_array.usrnode[index].friends[i].user_toxid);
             }
         }
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_unlock(&(g_user_friendlock[index]));
     }
     else
     {
@@ -5071,7 +5122,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_code == PNR_MSGSEND_RETCODE_OK && index != 0
         && g_imusr_array.usrnode[index].friendnum > 0)
     {
-        pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_lock(&(g_user_friendlock[index]));
         cJSON_AddItemToObject(ret_params, "FriendNum", cJSON_CreateNumber(g_imusr_array.usrnode[index].friendnum));
         cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
         for(i=0;i<PNR_IMUSER_FRIENDS_MAXNUM;i++)
@@ -5083,7 +5134,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
                     cJSON_Delete(ret_root);
-                    pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+                    pthread_mutex_unlock(&(g_user_friendlock[index]));
                     return ERROR;
                 }
            		cJSON_AddItemToArray(pJsonArry,pJsonsub); 
@@ -5101,7 +5152,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                     g_imusr_array.usrnode[index].friends[i].user_toxid);
             }
         }
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_unlock(&(g_user_friendlock[index]));
     }
     else
     {
@@ -5450,7 +5501,15 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
                 p_file = filename;
             }
 
-            cJSON_AddItemToObject(array_item, "FileName", cJSON_CreateString(p_file));
+            if(head->api_version >= PNR_API_VERSION_V5)
+            {
+                cJSON_AddItemToObject(array_item, "FileName", cJSON_CreateString(dbResult[offset+3]));
+                cJSON_AddItemToObject(array_item, "FilePath", cJSON_CreateString(p_file));
+            }
+            else
+            {
+                cJSON_AddItemToObject(array_item, "FileName", cJSON_CreateString(p_file));
+            }
 			snprintf(filepath, sizeof(filepath), WS_SERVER_INDEX_FILEPATH"%s", p_file);
 			md5_hash_file(filepath, md5);
 			cJSON_AddItemToObject(array_item, "FileMD5", cJSON_CreateString(md5));
@@ -5830,6 +5889,7 @@ int im_delete_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
     cJSON *ret_params = NULL;
 	int index = 0;
 	int ret_code = 0;
+    char* p_filepath = NULL;
 	
     if (!params) {
         return ERROR;
@@ -5837,23 +5897,43 @@ int im_delete_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
 
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "UserId", user_id, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileName", filename, PNR_FILENAME_MAXLEN);
-
     index = get_indexbytoxid(user_id);
     if (index == 0) {
         ret_code = 3;
 		goto OUT;
     }
-
-	snprintf(filepath, sizeof(filepath), WS_SERVER_INDEX_FILEPATH"%s", filename);
+    if(head->api_version >= PNR_API_VERSION_V5)
+    {
+        CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FilePath", sql, PNR_FILEPATH_MAXLEN);
+        if(strcasecmp(sql,WS_SERVER_INDEX_FILEPATH) == OK)
+        {
+            strcpy(filepath,sql);
+        }
+        else
+        {
+            strcpy(filepath,WS_SERVER_INDEX_FILEPATH);
+            strcat(filepath,sql);
+        }
+        p_filepath = filepath + strlen(WS_SERVER_INDEX_FILEPATH);
+    }
+    else
+    {
+        snprintf(filepath, sizeof(filepath), WS_SERVER_INDEX_FILEPATH"%s", filename);
+    }
 	if (access(filepath, F_OK) != 0) {
 		ret_code = 1;
 		goto OUT;
 	}
 
 	unlink(filepath);
-
-	snprintf(sql, sizeof(sql), "delete from msg_tbl where ext='%s';", filename);
-
+    if(head->api_version >= PNR_API_VERSION_V5)
+    {
+        snprintf(sql, sizeof(sql), "delete from msg_tbl where ext='%s';", p_filepath);
+    }
+    else
+    {
+        snprintf(sql, sizeof(sql), "delete from msg_tbl where ext='%s';", filename);
+    }
 	if (sqlite3_exec(g_msglogdb_handle[index], sql, 0, 0, &errmsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql(%s) err(%s)", sql, errmsg);
         sqlite3_free(errmsg);
@@ -5877,7 +5957,7 @@ OUT:
 		
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)(head->api_version)));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
@@ -6719,10 +6799,67 @@ OUT:
 int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int *plws_index, struct imcmd_msghead_struct *head)
 {
-	//system("sync;/opt/bin/umounthd.sh;reboot");
-	return OK;
-}
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char fromid[TOX_ID_STR_LEN+1] = {0};
 
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",fromid,TOX_ID_STR_LEN);
+
+    //参数检查
+    if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
+        ret_code = PNR_REBOOT_RETURN_NOOWNER;
+    }
+    else
+    {
+        //这时候也不允许format操作
+        pthread_mutex_lock(&g_formating_lock);
+    	g_formating = 1;
+    	pthread_mutex_unlock(&g_formating_lock);
+    	g_format_reboot_time = time(NULL) + 5;
+        DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"###node will reboot###");
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_REBOOT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(fromid));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 /**********************************************************************************
   Function:      im_replaymsg_deal
   Description: IM模块replay消息解析处理
@@ -6904,6 +7041,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
 			else if(strcasecmp(action_buff,PNR_IMCMD_DELETEFILE) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_DELETEFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELUSER) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELUSER;
             }
             else
             {
@@ -7190,6 +7331,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_IMCMD_SYSDEBUGCMD) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDEBUGMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYSDERLYCMD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDERLYMSG;
             }
             else
             {
@@ -7560,9 +7705,9 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 			index = get_indexbytoxid(file->touser_toxid);
 	        //对于目标好友为本地用户
 	        if (index != 0)
-	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,TRUE,PNR_API_VERSION_V1,(void *)file);
+	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,TRUE,PNR_API_VERSION_V5,(void *)file);
 	        else
-	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,FALSE,PNR_API_VERSION_V1,(void *)file);
+	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,FALSE,PNR_API_VERSION_V5,(void *)file);
 		}
 
 		memset(file, 0, sizeof(struct im_sendfile_struct));
@@ -7606,6 +7751,7 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	int fileowner = 0;
     int filefrom = 0;
     int gid = 0;
+    char filepath[PNR_FILEPATH_MAXLEN+1] = {0};
 
     if (!params)
         return ERROR;
@@ -7618,6 +7764,10 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "MsgId", file_info.log_id, 0);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileOwner", fileowner, 0);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileFrom", filefrom, 0);
+    if(head->api_version >= PNR_API_VERSION_V5)
+    {
+        CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FilePath", filefrom, 0);
+    }
 
     index = get_indexbytoxid(file_info.touser_toxid);
     if (index == 0) 
@@ -7670,6 +7820,14 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_FILESEND_RETCODE_FAILED;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "get fileowner(%d) err", fileowner);
         goto err;
+    }
+    //在V5版本之后文件在节点上保存的文件名优化了
+    if(head->api_version >= PNR_API_VERSION_V5)
+    {
+        memset(file_info.fullfilename,0,PNR_FILEPATH_MAXLEN);
+        strcpy(file_info.fullfilename,WS_SERVER_INDEX_FILEPATH);
+        strcat(file_info.fullfilename,filepath);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",file_info.fullfilename);
     }
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_pullfile_cmd_deal:get fileowner(%d) fullfilename(%s)",fileowner,file_info.fullfilename);
     if (access(file_info.fullfilename, F_OK) != 0) {
@@ -9862,6 +10020,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     strncpy(tmp_account.nickname,tmp_account.mnemonic,PNR_USERNAME_MAXLEN);
                 }
+                tmp_account.createtime = atoi(dbResult[offset+14]);
 
                 offset += nColumn;
                 pJsonsub = cJSON_CreateObject();
@@ -9889,6 +10048,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     cJSON_AddStringToObject(pJsonsub,"UserId","");
                 }
                 cJSON_AddNumberToObject(pJsonsub,"LastLoginTime",tmp_account.lastactive); 
+                cJSON_AddNumberToObject(pJsonsub,"CreateTime",tmp_account.createtime); 
                 if(tmp_account.type == PNR_USER_TYPE_TEMP)
                 {
                     cJSON_AddStringToObject(pJsonsub,"Qrcode",g_account_array.temp_user_qrcode);
@@ -10070,7 +10230,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(src_account.type < PNR_USER_TYPE_ADMIN || src_account.type >= PNR_USER_TYPE_BUTT)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad account type(%d)",src_account.type);
-            ret_code = PNR_LOGIN_RETCODE_OTHERS;
+            ret_code = PNR_LOGIN_RETCODE_USER_INVAILD;
         }
         else if(src_account.active == FALSE)
         {
@@ -10112,6 +10272,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 if(g_imusr_array.usrnode[index].init_flag == FALSE)
                 {
+                    pthread_mutex_lock(&g_pnruser_lock[index]);
                     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"index(%d) init_flag(%d)",index,g_imusr_array.usrnode[index].init_flag);                
                     //g_tmp_instance_index = index;
                     if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
@@ -10152,6 +10313,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             }
                         }
                     }
+                    pthread_mutex_unlock(&g_pnruser_lock[index]);
                 }
                 else
                 {
@@ -10336,6 +10498,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                //验证pubkey
                if(index <= g_imusr_array.max_user_num)
                {
+                   pthread_mutex_lock(&g_pnruser_lock[index]);
                    //启动im server进程
                    if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
                    {
@@ -10394,6 +10557,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                            }         
                        }
                    }
+                   pthread_mutex_unlock(&g_pnruser_lock[index]);
                }
                else
                {
@@ -10569,7 +10733,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_code == PNR_MSGSEND_RETCODE_OK && index != 0
         && g_imusr_array.usrnode[index].friendnum > 0)
     {
-        pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_lock(&(g_user_friendlock[index]));
         cJSON_AddItemToObject(ret_params, "FriendNum", cJSON_CreateNumber(g_imusr_array.usrnode[index].friendnum));
         cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
         for(i=0;i<PNR_IMUSER_FRIENDS_MAXNUM;i++)
@@ -10581,7 +10745,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
                     cJSON_Delete(ret_root);
-                    pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+                    pthread_mutex_unlock(&(g_user_friendlock[index]));
                     return ERROR;
                 }
            		cJSON_AddItemToArray(pJsonArry,pJsonsub); 
@@ -10629,7 +10793,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
                         g_imusr_array.usrnode[index].friends[i].user_devname);*/
             }
         }
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_unlock(&(g_user_friendlock[index]));
     }
     else
     {
@@ -11240,7 +11404,10 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {    
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_create_deal in2");
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         pthread_mutex_lock(&g_grouptoplock);
         if(g_groupnum >= PNR_GROUP_MAXNUM)
         {
@@ -11444,6 +11611,10 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {    
+        if(*plws_index == 0)
+        {
+            *plws_index = userindex;
+        }
         //如果需要管理员审批,并且自己不是管理员
         if(g_grouplist[gid].verify == TRUE && pinviter->type == GROUP_USER_NORMAL)
         {
@@ -11688,6 +11859,10 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     if(result == OK)
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         memset(&group_sysmsg,0,sizeof(group_sysmsg));
         group_sysmsg.gid= gid;
         strcpy(group_sysmsg.group_hid,invite_info.groud_hid);
@@ -11805,6 +11980,10 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else 
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         memset(&group_sysmsg,0,sizeof(group_sysmsg));
         group_sysmsg.gid= gid;
         strcpy(group_sysmsg.group_hid,group_hid);
@@ -11965,6 +12144,10 @@ int im_group_pulllist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
     if(ret_code == PNR_GROUPPULL_RETCODE_OK)
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         if(num == 0)
         {
             //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
@@ -12123,6 +12306,10 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "Verify", cJSON_CreateNumber(g_grouplist[gid].verify));
     if(ret_code == PNR_GROUPPULL_RETCODE_OK)
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         if(num == 0)
         {
             //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
@@ -12263,6 +12450,10 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         p_guser = get_guserbyuindex(gid,uindex);
         if(p_guser == NULL)
         {
@@ -12522,10 +12713,18 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else if (pnr_checkrepeat_bymsgid(uindex, head->msgid,&(head->repeat_flag)) == TRUE) 
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
 		ret_code = PNR_GROUPSENDMSG_RETCODE_OK;
 	}
     else 
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         pmsg->gid = gid;
         pmsg->from_uid = uindex;
         pmsg->type = PNR_IM_MSGTYPE_TEXT;
@@ -12676,6 +12875,10 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else 
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         pnr_groupmsg_dbget_bymsgid(gid,msgid,pmsg);
         puser = get_guserbyuindex(gid,uindex);
         if(puser == NULL)
@@ -12964,8 +13167,9 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char md5[PNR_MD5_VALUE_MAXLEN+1] = {0};
     char fileinfo[PNR_FILEINFO_MAXLEN+1] = {0};
     char fileid[PNR_FILEINFO_MAXLEN+1] = {0};
+    char filepath[PNR_FILEPATH_MAXLEN+1] = {0};
     char fullfillpath[PNR_FILEPATH_MAXLEN+1] = {0};
-    int uindex= 0,gid = -1,i=0,filesize=0,filetype=0;
+    int uindex= 0,gid = -1,i=0,filesize=0,filetype=0,filenum = 0;
     if(params == NULL)
     {
         return ERROR;
@@ -13000,6 +13204,10 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else 
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
         pmsg->gid = gid;
         pmsg->from_uid = uindex;
         pmsg->type = filetype;
@@ -13012,7 +13220,17 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            snprintf(fullfillpath,PNR_FILEPATH_MAXLEN,"%s/%sg%d/%s",WS_SERVER_INDEX_FILEPATH,PNR_GROUP_DATA_PATH,gid,filename);
+            if(head->api_version >= PNR_API_VERSION_V5)
+            {
+                filenum = atoi(fileid);
+                PNR_REAL_FILEPATH_GET(filepath,uindex,PNR_FILE_SRCFROM_GROUPSEND,filenum,gid,NULL);
+                strcpy(fullfillpath,WS_SERVER_INDEX_FILEPATH);
+                strcat(fullfillpath,filepath);
+            }
+            else
+            {
+                snprintf(fullfillpath,PNR_FILEPATH_MAXLEN,"%s/%sg%d/%s",WS_SERVER_INDEX_FILEPATH,PNR_GROUP_DATA_PATH,gid,filename);
+            }
             if(md5_hash_file(fullfillpath, md5) == NULL)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get file(%s) failed",fullfillpath);
@@ -13030,8 +13248,15 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     strcat(pmsg->ext2,":");
                     strcat(pmsg->ext2,fileinfo);
+                }                
+                if(head->api_version >= PNR_API_VERSION_V5)
+                {
+                    strcpy(pmsg->ext1,filepath);
                 }
-                snprintf(pmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,filename);
+                else
+                {
+                    snprintf(pmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,filename);
+                }
                 strcpy(pmsg->msgpay,filename);
                 ret_code = PNR_GROUPSENDMSG_RETCODE_OK;
                 pthread_mutex_lock(&g_grouplock[gid]);
@@ -13193,6 +13418,10 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
+                    if(*plws_index == 0)
+                    {
+                        *plws_index = uindex;
+                    }
                     ret_code = GROUP_CONFIG_RETCODE_OK;
                     pthread_mutex_lock(&g_grouplock[gid]);
                     if(strcmp(name,g_grouplist[gid].group_name) != OK)
@@ -13222,8 +13451,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             break;
         case GROUP_CONFIG_CMDTYPE_SET_VERIFY:
+            uindex = get_indexbytoxid(userid);
             gid =get_gidbygrouphid(groupid);
-            if(gid < 0)
+            if(gid < 0 || uindex == 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad groupid(%s)",groupid);
                 ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -13235,6 +13465,10 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             else
             {
+                if(*plws_index == 0)
+                {
+                    *plws_index = uindex;
+                }
                 p_guser = get_guserbytoxid(gid,userid);
                 if(p_guser == NULL)
                 {
@@ -13286,7 +13520,11 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     ret_code = GROUP_CONFIG_RETCODE_NOPOWER;
                 }
                 else
-                {                    
+                {   
+                    if(*plws_index == 0)
+                    {
+                        *plws_index = uindex;
+                    }
                     p_guser = get_guserbytoxid(gid,targetid);
                     if(p_guser == NULL)
                     {
@@ -13327,8 +13565,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             break;
         case GROUP_CONFIG_CMDTYPE_SET_GREMARK:
+            uindex = get_indexbytoxid(userid);
             gid =get_gidbygrouphid(groupid);
-            if(gid < 0)
+            if(gid < 0 || uindex == 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad groupid(%s)",groupid);
                 ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -13340,6 +13579,10 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             else
             {
+                if(*plws_index == 0)
+                {
+                    *plws_index = uindex;
+                }
                 p_guser = get_guserbytoxid(gid,userid);
                 if(p_guser == NULL)
                 {
@@ -13473,6 +13716,10 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = index;
+        }
         //根据msgid查找对应数据库记录
         pnr_msglog_dbget_byid(index,msgid,msg);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:get msgid(%d) file(%s) path(%s)",msg->db_id,msg->msg_buff,msg->ext);
@@ -13563,10 +13810,12 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char from[TOX_ID_STR_LEN+1] = {0};
     char to[TOX_ID_STR_LEN+1] = {0};
     char filename[PNR_FILENAME_MAXLEN+1] = {0};
+    char filepath[PNR_FILEPATH_MAXLEN+1] = {0};
     char srcpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char targetpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char dstkey[PNR_AES_CBC_KEYSIZE+1] = {0};
     char* ptmp = NULL;
+    char* ptar_filename = NULL;
     int fromid = 0,toid = 0;
     char cmd[CMD_MAXLEN+1] = {0};
     int msgid = 0;
@@ -13591,6 +13840,10 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",to,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileName",filename,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileKey",dstkey,PNR_AES_CBC_KEYSIZE);
+    if(head->api_version >= PNR_API_VERSION_V5)
+    {
+        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,PNR_FILEPATH_MAXLEN);
+    }
     //参数检查
     if(strlen(from) != TOX_ID_STR_LEN || strlen(to) != TOX_ID_STR_LEN || strcmp(from,to) == OK)
     {
@@ -13604,14 +13857,27 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        ptmp = strrchr(filename,'/');
-        if(ptmp != NULL)
+        if(head->api_version < PNR_API_VERSION_V5)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_forward_deal:input filename(%s)",filename);
-            strcpy(msg->ext,ptmp+1);
-            memset(filename,0,PNR_FILENAME_MAXLEN);
-            strcpy(filename,msg->ext);
+            strcpy(msg->ext,filepath);
+            ptar_filename = strrchr(filepath,'/');
+            if(ptar_filename)
+            {
+                ptar_filename++;
+            }
         }
+        else
+        {
+            ptmp = strrchr(filename,'/');
+            if(ptmp != NULL)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_forward_deal:input filename(%s)",filename);
+                strcpy(msg->ext,ptmp+1);
+                memset(filename,0,PNR_FILENAME_MAXLEN);
+                strcpy(filename,msg->ext);
+            }
+        }
+        
         fromid = get_indexbytoxid(from);
         if(fromid == 0)
         {
@@ -13620,6 +13886,10 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
+            if(*plws_index == 0)
+            {
+                *plws_index = fromid;
+            }
             pnr_msglog_dbget_byid(fromid,msgid,msg);
             //原始文件目录
             if(strstr(msg->ext,DAEMON_PNR_USERDATA_DIR) == NULL)
@@ -13637,12 +13907,15 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 ptmp++;
                 strcpy(fileinfo,ptmp);
             }
+            #if 0
             if(strstr(msg->ext,filename) == NULL)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: input params err");
                 ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
             }
-            else if(access(srcpath,F_OK) != OK)
+            else
+            #endif
+            if(access(srcpath,F_OK) != OK)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal get newfilepath(%s) not exsit",srcpath);
                 ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
@@ -13657,7 +13930,17 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     if(gid>=0)
                     {
                         //本地拷贝一份文件备份
-                        snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,filename);
+                        if(head->api_version >= PNR_API_VERSION_V5)
+                        {
+                            if(ptar_filename)
+                            {
+                                snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,ptar_filename);
+                            }
+                        }
+                        else
+                        {
+                            snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,filename);
+                        }
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s",srcpath,targetpath);                    
                         system(cmd);
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
@@ -13682,7 +13965,14 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         strcat(pgmsg->ext2,":");
                         strcat(pgmsg->ext2,fileinfo);
                     }
-                    snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,filename);
+                    if(head->api_version >= PNR_API_VERSION_V5)
+                    {
+                        snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,ptar_filename);
+                    }
+                    else
+                    {
+                        snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,filename);
+                    }
                     strcpy(pgmsg->msgpay,filename);
                     ret_code = PNR_GROUPSENDMSG_RETCODE_OK;
                     pthread_mutex_lock(&g_grouplock[gid]);
@@ -13720,7 +14010,17 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     if(toid)
                     {
                         //本地拷贝一份文件备份
-                        snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,filename);
+                        if(head->api_version >= PNR_API_VERSION_V5)
+                        {
+                            if(ptar_filename)
+                            {
+                                snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,ptar_filename);
+                            }
+                        }
+                        else
+                        {
+                            snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,filename);
+                        }
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s%s",srcpath,DAEMON_PNR_USERDATA_DIR,targetpath);                    
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
                         system(cmd);
@@ -13746,6 +14046,9 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
                         //数据库插入一条记录，这个本地需不需要再保存一次转发的记录，待定
 #if 1
+                        memset(msg->ext,0,PNR_FILEPATH_MAXLEN);
+                        strcpy(msg->ext,targetpath);
+
                         if(msg->msgtype == PNR_IM_MSGTYPE_IMAGE || msg->msgtype == PNR_IM_MSGTYPE_AUDIO 
                             ||msg->msgtype == PNR_IM_MSGTYPE_MEDIA || msg->msgtype == PNR_IM_MSGTYPE_FILE)
                         {
@@ -13756,8 +14059,6 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
 #endif
                         //调用推送消息
-                        memset(msg->ext,0,PNR_FILEPATH_MAXLEN);
-                        strcpy(msg->ext,targetpath);
                         im_pushmsg_callback(toid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, TRUE, PNR_API_VERSION_V1,msg);
                         ret_code = PNR_FILEFORWARD_RETCODE_OK;
                     }
@@ -13905,6 +14206,10 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
+            if(*plws_index == 0)
+            {
+                *plws_index = index;
+            }
             //根据userid获取当前系统已有的头像
             memset(&srcuser,0,sizeof(srcuser));
             strcpy(srcuser.userid,newuser.userid);
@@ -14021,7 +14326,7 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Md5",md5string,PNR_MD5_VALUE_MAXLEN);
     //参数检查
     fromid = get_indexbytoxid(from);
-    toid = get_indexbytoxid(from);
+    toid = get_indexbytoxid(to);
     if(fromid == 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_updata_avatar_deal input uid err(%s)",from);
@@ -14034,6 +14339,10 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
+        if(*plws_index == 0)
+        {
+            *plws_index = fromid;
+        }
         //获取系统当前的头像信息
         memset(&userinfo,0,sizeof(userinfo));
         strcpy(userinfo.userid,to);
@@ -14170,6 +14479,13 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_template_deal:bad uid(%s)",userid);
         ret_code = PNR_GROUPVERIFY_RETCODE_BADGID;
     }
+    else
+    {
+        if(*plws_index == 0)
+        {
+            *plws_index = uindex;
+        }
+    }
 
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
@@ -14203,6 +14519,545 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     strcpy(retmsg,ret_buff);
     free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_account_delete_deal
+  Description: 节点管理者删除圈子用户
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char fromid[TOX_ID_STR_LEN+1] = {0};
+    char cmd[CMD_MAXLEN+1] = {0};
+    int uindex= 0,gid = 0,i = 0;
+    struct pnr_account_struct account;
+    struct group_sys_msg group_sysmsg;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    memset(&account,0,sizeof(account));
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",fromid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",account.toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sn",account.user_sn,PNR_USN_MAXLEN);
+
+    //参数检查
+    if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
+        ret_code = PNR_ACCOUNT_DELETE_RETURN_NOOWNER;
+    }
+    else
+    {
+        if(*plws_index == 0)
+        {
+            uindex = get_indexbytoxid(fromid);
+            if(uindex)
+            {
+                *plws_index = uindex;
+            }
+        }
+        uindex = get_indexbytoxid(account.toxid);
+        if(uindex <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s)",account.toxid);
+            ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
+        }
+        else if(uindex == PNR_ADMINUSER_PSN_INDEX)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s) adminuser",account.toxid);
+            ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
+        }
+        else
+        {
+            pthread_mutex_lock(&g_pnruser_lock[uindex]);
+            if(g_imusr_array.usrnode[uindex].user_onlinestatus == TRUE)
+            {
+                //如果该用户在线，推送消息，通知用户logout
+                if(g_imusr_array.usrnode[uindex].user_online_type == USER_ONLINE_TYPE_LWS)
+                {
+                    pnr_relogin_pushbylws(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
+                }
+                else
+                {
+                    pnr_relogin_pushbytox(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
+                }
+            }
+            //接着停止对应的tox实例
+            if(g_imusr_array.usrnode[uindex].init_flag == TRUE)
+            {
+                //不通过pthread_cancel
+                g_imusr_array.usrnode[uindex].tox_status = PNR_TOX_STATUS_TRYTOEXIT;
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"set user(%d) tox_status(%d)",uindex,g_imusr_array.usrnode[uindex].tox_status);
+            }
+            //检查该用户是不是当前有群主身份，如果有，要对应解散该群组
+            for(gid = 0;gid <PNR_GROUP_MAXNUM;gid++)
+            {
+                if(uindex == g_grouplist[gid].ownerid)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"user(%d:%s) gid(%d) dissovle",uindex,account.toxid,gid);
+                    memset(&group_sysmsg,0,sizeof(group_sysmsg));
+                    pthread_mutex_lock(&g_grouplock[gid]);
+                    group_sysmsg.gid= gid;
+                    strcpy(group_sysmsg.group_hid,g_grouplist[gid].group_hid);
+                    group_sysmsg.from_uid = uindex;
+                    strcpy(group_sysmsg.from_user,account.toxid);
+                    group_sysmsg.type = GROUP_SYSMSG_SELFOUT;
+                    strcpy(group_sysmsg.msgpay,g_grouplist[gid].group_name);
+                    for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
+                    {
+                        if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                        {
+                            group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
+                            strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
+                            im_pushmsg_callback(g_grouplist[gid].user[i].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
+                        }
+                    }
+                    pthread_mutex_unlock(&g_grouplock[gid]);
+                    pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_GOWNERDEL,uindex,uindex,g_grouplist[gid].group_name,account.toxid,account.toxid,"del owner user ,dissolve group");
+                    pnr_group_dissolve(gid);
+                }
+            }
+            //删除该用户数据
+            pnr_usr_instance_dbdelete_bytoxid(account.toxid);
+            pnr_friend_delete_bytoxid(account.toxid);
+            pnr_userdev_mapping_dbdelte_byusrid(account.toxid);
+            pnr_account_dbdelete_byuserid(account.toxid);
+            pnr_userinfo_dbdelete_byuserid(account.toxid);
+            pnr_tox_datafile_dbdelete_bytoxid(account.toxid);
+            if(g_msglogdb_handle[uindex] != NULL)
+            {
+                sqlite3_close(g_msglogdb_handle[uindex]);
+                g_msglogdb_handle[uindex] = NULL;
+            }
+            if(g_msgcachedb_handle[uindex] == NULL)
+            {
+                sqlite3_close(g_msgcachedb_handle[uindex]);
+                g_msgcachedb_handle[uindex] = NULL;
+            }
+            if(strlen(g_imusr_array.usrnode[uindex].userdata_pathurl) > strlen(DAEMON_PNR_USERDATA_DIR))
+            {
+                snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userdata_pathurl);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system1(%s)",cmd);
+                system(cmd);
+            }
+            if(strlen(g_imusr_array.usrnode[uindex].userinfo_pathurl) > strlen(DAEMON_PNR_USERINFO_DIR))
+            {
+                memset(cmd,0,CMD_MAXLEN);
+                snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userinfo_pathurl);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system2(%s)",cmd);
+                system(cmd);
+            }
+            i = 0;
+            while(g_imusr_array.usrnode[uindex].tox_status != PNR_TOX_STATUS_EXITED)
+            {
+                sleep(1);
+                i++;
+                if(i > 5)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox not exit",uindex);
+                    break;
+                }
+            }
+#if 0
+            g_imusr_array.usrnode[uindex].init_flag = FALSE;
+            g_imusr_array.usrnode[uindex].appactive_flag = FALSE;
+            g_imusr_array.usrnode[uindex].user_index = 0;
+            g_imusr_array.usrnode[uindex].user_onlinestatus = FALSE;
+            g_imusr_array.usrnode[uindex].user_online_type = FALSE;
+            g_imusr_array.usrnode[uindex].friendnum = 0;
+            g_imusr_array.usrnode[uindex].heartbeat_count = 0;
+            g_imusr_array.usrnode[uindex].appid = 0;
+            g_imusr_array.usrnode[uindex].hashid = 0;
+            g_imusr_array.usrnode[uindex].msglog_dbid = 0;
+            g_imusr_array.usrnode[uindex].cachelog_dbid = 0;
+            g_imusr_array.usrnode[uindex].tox_tid = 0;
+            g_imusr_array.usrnode[uindex].lastmsgid_index = 0;
+            g_imusr_array.usrnode[uindex].ptox_handle = NULL;
+            g_imusr_array.usrnode[uindex].pss = NULL;
+            memset(&g_imusr_array.usrnode[uindex].cache_msgid,0,sizeof(long)*IM_MSGID_CACHENUM);
+            memset(&g_imusr_array.usrnode[uindex].u_hashstr,0,PNR_USER_HASHID_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].user_toxid,0,TOX_ID_STR_LEN);
+            memset(&g_imusr_array.usrnode[uindex].user_name,0,PNR_USERNAME_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].user_nickname,0,PNR_USERNAME_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].userdata_pathurl,0,PNR_FILEPATH_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].userinfo_pathurl,0,PNR_FILEPATH_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].userinfo_fullurl,0,PNR_FILEPATH_MAXLEN);
+            memset(&g_imusr_array.usrnode[uindex].friends,0,sizeof(struct im_friends_struct)*(PNR_IMUSER_FRIENDS_MAXNUM+1));
+            memset(&g_imusr_array.usrnode[uindex].file,0,sizeof(struct im_sendfile_struct)*PNR_MAX_SENDFILE_NUM);
+#else
+            if(i < 5)
+            {
+                g_imusr_array.usrnode[uindex].init_flag = FALSE;
+                g_imusr_array.usrnode[uindex].appactive_flag = FALSE;
+                g_imusr_array.usrnode[uindex].user_onlinestatus = FALSE;
+                g_imusr_array.usrnode[uindex].user_online_type = FALSE;
+                g_imusr_array.usrnode[uindex].friendnum = 0;
+                g_imusr_array.usrnode[uindex].heartbeat_count = 0;
+                g_imusr_array.usrnode[uindex].appid = 0;
+                g_imusr_array.usrnode[uindex].ptox_handle = NULL;
+                memset(&g_imusr_array.usrnode[uindex].cache_msgid,0,sizeof(long)*IM_MSGID_CACHENUM);
+                memset(&g_imusr_array.usrnode[uindex].u_hashstr,0,PNR_USER_HASHID_MAXLEN);
+                memset(&g_imusr_array.usrnode[uindex].user_toxid,0,TOX_ID_STR_LEN);
+                memset(&g_imusr_array.usrnode[uindex].user_name,0,PNR_USERNAME_MAXLEN);
+                memset(&g_imusr_array.usrnode[uindex].user_nickname,0,PNR_USERNAME_MAXLEN);
+                memset(&g_imusr_array.usrnode[uindex].user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"use(%d:%s) delete ok",uindex,account.toxid);
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox_status(%d) not exit",uindex,g_imusr_array.usrnode[uindex].tox_status);
+            }
+#endif
+            g_imusr_array.cur_user_num --;
+            pthread_mutex_unlock(&g_pnruser_lock[uindex]);
+            ret_code = PNR_ACCOUNT_DELETE_RETURN_OK;
+        }
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_DELUSER));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "From", cJSON_CreateString(fromid));
+    cJSON_AddItemToObject(ret_params, "To", cJSON_CreateString(account.toxid));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_cmd_rnode_pmsg_deal
+  Description: IM rid节点发送过来的消息处理
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char to_id[TOX_ID_STR_LEN+1] = {0};
+    char from_rid[TOX_ID_STR_LEN+1] = {0};
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    char friendid[TOX_ID_STR_LEN+1] = {0};;
+    char info[PNR_ATTACH_INFO_MAXLEN+1] = {0};
+    struct pnrdev_register_info devinfo;
+    struct pnrdev_netconn_info netinfo;
+    int cmd = 0,uindex = 0,f_id = 0,pid = 0,f_num = 0;
+    pthread_t task_id = 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromRid",from_rid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToRid",to_id,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Cmd",cmd,0);
+
+    //参数检查
+    if(strcmp(to_id,g_daemon_tox.user_toxid) != OK)
+    {
+        ret_code = PNR_RNODEMSG_RETCODE_BADRID;
+        snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad rid(%s)",to_id);
+    }
+    else if(cmd < PNR_SYSDEBUG_CMDTYPE_CHECK_SYSINFO || cmd >= PNR_SYSDEBUG_CMDTYPE_BUTT)
+    {
+        ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+        snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad cmdtype(%d)",cmd);
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SYSDERLYCMD));
+    cJSON_AddItemToObject(ret_params, "Cmd", cJSON_CreateNumber(cmd));
+    cJSON_AddItemToObject(ret_params, "Rid", cJSON_CreateString(g_daemon_tox.user_toxid));
+    if(ret_code == OK)
+    {
+        switch(cmd)
+        {
+            case PNR_SYSDEBUG_CMDTYPE_CHECK_SYSINFO:
+                memset(&netinfo,0,sizeof(netinfo));
+                pnr_devinfo_get(&devinfo);
+                ret_code = PNR_RNODEMSG_RETCODE_OK;
+                snprintf(info,PNR_ATTACH_INFO_MAXLEN,"devinfo:devtype(%d),e0mac(%s)version(%s)",
+                    devinfo.dev_type,devinfo.eth0_localip,devinfo.version);
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_CHECK_NETINFO:
+                memset(&netinfo,0,sizeof(netinfo));
+                pnr_netconfig_dbget(&netinfo);
+                if(netinfo.pubnet_mode == PNRDEV_NETCONN_FRPPROXY)
+                {
+                    pnr_check_process_byname("frpc",&pid);
+                    if(pid <= 0)
+                    {
+                        netinfo.conn_status = FALSE;
+                    }
+                    else if(pnr_check_frp_connstatus() == TRUE)
+                    {
+                        netinfo.conn_status = TRUE;
+                    }
+                    else
+                    {
+                        netinfo.conn_status = FALSE;
+                    }
+                }
+                ret_code = PNR_RNODEMSG_RETCODE_OK;
+                snprintf(info,PNR_ATTACH_INFO_MAXLEN,"netinfo:pubmode(%d),frpmode(%d)pub_ip(%s:%d)c_status(%d)",
+                        netinfo.pubnet_mode,netinfo.frp_mode,netinfo.pub_ipstr,netinfo.pnr_port,netinfo.conn_status);
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_REFLUSH_DEVREG:
+                if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+                {
+                    if (pthread_create(&task_id, NULL, pnr_dev_register_task, NULL) != 0) 
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create post_devinfo_register failed");
+                    }
+                    ret_code = PNR_RNODEMSG_RETCODE_OK;
+                    strcpy(info,"reflush devreg ok");
+                }
+                else
+                {
+                    ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad devtype(%d)",g_pnrdevtype);
+                }
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO:
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
+                uindex = get_indexbytoxid(userid);
+                if(uindex < 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
+                    ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad userid(%s)",userid);
+                }
+                else
+                {
+                    ret_code = PNR_RNODEMSG_RETCODE_OK;
+                }
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER:
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
+                uindex = get_indexbytoxid(userid);
+                if(uindex < 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
+                    ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad userid(%s)",userid);
+                }
+                else
+                {
+                    int run = 0;
+                    if(g_imusr_array.usrnode[uindex].init_flag == FALSE)
+                    {
+                        pthread_mutex_lock(&g_pnruser_lock[uindex]);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"index(%d) init_flag(%d)",index,g_imusr_array.usrnode[index].init_flag);                
+                        //g_tmp_instance_index = index;
+                        if (pthread_create(&g_imusr_array.usrnode[uindex].tox_tid, NULL, imstance_daemon, &uindex) != 0) 
+                        {
+                            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"create tox_instance failed");
+                            ret_code = PNR_RNODEMSG_RETCODE_OTHERERR;
+                            snprintf(info,PNR_ATTACH_INFO_MAXLEN,"userid(%s) active failed",userid);
+                        } 
+                        else
+                        {
+                            while(g_imusr_array.usrnode[uindex].init_flag != TRUE && run < PNR_TOXINSTANCE_CREATETIME)
+                            {
+                                sleep(1);
+                                run++;
+                            }
+                            if(run >= PNR_TOXINSTANCE_CREATETIME)
+                            {
+                                ret_code = PNR_RNODEMSG_RETCODE_OTHERERR;
+                                snprintf(info,PNR_ATTACH_INFO_MAXLEN,"userid(%s) active failed",userid);
+                            }
+                            else
+                            {
+                                ret_code = PNR_RNODEMSG_RETCODE_OK;
+                                snprintf(info,PNR_ATTACH_INFO_MAXLEN,"userid(%s) active ok",userid);
+                                DEBUG_PRINT(DEBUG_LEVEL_INFO,"renew user(%s)",g_imusr_array.usrnode[uindex].user_toxid);
+                                //如果是新用户激活对应数据库句柄
+                                if(g_msglogdb_handle[uindex] == NULL)
+                                {
+                                     if (sql_msglogdb_init(uindex) != OK) 
+                                     {
+                                         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed",uindex);
+                                     }
+                                }
+                                if(g_msgcachedb_handle[uindex] == NULL)
+                                {
+                                     if (sql_msgcachedb_init(uindex) != OK) 
+                                     {
+                                         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msgcache db failed",uindex);
+                                     }
+                                }
+                            }
+                        }
+                        pthread_mutex_unlock(&g_pnruser_lock[uindex]);
+                    }
+                    else
+                    {
+                        ret_code = PNR_RNODEMSG_RETCODE_OK;
+                        snprintf(info,PNR_ATTACH_INFO_MAXLEN,"userid(%s) active already",userid);
+                    }
+                }
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_CHECK_FRIENDS:
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Friend",friendid,TOX_ID_STR_LEN);
+                uindex = get_indexbytoxid(userid);
+                if(uindex < 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
+                    ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad userid(%s)",userid);
+                }
+                else
+                {
+                    f_id = get_friendid_bytoxid(uindex,friendid);
+                    ret_code = PNR_RNODEMSG_RETCODE_OK;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"user(%d:%s) friend(%s) f_id(%d)",
+                        uindex,userid,friendid,f_id);
+                }
+                break;
+            case PNR_SYSDEBUG_CMDTYPE_CHECKANDADD_FRIENDS:
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Friend",friendid,TOX_ID_STR_LEN);
+                uindex = get_indexbytoxid(userid);
+                if(uindex < 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
+                    ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad userid(%s)",userid);
+                }
+                else
+                {
+                    f_id = get_friendid_bytoxid(uindex,friendid);
+                    f_num = check_and_add_friends(g_tox_linknode[uindex], friendid, 
+                            g_imusr_array.usrnode[uindex].userinfo_fullurl);
+                    ret_code = PNR_RNODEMSG_RETCODE_OK;
+                    snprintf(info,PNR_ATTACH_INFO_MAXLEN,"user(%d:%s) friend(%d:%s) f_num(%d)",
+                        uindex,userid,f_id,friendid,f_num);
+                }
+                break;
+             default:
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad cmdtype(%d)",cmd);
+                break;   
+        }
+    }
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(info));
+   
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_cmd_rnode_msgreply_deal
+  Description: IM模块根节点返回消息处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_rnode_msgreply_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    char info[PNR_ATTACH_INFO_MAXLEN+1] = {0};
+    int cmd = 0,ret = 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rid",userid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Info",info,PNR_ATTACH_INFO_MAXLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Cmd",cmd,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"RetCode",ret,0);
+    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"Rnode(%s) cmd(%d) ret(%d) info(%s)",userid,cmd,ret,info);
     return OK;
 }
 
@@ -14742,6 +15597,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_reboot_deal failed");
                     return ERROR;
                 }
+                *ret_flag = TRUE;
                 break;
 		    default:
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d) cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
@@ -14971,8 +15827,79 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                     return ERROR;
                 }
                 break;
+            case PNR_IM_CMDTYPE_DELUSER:
+                if (im_account_delete_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_account_delete_deal failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
             default:
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d) cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
+                break;
+        }
+    }
+    else if(msg_head.api_version == PNR_API_VERSION_V5)
+    {
+        switch(msg_head.im_cmdtype)
+        {
+			 case PNR_IM_CMDTYPE_PULLFILE:
+    			if (im_pullfile_cmd_deal(params, retmsg, retmsg_len, plws_index, &msg_head)) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_pullfile_cmd_deal failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PULLMSG:
+                if(im_pullmsg_cmd_deal_v3(params,retmsg,retmsg_len,plws_index,&msg_head) != OK)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_pullmsg_cmd_deal_v5 failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PULLFILELIST:
+                if (im_pull_file_list_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+				{
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pull file list failed");
+                    return ERROR;
+				}
+				*ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_DELETEFILE:
+				if (im_delete_file_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+				{
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "delete file failed");
+                    return ERROR;
+				}
+				*ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_GROUPMSGPULL:
+                if (im_group_pullmsg_deal(params,retmsg,retmsg_len,plws_index,&msg_head)) 
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_group_pullmsg_deal failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_GROUPSENDFILEDONE:
+                if (im_group_sendfile_done_deal(params,retmsg,retmsg_len,plws_index,&msg_head)) 
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_group_sendfile_done_deal failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PUSHFILE:
+            case PNR_IM_CMDTYPE_GROUPMSGPUSH:
+                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
+                    return ERROR;
+                }
+                break;
+            default:
                 break;
         }
     }
@@ -14983,7 +15910,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
     }
     if(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM)
     {
-        pthread_mutex_lock(&(g_imusr_array.usrnode[*plws_index].userlock));
+        pthread_mutex_lock(&(g_pnruser_lock[*plws_index]));
         if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
         {
             g_imusr_array.usrnode[*plws_index].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
@@ -14995,7 +15922,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
         g_imusr_array.usrnode[*plws_index].heartbeat_count = 0;
         g_imusr_array.usrnode[*plws_index].user_online_type = USER_ONLINE_TYPE_LWS;
         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) online_type(%d)",*plws_index,g_imusr_array.usrnode[*plws_index].user_online_type);
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[*plws_index].userlock));
+        pthread_mutex_unlock(&(g_pnruser_lock[*plws_index]));
     }
     return OK;
 }
@@ -15464,6 +16391,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_reboot_deal failed");
                     return ERROR;
                 }
+				needret = TRUE;
                 break;
 		    default:
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d) cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
@@ -15691,7 +16619,30 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                    return ERROR;
                }
-               break;
+               break;               
+            case PNR_IM_CMDTYPE_DELUSER:
+                if (im_account_delete_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                {
+                   DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_account_delete_deal failed");
+                   return ERROR;
+                }
+                needret = TRUE;
+                break;   
+            case PNR_IM_CMDTYPE_SYSDEBUGMSG:
+                if (im_cmd_rnode_pmsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                {
+                   DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_account_delete_deal failed");
+                   return ERROR;
+                }
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_SYSDERLYMSG:
+                if (im_cmd_rnode_msgreply_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                {
+                   DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_account_delete_deal failed");
+                   return ERROR;
+                }
+                break;
             default:
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d) cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
                 break;
@@ -15710,7 +16661,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
 				g_imusr_array.usrnode[i].appid = -1;
 		}
 		g_imusr_array.usrnode[userindex].appid = friendnum;
-        pthread_mutex_lock(&(g_imusr_array.usrnode[userindex].userlock));
+        pthread_mutex_lock(&(g_pnruser_lock[userindex]));
         if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
         {
             g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
@@ -15722,7 +16673,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
         g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
         g_imusr_array.usrnode[userindex].heartbeat_count = 0;
         g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[userindex].userlock));
+        pthread_mutex_unlock(&(g_pnruser_lock[userindex]));
     }
         
     if (needret) 
@@ -15833,8 +16784,6 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
     }
     return OK;
 }
-
-
 /*****************************************************************************
  函 数 名  : im_send_file_by_tox
  功能描述  : 通过tox发送文件
@@ -15884,13 +16833,22 @@ void im_send_file_deal(struct im_user_msg_sendfile *pfile)
 {
     int from = 0;
     int to = 0;
+    int api_version = 0;
 
     from = get_indexbytoxid(pfile->fromid);
     to = get_indexbytoxid(pfile->toid);
+    if(pfile->ver_str != 0)
+    {
+        api_version = PNR_API_VERSION_V5;
+    }
+    else
+    {
+        api_version = PNR_API_VERSION_V1;
+    }
     if (to) {
-        im_pushmsg_callback(to, PNR_IM_CMDTYPE_PUSHFILE, TRUE, PNR_API_VERSION_V1,pfile);
+        im_pushmsg_callback(to, PNR_IM_CMDTYPE_PUSHFILE, TRUE, api_version,pfile);
     } else {
-        im_pushmsg_callback(from, PNR_IM_CMDTYPE_PUSHFILE, FALSE, PNR_API_VERSION_V1,pfile);
+        im_pushmsg_callback(from, PNR_IM_CMDTYPE_PUSHFILE, FALSE, api_version,pfile);
     }
 }
 
@@ -15925,12 +16883,13 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 	int index = 0;
     int gid = 0;
 	int fflag = 0;
-	char fullfilename[512] = {0};
+	char fullfilename[PNR_FILEPATH_MAXLEN+1] = {0};
 	char filepath[512] = {0};
     int action = 0;
     char fileinfo[PNR_FILEINFO_MAXLEN+1] = {0};
     char* ptmp = NULL;
     int fileinfo_len =0;
+    int srcfrom = 0;
 	
     if (!pss->logid) 
     {
@@ -15992,6 +16951,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 //添加群文件处理
                 if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//字符的0
                 {
+                    srcfrom = PNR_FILE_SRCFROM_GROUPSEND;
                     gid = get_gidbygrouphid(pfile->toid);
                     if(gid < 0)
                     {            
@@ -16007,14 +16967,17 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 }
                 else if(action == PNR_IM_MSGTYPE_AVATAR)
                 {
+                    srcfrom = PNR_FILE_SRCFROM_AVATAR;
 					snprintf(fullfilename, sizeof(fullfilename), "%s%s/%s", 
 						DAEMON_PNR_USERDATA_DIR,PNR_FILECACHE_DIR, pfile->filename);    
                 }
 				else if (pfile->toid[0]) {
+                    srcfrom = PNR_FILE_SRCFROM_MSGSEND;
 					snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
 						g_imusr_array.usrnode[index].userdata_pathurl, pfile->filename);
 				}
                 else {
+                    srcfrom = PNR_FILE_SRCFROM_SELFUPLOAD;
 					snprintf(fullfilename, sizeof(fullfilename), "%su/%s", 
 						g_imusr_array.usrnode[index].userdata_pathurl, pfile->filename);
 				}
@@ -16023,6 +16986,14 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 				} 
                 else {
 					fflag = O_CREAT | O_RDWR | O_TRUNC;
+                }
+                if(pfile->ver_str == WS_FILELIST_V1)
+                {
+                    memset(fullfilename,0,PNR_FILEPATH_MAXLEN);
+                    strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
+                    PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,pfile->fileid,gid,pfile->filename);
+                    strcat(fullfilename,filepath);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",fullfilename);
                 }
                 pss->fd = open(fullfilename, fflag, 0644);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO, "rcv file(%s) start", fullfilename);
@@ -16049,24 +17020,32 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                     //添加群文件处理
                     if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)
                     {
-                        //这里只写文件，文件相关记录的保存在GroupSendFileDone中处理
+                        //老版本这里只写文件，文件相关记录的保存在GroupSendFileDone中处理
                     }
                     else //普通消息
                     {
                         if(action == PNR_IM_MSGTYPE_AVATAR){
+                            srcfrom = PNR_FILE_SRCFROM_AVATAR;
                             snprintf(filepath, sizeof(filepath), "/%s/%s",PNR_FILECACHE_DIR, pfile->filename);
                         }
                         else
                         {
                             if (pfile->toid[0]) 
                             {
+                                srcfrom = PNR_FILE_SRCFROM_MSGSEND;
         						snprintf(filepath, sizeof(filepath), "/user%d/s/%s", index, pfile->filename);
         					}
                             else 
         					{
+                                srcfrom = PNR_FILE_SRCFROM_SELFUPLOAD;
         						snprintf(filepath, sizeof(filepath), "/user%d/u/%s", index, pfile->filename);
         					}
-                        }					
+                        }		
+                        if(pfile->ver_str == WS_FILELIST_V1)
+                        {
+                            PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,pfile->fileid,gid,pfile->filename);
+                            DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",filepath);
+                        }
     					pfile->fileid = pss->logid;
                         if(fileinfo_len > 0)
                         {
@@ -16075,7 +17054,8 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                         pnr_msglog_dbupdate(index, pss->type, pss->logid, MSG_STATUS_SENDOK, pfile->fromid,
     						pfile->toid, pfile->filename, pfile->srckey, pfile->dstkey, filepath, 
     						ntohl(pfile->offset) + ntohl(pfile->segsize));
-    					if (pfile->toid[0]) {
+    					if (pfile->toid[0]) 
+                        {
                             if(fileinfo_len > 0)
                             {
                                 strcat(pfile->filename,fileinfo);
@@ -16449,7 +17429,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
 				    g_imusr_array.usrnode[index].userdata_pathurl, sendfile.filename);
                 if(strlen(fileinfo) > 0)
                 {
-                    strcat(fullfilename,PNR_FILEINFO_ATTACH_FLAG);
+                    strcat(fullfilename,",");
                     strcat(fullfilename,fileinfo);
                 }
                 pnr_msglog_getid(index, &msgid);
@@ -16636,7 +17616,10 @@ int im_server_init(void)
         pthread_mutex_init(&(lws_msglock[i]),NULL);
 		pthread_mutex_init(&(lws_cache_msglock[i]),NULL);
         pthread_mutex_init(&(tox_msglock[i]),NULL);
-        pthread_mutex_init(&(g_imusr_array.usrnode[i].userlock),NULL);
+        pthread_mutex_init(&(g_pnruser_lock[i]),NULL);
+        pthread_mutex_init(&(g_user_friendlock[i]),NULL);
+        pthread_mutex_init(&(g_user_msgidlock[i]),NULL);
+        pthread_mutex_init(&(g_user_toxdatalock[i]),NULL);
 
 		//用户信息初始化,现在不用instance表了，直接在account表初始化的时候就赋值了
         //pnr_usr_instance_get(i);
@@ -16650,7 +17633,7 @@ int im_server_init(void)
             //初始化好友列表
             pnr_dbget_friendsall_byuserid(i,g_imusr_array.usrnode[i].user_toxid);
             //初始化数据库句柄
-            if (sql_msglogdb_init(i) != OK) {
+            if (sql_msglogdb_init(i) != OK){
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed", i);
                 return ERROR;
             }
@@ -16818,7 +17801,7 @@ int imuser_heartbeat_deal(void)
     //遍历，对所有非离线状态的用户检测心跳计数
     for(index=1;index<=PNR_IMUSER_MAXNUM;index++)
     {
-        pthread_mutex_lock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_lock(&(g_pnruser_lock[index]));
         if(g_imusr_array.usrnode[index].user_onlinestatus != USER_ONLINE_STATUS_OFFLINE)
         {
             g_imusr_array.usrnode[index].heartbeat_count ++;
@@ -16832,7 +17815,7 @@ int imuser_heartbeat_deal(void)
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d %s) offline",index,g_imusr_array.usrnode[index].user_toxid);
             }
         }
-        pthread_mutex_unlock(&(g_imusr_array.usrnode[index].userlock));
+        pthread_mutex_unlock(&(g_pnruser_lock[index]));
     }
     return OK;
 }
@@ -17793,7 +18776,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
 {
     struct newmsg_notice_params* pmsg = (struct newmsg_notice_params*)para;
     char* post_data = NULL;
-    char rec_buff[BUF_LINE_MAX_LEN] = {0};
+    char* rec_buff = NULL;
     int data_len = 0;
     cJSON * params = NULL;
     char server_url[URL_MAX_LEN] = {0};
@@ -17809,11 +18792,20 @@ static void *pnr_post_newmsg_notice_task(void *para)
     {
         strcpy(server_url,PAPUSHMSG_PRODUCT_HTTPS_SERVER);
     }
+    rec_buff = malloc(BUF_LINE_MAX_LEN+1);
+    if(rec_buff == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rec_buff malloc err");
+        free(pmsg);
+        return NULL;
+    }
+    memset(rec_buff,0,BUF_LINE_MAX_LEN);
     params = cJSON_CreateObject();
     if(params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
         free(pmsg);
+        free(rec_buff);
         return NULL;
     }
     cJSON_AddItemToObject(params, "from", cJSON_CreateString(pmsg->from));
@@ -17826,7 +18818,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
     data_len = strlen(post_data);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:post_data(%s)",post_data);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsg_notice_task:post_data(%s)",post_data);
     https_post(server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSG_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     free(pmsg);
     free(post_data);
@@ -17834,6 +18826,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     if(params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
+        free(rec_buff);
         return NULL;
     }
     cJSON_AddItemToObject(params, "replay", cJSON_CreateString(rec_buff));
@@ -17841,6 +18834,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     cJSON_Delete(params);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",post_data);
     free(post_data);
+    free(rec_buff);
     return NULL;
 }
 
@@ -18199,7 +19193,14 @@ int pnr_relogin_pushbylws(int index,int type)
     cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(g_imusr_array.usrnode[index].user_toxid));
     cJSON_AddItemToObject(ret_params, "RouterId", cJSON_CreateString(g_daemon_tox.user_toxid));
     cJSON_AddItemToObject(ret_params, "Reason", cJSON_CreateNumber(type));
-    cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_RELOGIN_STRING));
+    if(type == PNR_PUSHLOGOUT_REASON_RELOGIN)
+    {
+        cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_RELOGIN_STRING));
+    }
+    else if(type == PNR_PUSHLOGOUT_REASON_DELUSER)
+    {
+        cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_DELACCOUNT_STRING));
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -18238,7 +19239,7 @@ int pnr_relogin_pushbylws(int index,int type)
     }
 
     //清除原index
-    pss->user_index = 0;
+    //pss->user_index = 0;
     pthread_mutex_unlock(&pss->lock_ring);
 
     if (g_lws_handler[index])
@@ -18301,7 +19302,14 @@ int pnr_relogin_pushbytox(int index,int type)
     cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(g_imusr_array.usrnode[index].user_toxid));
     cJSON_AddItemToObject(ret_params, "RouterId", cJSON_CreateString(g_daemon_tox.user_toxid));
     cJSON_AddItemToObject(ret_params, "Reason", cJSON_CreateNumber(type));
-    cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_RELOGIN_STRING));
+    if(type == PNR_PUSHLOGOUT_REASON_RELOGIN)
+    {
+        cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_RELOGIN_STRING));
+    }
+    else if(type == PNR_PUSHLOGOUT_REASON_DELUSER)
+    {
+        cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(PNR_PUSHLOGOUT_DELACCOUNT_STRING));
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -19008,7 +20016,7 @@ int post_devinfo_upload_once(void* param)
     return OK;
 }
 /*****************************************************************************
- 函 数 名  : pnr_node_msg_push
+ 函 数 名  : pnr_rnode_msg_push
  功能描述  : rid节点消息推送
  输入参数  : void arg  
  输出参数  : 无
@@ -19022,8 +20030,10 @@ int post_devinfo_upload_once(void* param)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-int pnr_node_msg_push(int cmd,char* to_id,void* params)
+int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
 {
+    int f_id=0,i = 0,ret = 0;
+    char* pmsg = NULL;
     if(cmd < PNR_SYSDEBUG_CMDTYPE_CHECK_SYSINFO || cmd >= PNR_SYSDEBUG_CMDTYPE_BUTT)
     {
         return ERROR;
@@ -19032,13 +20042,40 @@ int pnr_node_msg_push(int cmd,char* to_id,void* params)
     {
         return ERROR;
     }
-    if((cmd == PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO || cmd == PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER)
-        &&(params == NULL))
+    if(((cmd == PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO || cmd == PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER) &&(param1 == NULL))
+        ||((cmd == PNR_SYSDEBUG_CMDTYPE_CHECK_FRIENDS || cmd == PNR_SYSDEBUG_CMDTYPE_CHECKANDADD_FRIENDS) && (param1 == NULL || param2 == NULL )))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"input cmd(%d) params null",cmd);
         return ERROR;
     }
-    
+    f_id = get_rnodefidbytoxid(to_id);
+    if(f_id < 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"input cmd(%d) params null",cmd);
+        return ERROR;
+    }
+    else if(f_id == 0xFF)
+    {
+        for( i = 1; i < PNR_IMUSER_MAXNUM ; i++ )
+        {
+            if(g_rnode[i].tox_id[0] == 0)
+            {
+                f_id = check_and_add_friends(g_daemon_tox.ptox_handle,to_id,g_daemon_tox.userinfo_fullurl);
+                if(f_id < 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) failed ret(%d)",to_id,f_id);
+                    return ERROR;
+                }
+                else
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",to_id);
+                    g_rnode[i].f_id = f_id;
+                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETTING;
+                }
+                strncpy(g_rnode[i].tox_id,to_id,TOX_ID_STR_LEN);
+            }
+        }
+    }
     //构建响应消息
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
@@ -19055,8 +20092,8 @@ int pnr_node_msg_push(int cmd,char* to_id,void* params)
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SYSDEBUGCMD));
     cJSON_AddItemToObject(ret_params, "FromRid",cJSON_CreateString(g_daemon_tox.user_toxid));
-    cJSON_AddItemToObject(ret_params, "cmd",cJSON_CreateNumber(cmd));
-    cJSON_AddItemToObject(ret_params, "ToId",cJSON_CreateString(to_id));
+    cJSON_AddItemToObject(ret_params, "Cmd",cJSON_CreateNumber(cmd));
+    cJSON_AddItemToObject(ret_params, "ToRid",cJSON_CreateString(to_id));
     switch(cmd)
     {
         case PNR_SYSDEBUG_CMDTYPE_CHECK_SYSINFO:
@@ -19064,16 +20101,84 @@ int pnr_node_msg_push(int cmd,char* to_id,void* params)
         case PNR_SYSDEBUG_CMDTYPE_REFLUSH_DEVREG:
             break;
         case PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO:
-            cJSON_AddItemToObject(ret_params, "User",cJSON_CreateString(params));
+            cJSON_AddItemToObject(ret_params, "User",cJSON_CreateString(param1));
             break;
         case PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER:
-            cJSON_AddItemToObject(ret_params, "User",cJSON_CreateString(params));
+            cJSON_AddItemToObject(ret_params, "User",cJSON_CreateString(param1));
+            break;
+        case PNR_SYSDEBUG_CMDTYPE_CHECK_FRIENDS:
+        case PNR_SYSDEBUG_CMDTYPE_CHECKANDADD_FRIENDS:
+            cJSON_AddItemToObject(ret_params, "User",cJSON_CreateString(param1));
+            cJSON_AddItemToObject(ret_params, "Friend",cJSON_CreateString(param2));
             break;
          default:
             break;   
     }
-
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    pmsg = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    ret = tox_friend_get_connection_status(g_daemon_tox.ptox_handle, f_id, NULL);
+    if (ret == TOX_CONNECTION_TCP || ret == TOX_CONNECTION_UDP) 
+    {
+        tox_friend_send_message(g_daemon_tox.ptox_handle,f_id, TOX_MESSAGE_TYPE_NORMAL, 
+            (uint8_t *)pmsg, strlen(pmsg), NULL);
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"f_id(%d:%s) connect not ready",f_id,to_id);
+    }
+    free(pmsg);
     return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_rnode_debugmsg_send
+ 功能描述  : rid节点调试消息发送
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_rnode_debugmsg_send(char* pcmd)
+{
+    int cmdtype = 0;
+    char* pbuf = NULL;
+    char* p_target_rid = NULL;
+    char* param1 = NULL;
+    char* param2 = NULL;
+    if(pcmd == NULL)
+    {
+        return ERROR;
+    }
+    cmdtype = atoi(pcmd);
+    pbuf = strchr(pcmd,' ');
+    if(pbuf == NULL)
+    {
+        return ERROR;
+    }
+    pbuf++;
+    p_target_rid = pbuf;
+    pbuf = strchr(p_target_rid,' ');
+    if(pbuf != NULL)
+    {
+        pbuf[0] = 0;
+        pbuf++;
+        param1 = pbuf;
+        pbuf = strchr(param1,' ');
+        if(pbuf != NULL)
+        {
+            pbuf[0] = 0;
+            pbuf++;
+            param2 = pbuf;
+        }
+    }
+    return pnr_rnode_msg_push(cmdtype,p_target_rid,param1,param2);
 }
 /*****************************************************************************
  函 数 名  : pnr_router_node_friend_init
@@ -19098,7 +20203,8 @@ int pnr_router_node_friend_init(void)
     int f_num = 0;
     char sql_cmd[SQL_CMD_LEN+1] = {0};
 
-    snprintf(sql_cmd,SQL_CMD_LEN,"select devid from userdev_mapping_tbl where devid !='%s' group by devid;",g_daemon_tox.user_toxid);
+    memset(g_rnode,0,sizeof(struct pnr_rid_node) * (PNR_IMUSER_MAXNUM+1));
+    snprintf(sql_cmd,SQL_CMD_LEN,"select devid,devname from userdev_mapping_tbl where devid !='%s' group by devid;",g_daemon_tox.user_toxid);
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
     if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow, 
         &nColumn, &errmsg) == SQLITE_OK)
@@ -19108,17 +20214,31 @@ int pnr_router_node_friend_init(void)
         {
             if(dbResult[offset] != NULL)
             {
-                f_num = check_and_add_friends(g_daemon_tox.ptox_handle,dbResult[offset],g_daemon_tox.userinfo_fullurl);
+                strncpy(g_rnode[i+1].tox_id,dbResult[offset],TOX_ID_STR_LEN);
+                f_num = check_and_add_friends(g_daemon_tox.ptox_handle,g_rnode[i+1].tox_id,g_daemon_tox.userinfo_fullurl);
                 if(f_num < 0)
                 {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) failed",dbResult[offset]);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) failed",g_rnode[i+1].tox_id);
+                    g_rnode[i+1].c_status = PNR_RID_NODE_CSTATUS_CONNETERR;
+                    g_rnode[i+1].f_id = f_num;
                 }
                 else
                 {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",dbResult[offset]);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",g_rnode[i+1].tox_id);
+                    g_rnode[i+1].f_id = f_num;
+                    g_rnode[i+1].c_status = PNR_RID_NODE_CSTATUS_CONNETTING;
                 }
             }
+            if(dbResult[offset+1] != NULL)
+            {
+                strncpy(g_rnode[i+1].node_name,dbResult[offset+1],PNR_USERNAME_MAXLEN);
+            }
             offset += nColumn;
+            if(i >= PNR_IMUSER_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad rnode num over");
+                break;
+            }
         }
         sqlite3_free_table(dbResult);
     }

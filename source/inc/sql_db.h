@@ -24,6 +24,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V6=6,
     DB_VERSION_V7=7,
     DB_VERSION_V8=8,
+    DB_VERSION_V9=9,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -40,7 +41,7 @@ enum DB_VERSION_ENUM
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V8
+#define DB_CURRENT_VERSION    DB_VERSION_V9
 struct db_string_ret
 {
     int buf_len;
@@ -136,5 +137,12 @@ int pnr_groupoper_dbget_insert(int gid,int action,int fromid,int toid,char* gnam
 int pnr_netconfig_dbget(struct pnrdev_netconn_info* pinfo);
 int dbupdate_strvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,char* key_var);
 int dbupdate_intvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,int key_var);
+int pnr_logcache_dbinsert(int cmd,char* fromid,char* toid,char* msg,char* ext);
+int pnr_usr_instance_dbdelete_bytoxid(char* toxid);
+int pnr_friend_delete_bytoxid(char *userid);
+int pnr_userdev_mapping_dbdelte_byusrid(char* usrid);
+int pnr_account_dbdelete_byuserid(char* userid);
+int pnr_userinfo_dbdelete_byuserid(char* usrid);
+int pnr_tox_datafile_dbdelete_bytoxid(char* toxid);
 #endif
 
