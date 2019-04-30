@@ -1,7 +1,7 @@
 # Confidant Station
 
 ## What is Confidant Station?
-Confidant Station is used to work together with Confidant APP to provide secure messanger service
+Confidant Station is used to work together with Confidant APP to provide secure messanger service, secure file exchanage and secure Email service.
 
 
 ## How to use?
