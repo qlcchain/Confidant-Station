@@ -172,6 +172,7 @@ enum DEBUG_LEVEL
 #define SYSINFO_CHECK_CYCLE      600  //10* 60
 #define HEARTBEAT_CYCLE      60  //60sec
 #define IMUSER_HEARTBEAT_CYCLE 30//30sec
+#define PNR_SELF_MONITOR_CYCLE   60 // 1min
 #ifdef USERDEBUG
 #define DEBUG_INIT(file) log_init(file)
 #define DEBUG_LEVEL(level) log_level(level)
@@ -501,7 +502,6 @@ struct pnrdev_register_resp
     char rid[TOX_ID_STR_LEN+1];
     char eth0_mac[MACSTR_MAX_LEN+1];
 };
-
 //function declaration
 int get_cmd_ret(char* pcmd);
 //unsigned int ip_aton(const char* ip);
@@ -551,5 +551,6 @@ int pnr_devinfo_get(struct pnrdev_register_info* pinfo);
 int pnr_check_process_byname(char* pname,int* pid);
 int get_localip_byname(char* devname,char* local_ip);
 int pnr_check_frp_connstatus(void);
+char* pnr_stristr (const char * str1,const char * str2);
 #endif
 

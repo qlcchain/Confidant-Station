@@ -871,6 +871,12 @@ int32 main(int argc,char *argv[])
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create post_newmsgs_loop_task failed");
         goto out;
     }
+    //自我监测任务
+    if (pthread_create(&tid, NULL,self_monitor_thread, NULL) != 0) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create self_monitor_thread failed");
+        goto out;
+    }
     fifo_msg_handle();
     while(1)
     {

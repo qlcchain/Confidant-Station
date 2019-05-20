@@ -155,6 +155,7 @@ struct im_user_struct g_daemon_tox;
 struct im_user_array_struct g_imusr_array;
 Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 int g_noticepost_enable = TRUE;
+int g_msglist_debugswitch = FALSE;
 //int g_tmp_instance_index = 0;
 //toxdata信息数组
 struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
@@ -1554,6 +1555,11 @@ void im_send_msg_deal(int direction)
     struct lws_cache_msg_struct *n = NULL;
 	struct lws_cache_msg_struct *tmsg = NULL;
     struct lws_cache_msg_struct *tn = NULL;
+    int node_num = 0;
+    int msg_num = 0;
+    int node_msgno = 0;
+    int start_time = 0;
+    int end_time = 0;
     //等待系统的p2p网络建立成功
     if(g_p2pnet_init_flag == FALSE)
     {
@@ -1565,7 +1571,14 @@ void im_send_msg_deal(int direction)
 	} else {
 		i = 0;
 	}
-
+    if(g_msglist_debugswitch == TRUE)
+    {
+        node_num = 0;
+        msg_num = 0;
+        node_msgno = 0;
+        start_time = (int)time(NULL);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_send_msg_deal:once start time(%d)",start_time);
+    }
 	while (1) {
 		if (direction) {
 			if (i-- == 0)
@@ -1576,8 +1589,18 @@ void im_send_msg_deal(int direction)
 		}
 		pthread_mutex_lock(&lws_cache_msglock[i]);
 		if (!list_empty(&g_lws_cache_msglist[i].list)) {
+            if(g_msglist_debugswitch == TRUE)
+            {
+               node_num++;
+               msg_num += node_msgno;
+               node_msgno = 0;
+            }
 			list_for_each_safe(msg, n, &g_lws_cache_msglist[i].list,struct lws_cache_msg_struct, list) 
             {
+                if(g_msglist_debugswitch == TRUE)
+                {
+                    node_msgno++;
+                }
 				if (msg->resend == 0 || time(NULL) -  msg->timestamp > 3) {
 					if (msg->resend == 0)
 						msg->resend++;
@@ -1753,6 +1776,12 @@ void im_send_msg_deal(int direction)
 		}
 		pthread_mutex_unlock(&lws_cache_msglock[i]);
 	}
+    if(g_msglist_debugswitch == TRUE)
+    {
+        end_time = (int)time(NULL);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_send_msg_deal:once end time(%d),cost time(%d),node(%d) total_msg(%d)",
+            end_time,(end_time-start_time),node_num,msg_num);
+    }
 }
 
 /*****************************************************************************
@@ -1939,7 +1968,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     int pushmsg_ctype = 0;
 	char fileinfo[PNR_FILEINFO_ATTACH_FLAG+1] = {0};
     char* ptmp = NULL;
-    int fileinfo_len =0;
+    int fileinfo_len =0,attend_flag = 0;
 
 	if(params == NULL)
     {
@@ -2127,15 +2156,31 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 			findex = get_indexbytoxid(psendfile->fromid);
             if(apiversion >= PNR_API_VERSION_V5)
             {
-                PNR_REAL_FILEPATH_GET(filepath,findex,PNR_FILE_SRCFROM_MSGSEND,psendfile->fileid,0,psendfile->filename);    
-                strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
-                strcat(fullfilename,filepath);
-                cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(filepath));
+                //src file
+                PNR_REAL_FILEPATH_GET(filepath,findex,PNR_FILE_SRCFROM_MSGSEND,htonl(psendfile->fileid),0,psendfile->filename);
+                if(local_flag == TRUE)
+                {
+                    //目的文件
+                    PNR_REAL_FILEPATH_GET(dpath,index,PNR_FILE_SRCFROM_MSGRECV,htonl(psendfile->fileid),0,psendfile->filename);
+                    snprintf(cmdbuf, sizeof(cmdbuf), "cp %s%s %s%s", WS_SERVER_INDEX_FILEPATH,filepath,WS_SERVER_INDEX_FILEPATH,dpath);
+                    system(cmdbuf);
+                    strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
+                    strcat(fullfilename,dpath);
+                    cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(dpath));
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg_PushFile:(%s->%s)",filepath,dpath);
+                }
+                else
+                {
+                    strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
+                    strcat(fullfilename,filepath);
+                    cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(filepath));
+                }
             }
             else
             {
     			snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
 				    g_imusr_array.usrnode[findex].userdata_pathurl, psendfile->filename);
+                strcpy(filepath,fullfilename+strlen(WS_SERVER_INDEX_FILEPATH));
             }
             md5_hash_file(fullfilename, md5);
             filesize = im_get_file_size(fullfilename);
@@ -2150,15 +2195,15 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 pnr_msglog_getid(index, &msgid);
                 if(fileinfo_len > 0)
                 {
-                    strcat(fullfilename,fileinfo);
+                    strcat(filepath,fileinfo);
                 }
-                pnr_msglog_dbinsert_specifyid(index,ntohl(psendfile->action),msgid,psendfile->fileid,MSG_STATUS_SENDOK,psendfile->fromid,
-                    psendfile->toid,psendfile->filename,psendfile->srckey,psendfile->dstkey,fullfilename,filesize);
+                pnr_msglog_dbinsert_specifyid(index,ntohl(psendfile->action),msgid,psendfile->magic,MSG_STATUS_SENDOK,psendfile->fromid,
+                    psendfile->toid,psendfile->filename,psendfile->srckey,psendfile->dstkey,filepath,filesize);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",msgid);
             }
             else
             {
-                msgid = psendfile->fileid;
+                msgid = psendfile->magic;
             }
             cJSON_AddItemToObject(ret_params, "MsgId", cJSON_CreateNumber(msgid));
 			break;
@@ -2299,16 +2344,18 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "MsgType",cJSON_CreateNumber(pgroupmsg->type));
             if(pgroupmsg->attend_all == TRUE)
             {
-                cJSON_AddItemToObject(ret_params, "Point",cJSON_CreateNumber(PNR_GROUP_MSGPUSH_ATTEND_ALL));
+                attend_flag = PNR_GROUP_MSGPUSH_ATTEND_ALL;
             }
-            else if(strstr(pgroupmsg->attend,pgroupmsg->to) != NULL)
+            else if(pnr_stristr(pgroupmsg->attend,pgroupmsg->to) != NULL)
             {
-                cJSON_AddItemToObject(ret_params, "Point",cJSON_CreateNumber(PNR_GROUP_MSGPUSH_ATTEND_ONLY));
+                attend_flag = PNR_GROUP_MSGPUSH_ATTEND_ONLY;
             }
             else
             {
-                cJSON_AddItemToObject(ret_params, "Point",cJSON_CreateNumber(PNR_GROUP_MSGPUSH_ATTEND_NONE));
+                attend_flag = PNR_GROUP_MSGPUSH_ATTEND_NONE;
             }
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"gmsg attend(%s:%s),attend_flag(%d)",pgroupmsg->attend,pgroupmsg->to,attend_flag);
+            cJSON_AddItemToObject(ret_params, "Point",cJSON_CreateNumber(attend_flag));
             cJSON_AddItemToObject(ret_params, "GId",cJSON_CreateString(g_grouplist[pgroupmsg->gid].group_hid));
             cJSON_AddItemToObject(ret_params, "GroupName",cJSON_CreateString(pgroupmsg->group_name));
             cJSON_AddItemToObject(ret_params, "GAdmin",cJSON_CreateString(g_grouplist[pgroupmsg->gid].owner));
@@ -2409,15 +2456,16 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
     if (local_flag == TRUE) {
-        if (cmd == PNR_IM_CMDTYPE_PUSHFILE || cmd == PNR_IM_CMDTYPE_PUSHFILE_TOX) {
+        if ((cmd == PNR_IM_CMDTYPE_PUSHFILE || cmd == PNR_IM_CMDTYPE_PUSHFILE_TOX) 
+            && (apiversion < PNR_API_VERSION_V5))
+            //新的版本本地的就不在这里拷贝了
+        {
 			char *fname = NULL;
-			
 			if (cmd == PNR_IM_CMDTYPE_PUSHFILE) {
 				fname = psendfile->filename;
 			} else {
 				fname = ptoxsendfile->filename;
 			}
-			
 			snprintf(filepath, sizeof(filepath), "%sr/%s", 
 				g_imusr_array.usrnode[index].userdata_pathurl, fname);
             //去掉附加信息
@@ -2457,7 +2505,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         switch (cmd) {
         case PNR_IM_CMDTYPE_PUSHFILE:
 			pnr_msgcache_dbinsert(msgid, psendfile->fromid, psendfile->toid, cmd,
-                pmsg, msg_len, psendfile->filename, fullfilename, psendfile->fileid, 
+                pmsg, msg_len, psendfile->filename, fullfilename, psendfile->magic, 
                 pushmsg_ctype, ntohl(psendfile->action),psendfile->srckey,psendfile->dstkey);
             break;
 		case PNR_IM_CMDTYPE_FILEFORWARD_PUSH:
@@ -11327,6 +11375,7 @@ int pnr_group_dissolve(int gid)
     //删除群记录
     pnr_group_dbdelete_bygid(gid);
     g_grouplist[gid].init_flag = FALSE;
+    g_groupnum--;
     pthread_mutex_unlock(&g_grouplock[gid]);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_group_dissolve:dissolve gid(%d)",gid);
     return OK;
@@ -11992,7 +12041,7 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
         //如果是群主退出，就直接解散群
         if(uindex == g_grouplist[gid].ownerid)
         {
-            group_sysmsg.type = GROUP_SYSMSG_SELFOUT;
+            group_sysmsg.type = GROUP_SYSMSG_DISGROUP;
             strcpy(group_sysmsg.msgpay,g_grouplist[gid].group_name);
             pthread_mutex_lock(&g_grouplock[gid]);
             for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
@@ -12244,7 +12293,7 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char rid[TOX_ID_STR_LEN+1] = {0};
     char group_hid[TOX_ID_STR_LEN+1] = {0};
     char startid[TOX_ID_STR_LEN+1] = {0};
-    int i = 0,num = 0,gid = -1,tmp_uid = -1,uid = 0;
+    int i = 0,num = 0,gid = -1,tmp_uid = -1,uid = 0,fid = -1;
     char **dbResult; 
     char *errmsg;
     int nRow, nColumn;
@@ -12360,7 +12409,23 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
-                    cJSON_AddStringToObject(pJsonsub,"Remarks","");
+                    //这里如果群昵称里面没有设置，再检测是不是自己的好友，如果是自己好友并且好友昵称里面设置了，返回好友昵称
+                    fid = get_friendid_bytoxid(uindex,dbResult[offset+2]);
+                    if(fid >= 0)
+                    {
+                        if(strlen(g_imusr_array.usrnode[uindex].friends[fid].user_remarks) > 0)
+                        {
+                            cJSON_AddStringToObject(pJsonsub,"Remarks", g_imusr_array.usrnode[uindex].friends[fid].user_remarks);
+                        }
+                        else
+                        {
+                            cJSON_AddStringToObject(pJsonsub,"Remarks","");
+                        }
+                    }
+                    else
+                    {
+                        cJSON_AddStringToObject(pJsonsub,"Remarks","");
+                    }
                 }
                 pthread_mutex_lock(&g_grouplock[gid]);
                 pgusr = get_guserbyuindex(gid,tmp_uid);
@@ -12416,7 +12481,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char rid[TOX_ID_STR_LEN+1] = {0};
     char group_hid[TOX_ID_STR_LEN+1] = {0};
     int i = 0,num = 0,gid = -1,tmp_msgid = -1,msgtype = 0,tmpmsgtype = 0,tmp_uid = 0;
-    int msg_startid = 0;
+    int msg_startid = 0,new_lastmsgid = 0;
     int msg_initid = 0;
     struct group_fileinfo_struct tmp_finfo;
     struct pnr_account_struct tmpaccount;
@@ -12427,6 +12492,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char sql_cmd_cat[PNR_FILENAME_MAXLEN+1] = {0};
     int offset=0,uindex= 0,usertype = GROUP_USER_NORMAL;
     struct group_user* p_guser= NULL;
+    struct group_user* p_gowner= NULL;
     char* pattend = NULL;
     if(params == NULL)
     {
@@ -12454,16 +12520,16 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = uindex;
         }
-        p_guser = get_guserbyuindex(gid,uindex);
-        if(p_guser == NULL)
+        p_gowner = get_guserbyuindex(gid,uindex);
+        if(p_gowner == NULL)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_pullmsg_deal:bad uid(%s) gid(%s)",userid,group_hid);
             ret_code = PNR_GROUPPULL_RETCODE_ERR;
         }
         else
         {
-            msg_initid = p_guser->init_msgid;
-            usertype = p_guser->type;
+            msg_initid = p_gowner->init_msgid;
+            usertype = p_gowner->type;
         }
     }
     cJSON *ret_root = cJSON_CreateObject();
@@ -12542,6 +12608,10 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 cJSON_AddItemToArray(pJsonArry,pJsonsub);
                 tmp_msgid = atoi(dbResult[offset]);
+                if(i == 0)
+                {
+                    new_lastmsgid = tmp_msgid;
+                }
                 tmpmsgtype = atoi(dbResult[offset+1]);
                 tmp_uid = atoi(dbResult[offset+2]);
                 cJSON_AddNumberToObject(pJsonsub,"MsgId",tmp_msgid);
@@ -12570,21 +12640,25 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         cJSON_AddStringToObject(pJsonsub,"Msg",dbResult[offset+5]);
                     }
                 }
-                //attend项
-                if(dbResult[offset+6] != NULL)
+                //只有未拉取过的消息，才需要判断point位
+                if(p_gowner != NULL && tmp_msgid > p_gowner->last_msgid)
                 {
-                    pattend = dbResult[offset+6];
-                    if((strstr(pattend,"all") != NULL)||(strstr(pattend,"ALL") != NULL))
+                    //attend项
+                    if(dbResult[offset+6] != NULL)
                     {
-                        cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_ALL);
-                    }
-                    else if(strstr(pattend,userid) != NULL)
-                    {
-                        cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_ONLY);
-                    }
-                    else
-                    {
-                        cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_NONE);
+                        pattend = dbResult[offset+6];
+                        if((strstr(pattend,"all") != NULL)||(strstr(pattend,"ALL") != NULL))
+                        {
+                            cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_ALL);
+                        }
+                        else if(pnr_stristr(pattend,userid) != NULL)
+                        {
+                            cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_ONLY);
+                        }
+                        else
+                        {
+                            cJSON_AddNumberToObject(pJsonsub,"Point",PNR_GROUP_MSGPUSH_ATTEND_NONE);
+                        }
                     }
                 }
                 if(tmpmsgtype == PNR_IM_MSGTYPE_IMAGE || tmpmsgtype == PNR_IM_MSGTYPE_AUDIO
@@ -12658,6 +12732,12 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     strcpy(retmsg,ret_buff);
     free(ret_buff);
+    //更新拉取到的lastmsgid
+    if(p_gowner != NULL && new_lastmsgid > p_gowner->last_msgid)
+    {
+        p_gowner->last_msgid = new_lastmsgid;
+        pnr_groupuser_lastmsgid_dbupdate_byid(p_gowner->gindex,p_gowner->userindex,new_lastmsgid);
+    }
     return OK;
 }
 
@@ -13723,29 +13803,42 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
         //根据msgid查找对应数据库记录
         pnr_msglog_dbget_byid(index,msgid,msg);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:get msgid(%d) file(%s) path(%s)",msg->db_id,msg->msg_buff,msg->ext);
-        ptmp = strrchr(msg->ext,'/');
-        if(ptmp == NULL || strstr(msg->ext,filename) == NULL)
+        if(head->api_version >= PNR_API_VERSION_V5)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_rename_deal get filepath(%s) err",msg->ext);
-            ret_code = PNR_FILERENAME_RETCODE_BADFILENAME;
+            //新版本只修改逻辑名
+            if(strcmp(newname,msg->msg_buff) != OK)
+            {
+                pnr_msglog_dbupdate_filename_byid(index,msg->db_id,newname,msg->ext);
+            }
+            ret_code = PNR_FILERENAME_RETCODE_OK;
         }
         else
         {
-            strncpy(newfilepath,msg->ext,(ptmp-msg->ext)+1);
-            strcat(newfilepath,newname);
-            snprintf(newfullpath,PNR_FILEPATH_MAXLEN,"%s%s",DAEMON_PNR_USERDATA_DIR,newfilepath);
-            if(access(newfullpath,F_OK) == OK)
+
+            ptmp = strrchr(msg->ext,'/');
+            if(ptmp == NULL || strstr(msg->ext,filename) == NULL)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_rename_deal get targetfile(%s) exsit",newfullpath);
-                ret_code = PNR_FILERENAME_RETCODE_RENEWFILEEXSIT;
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_rename_deal get filepath(%s) err",msg->ext);
+                ret_code = PNR_FILERENAME_RETCODE_BADFILENAME;
             }
             else
             {
-                snprintf(cmd,CMD_MAXLEN,"mv %s%s %s%s",DAEMON_PNR_USERDATA_DIR,msg->ext,DAEMON_PNR_USERDATA_DIR,newfilepath);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:cmd(%s)",cmd);
-                system(cmd);
-                pnr_msglog_dbupdate_filename_byid(index,msg->db_id,newname,newfilepath);
-                ret_code = PNR_FILERENAME_RETCODE_OK;
+                strncpy(newfilepath,msg->ext,(ptmp-msg->ext)+1);
+                strcat(newfilepath,newname);
+                snprintf(newfullpath,PNR_FILEPATH_MAXLEN,"%s%s",DAEMON_PNR_USERDATA_DIR,newfilepath);
+                if(access(newfullpath,F_OK) == OK)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_rename_deal get targetfile(%s) exsit",newfullpath);
+                    ret_code = PNR_FILERENAME_RETCODE_RENEWFILEEXSIT;
+                }
+                else
+                {
+                    snprintf(cmd,CMD_MAXLEN,"mv %s%s %s%s",DAEMON_PNR_USERDATA_DIR,msg->ext,DAEMON_PNR_USERDATA_DIR,newfilepath);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:cmd(%s)",cmd);
+                    system(cmd);
+                    pnr_msglog_dbupdate_filename_byid(index,msg->db_id,newname,newfilepath);
+                    ret_code = PNR_FILERENAME_RETCODE_OK;
+                }
             }
         }
     }
@@ -13812,6 +13905,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char filename[PNR_FILENAME_MAXLEN+1] = {0};
     char filepath[PNR_FILEPATH_MAXLEN+1] = {0};
     char srcpath[PNR_FILEPATH_MAXLEN+1] = {0};
+    char src_ext[PNR_FILEPATH_MAXLEN+1] = {0};
     char targetpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char dstkey[PNR_AES_CBC_KEYSIZE+1] = {0};
     char* ptmp = NULL;
@@ -13900,6 +13994,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 strcpy(srcpath,msg->ext);
             }
+            strcpy(src_ext,msg->ext);
             ptmp = strchr(srcpath,',');
             if(ptmp)
             {
@@ -14054,7 +14149,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         {
                             pnr_msglog_getid(fromid, &msg->log_id);
                             pnr_msglog_dbupdate(fromid, msg->msgtype, msg->log_id,MSG_STATUS_SENDOK,msg->fromuser_toxid,
-                                msg->touser_toxid, msg->msg_buff, msg->sign, msg->prikey, msg->ext, msg->ext2);
+                                msg->touser_toxid, msg->msg_buff, msg->sign, msg->prikey, src_ext, msg->ext2);
                             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward:user(%d) log_id(%d)",fromid,msg->log_id);
                         }
 #endif
@@ -15891,6 +15986,14 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 }
                 *ret_flag = TRUE;
                 break;
+             case PNR_IM_CMDTYPE_FILERENAME:
+                if (im_file_rename_deal(params, retmsg, retmsg_len, plws_index, &msg_head))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_file_rename_deal failed");
+                    return ERROR;
+                }
+                *ret_flag = TRUE;
+                break;
             case PNR_IM_CMDTYPE_PUSHFILE:
             case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                 if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
@@ -16648,6 +16751,77 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 break;
         }
     }
+    else if(msg_head.api_version == PNR_API_VERSION_V5)
+    {
+        switch(msg_head.im_cmdtype)
+        {
+			 case PNR_IM_CMDTYPE_PULLFILE:
+    			if (im_pullfile_cmd_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_pullfile_cmd_deal failed");
+                    return ERROR;
+                }
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PULLMSG:
+                if(im_pullmsg_cmd_deal_v3(params, g_tox_retbuf, &retlen, &userindex, &msg_head) != OK)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_pullmsg_cmd_deal_v5 failed");
+                    return ERROR;
+                }
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PULLFILELIST:
+                if (im_pull_file_list_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+				{
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pull file list failed");
+                    return ERROR;
+				}
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_DELETEFILE:
+				if (im_delete_file_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+				{
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "delete file failed");
+                    return ERROR;
+				}
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_GROUPMSGPULL:
+                if (im_group_pullmsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_group_pullmsg_deal failed");
+                    return ERROR;
+                }
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_GROUPSENDFILEDONE:
+                if (im_group_sendfile_done_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_group_sendfile_done_deal failed");
+                    return ERROR;
+                }
+                needret = TRUE;
+                break;
+             case PNR_IM_CMDTYPE_FILERENAME:
+                if (im_file_rename_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_file_rename_deal failed");
+                    return ERROR;
+                }
+                needret = TRUE;
+                break;
+            case PNR_IM_CMDTYPE_PUSHFILE:
+            case PNR_IM_CMDTYPE_GROUPMSGPUSH:
+                if(im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0) != OK)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
+                    return ERROR;
+                }
+                break;
+            default:
+                break;
+        }
+    }
     else 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad api_version(%d)", msg_head.api_version);
@@ -16991,7 +17165,8 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 {
                     memset(fullfilename,0,PNR_FILEPATH_MAXLEN);
                     strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
-                    PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,pfile->fileid,gid,pfile->filename);
+                    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fileid(%d->%d)",pfile->fileid,htonl(pfile->fileid));
+                    PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,htonl(pfile->fileid),gid,pfile->filename);
                     strcat(fullfilename,filepath);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",fullfilename);
                 }
@@ -17043,10 +17218,11 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                         }		
                         if(pfile->ver_str == WS_FILELIST_V1)
                         {
-                            PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,pfile->fileid,gid,pfile->filename);
+                            PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,htonl(pfile->fileid),gid,pfile->filename);
                             DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",filepath);
                         }
-    					pfile->fileid = pss->logid;
+                        //这里用magic传递logid
+    					pfile->magic = pss->logid;
                         if(fileinfo_len > 0)
                         {
                             strcat(filepath,fileinfo);
@@ -19136,6 +19312,25 @@ int im_debug_setfunc_deal(char* pcmd)
             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"set g_udpdebug_flag  %d",param);
             g_udpdebug_flag = param;
             break;
+        case PNR_FUNC_SET_MSGDEBUG_FLAG:
+            pbuf = strchr(pcmd,' ');
+            if(pbuf == NULL)
+            {
+                return ERROR;
+            }
+            pbuf++;
+            param = atoi(pbuf);
+            if(param == FALSE)
+            {
+                g_msglist_debugswitch = FALSE;
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"set msglist debug switch = OFF");
+            }
+            else
+            {
+                g_msglist_debugswitch = TRUE;
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"set msglist debug switch = ON");
+            }
+            break;
         default:
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_debug_setfunc_deal:bad cmd(%d)",cmd_type);
             break;
@@ -20249,5 +20444,314 @@ int pnr_router_node_friend_init(void)
         return ERROR;
     }
     return OK;
+}
+
+/**********************************************************************************
+  Function:      pnr_monitor_warning_task
+  Description:   设备监控告警
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+static void *pnr_monitor_warning_task(void *para)
+{
+    struct pnr_monitor_errinfo* pinfo = (struct pnr_monitor_errinfo*)para;
+    char* post_data = NULL;
+    char* rec_buff = NULL;
+    int data_len = 0;
+    cJSON * params = NULL;
+    if(pinfo == NULL)
+    {
+        return NULL;
+    }
+    
+    rec_buff = malloc(BUF_LINE_MAX_LEN+1);
+    if(rec_buff == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rec_buff malloc err");
+        return NULL;
+    }
+    memset(rec_buff,0,BUF_LINE_MAX_LEN);
+    params = cJSON_CreateObject();
+    if(params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
+        free(rec_buff);
+        return NULL;
+    }
+    cJSON_AddItemToObject(params, "Dev", cJSON_CreateNumber(pinfo->dev_num));
+    cJSON_AddItemToObject(params, "Mode", cJSON_CreateNumber(pinfo->mode_num));
+    cJSON_AddItemToObject(params, "Errno", cJSON_CreateNumber(pinfo->err_no));
+    cJSON_AddItemToObject(params, "Rid", cJSON_CreateString(pinfo->tox_id));
+    cJSON_AddItemToObject(params, "Mac", cJSON_CreateString(pinfo->mac));
+    cJSON_AddItemToObject(params, "Warn", cJSON_CreateString(pinfo->err_info));
+    cJSON_AddItemToObject(params, "Info", cJSON_CreateString(pinfo->repair_info));
+    post_data = cJSON_PrintUnformatted_noescape(params);
+    cJSON_Delete(params);
+    data_len = strlen(post_data);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_monitor_warning_task:post_data(%s)",post_data);
+    https_post(PAPUSHMSG_PRODUCT_HTTPS_SERVER,PAPUSHMSG_HTTPSSERVER_PORT,PNR_HTTPSSERVER_DEVRWARN,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
+    free(post_data);
+    params = cJSON_CreateObject();
+    if(params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
+        free(rec_buff);
+        return NULL;
+    }
+    cJSON_AddItemToObject(params, "replay", cJSON_CreateString(rec_buff));
+    post_data = cJSON_PrintUnformatted_noescape(params);
+    cJSON_Delete(params);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_monitor_warning_task:rec(%s)",post_data);
+    free(post_data);
+    free(rec_buff);
+    return NULL;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_netstat_check
+ 功能描述  : 检测网络阻塞
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
+{
+    FILE *fp = NULL;
+    char* ptmp = NULL;
+    int recq_num = 0;
+    char buff[CMD_MAXLEN+1] = {0};
+    char pcmd[CMD_MAXLEN+1] = {0};
+    pthread_t task_id = 0;
+    void *status;
+    int pid = 0;
+    char netstat_process[PNR_USERNAME_MAXLEN+1] = {0};
+    if(pinfo == NULL)
+    {
+        return ERROR;
+    }
+    snprintf(pcmd,CMD_MAXLEN,"netstat -nlp |grep '*' |awk '{print $2,$6,$7}'");
+    if (!(fp = popen(pcmd, "r"))) 
+    {
+        return ERROR;
+    }
+
+    while(NULL != fgets(buff, CMD_MAXLEN, fp)) 
+    {
+        recq_num = atoi(buff);
+        ptmp = buff;
+        if(buff[strlen(buff)-1] == '\n')
+        {
+            buff[strlen(buff)-1] = 0;
+        }
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get buff(%s)",buff);
+        ptmp = strchr(buff,' ');
+        if(ptmp != NULL)
+        {
+            ptmp++;
+            if(strncasecmp(ptmp,"LISTEN",strlen("LISTEN")) == OK)
+            {
+                ptmp += strlen("LISTEN");
+                ptmp++;
+            }
+            strncpy(netstat_process,ptmp,PNR_USERNAME_MAXLEN);
+        }
+        if(recq_num > PNR_NETSTAT_RECQMAXNUM)
+        {
+            //发现拥塞
+            pinfo->err_no = PNR_MONITORINFO_ENUM_NETSTATERR;
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"break");
+            break;
+        }
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"process(%s) recq(%d)",netstat_process,recq_num);
+        memset(buff,0,CMD_MAXLEN);
+        memset(netstat_process,0,PNR_USERNAME_MAXLEN);
+    }
+    pclose(fp);
+    //如果发现拥塞，先上报，再处理
+    if(pinfo->err_no == PNR_MONITORINFO_ENUM_NETSTATERR)
+    {
+        memset(pcmd,0,CMD_MAXLEN);
+        snprintf(pinfo->err_info,PNR_ATTACH_INFO_MAXLEN,"process(%s) netstat recq %d",netstat_process,recq_num);
+        if(strstr(netstat_process,PNR_NETSTAT_ERRPROCESS_RNGD) != NULL)
+        {
+            pid = atoi(netstat_process);
+            if(pid > 0)
+            {
+                snprintf(pcmd,CMD_MAXLEN,"kill -9 %d & > /tmp/null",pid);
+            }
+            snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"kill process %s",netstat_process);
+        }
+        else if(strstr(netstat_process,PNR_NETSTAT_ERRPROCESS_PNRSERVER) != NULL 
+            || strstr(netstat_process,PNR_NETSTAT_ERRPROCESS_FRPC) != NULL)
+        {
+            snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"restart pnr_server");
+            snprintf(pcmd,CMD_MAXLEN,"killall pnr_server frpc > /tmp/null &");
+        }
+        else
+        {
+            snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"just warnning");
+        }
+        //上报
+        if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
+        }
+        pthread_join(task_id,&status);
+        pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
+        if(strlen(pcmd) > 0)
+        {
+            system(pcmd);
+        }
+    }
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_sysresource_check
+ 功能描述  : 检测系统资源
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
+{
+    FILE *fp = NULL;
+    int tmp_used = 0;
+    int cpu_used = 0;
+    char buff[CMD_MAXLEN+1] = {0};
+    char pcmd[CMD_MAXLEN+1] = {0};
+    pthread_t task_id = 0;
+    void *status;
+    if(pinfo == NULL)
+    {
+        return ERROR;
+    }
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+        //检测tmp目录是否满
+        snprintf(pcmd,CMD_MAXLEN,"df -h |grep /tmp |awk '{print $5}'");
+        if (!(fp = popen(pcmd, "r"))) 
+        {
+            return ERROR;
+        }
+        if (fgets(buff,CMD_MAXLEN,fp) <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_sysresource_check cmd =%s ret failed",buff);
+            pclose(fp);
+            return ERROR;
+        }  
+        pclose(fp); 
+        tmp_used = atoi(buff);
+        if(tmp_used > PNR_SYSSOURCE_TMPBUFF_MAXNUM)
+        {
+            pinfo->err_no = PNR_MONITORINFO_ENUM_TMPOVER;
+            snprintf(pinfo->err_info,PNR_ATTACH_INFO_MAXLEN,"tmp buff over %d",tmp_used);
+            snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"kill onecgi");
+            //上报
+            if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
+            }
+            pthread_join(task_id,&status);
+            system("/opt/go/onecgi.sh stop &");
+            system("rm -f /tmp/oneapi.log");
+            pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
+            memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
+            memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);
+        }
+        //检测cpu是否过高
+        memset(pcmd,0,CMD_MAXLEN);
+        snprintf(pcmd,CMD_MAXLEN,"ps aux|grep pnr_server |grep -v grep |awk '{print $3}'");
+        if (!(fp = popen(pcmd, "r"))) 
+        {
+            return ERROR;
+        }
+        if (fgets(buff,CMD_MAXLEN,fp) <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_sysresource_check cmd =%s ret failed",buff);
+            pclose(fp);
+            return ERROR;
+        }  
+        pclose(fp); 
+        cpu_used = atoi(buff);
+        if(cpu_used > PNR_SYSSOURCE_CPUINFO_MAXNUM)
+        {
+            pinfo->err_no = PNR_MONITORINFO_ENUM_CPUOVER;
+            snprintf(pinfo->err_info,PNR_ATTACH_INFO_MAXLEN,"cpu over %d",cpu_used);
+            snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"kill pnr_server");
+            //上报
+            if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
+            }
+            pthread_join(task_id,&status);            
+            pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
+            memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
+            memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);
+            system("killall pnr_server frpc > /tmp/null &");
+        }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_sysresource_check: tmp_used(%d) cpu_used(%d)",tmp_used,cpu_used);
+    }
+    return OK;
+}
+extern char g_dev_hwaddr[MACSTR_MAX_LEN];
+/*****************************************************************************
+ 函 数 名  : self_monitor_thread
+ 功能描述  : 自我监测任务
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+void *self_monitor_thread(void *para)
+{	
+    struct pnr_monitor_errinfo info;
+    memset(&info,0,sizeof(info));
+    while(g_p2pnet_init_flag != TRUE)
+    {
+        sleep(1);
+    }
+    strcpy(info.tox_id,g_daemon_tox.user_toxid);
+    strcpy(info.mac,g_dev_hwaddr);
+    info.dev_num = g_pnrdevtype;
+    info.mode_num = 1;
+	while (TRUE) 
+    {
+        //检测网络端口阻塞
+        pnr_netstat_check(&info);
+        pnr_sysresource_check(&info);
+        sleep(PNR_SELF_MONITOR_CYCLE);
+    }
+	return NULL;  
 }
 

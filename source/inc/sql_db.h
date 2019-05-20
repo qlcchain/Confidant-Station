@@ -125,6 +125,7 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser);
 int pnr_groupuser_dbinsert(int gid,int uid,int uindex,int type,int msgid,char* utoxid,char* name,char* userkey);
 int pnr_groupuser_dbdelete_byuid(int gid,int uid);
 int pnr_groupuser_gremark_dbupdate_byid(int gid,int uindex,char* gname);
+int pnr_groupuser_lastmsgid_dbupdate_byid(int gid,int uindex,int last_msgid);
 int pnr_group_dbinsert(int gid,int uindex,int verify,char* utoxid,char* name,char* group_hid);
 int pnr_group_dbdelete_bygid(int gid);
 int pnr_groupverify_dbupdate_bygid(int gid,int verify);

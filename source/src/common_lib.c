@@ -1923,4 +1923,53 @@ int pnr_check_frp_connstatus(void)
     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"frp connect faile(%s)",recv);
     return FALSE;
 }
+/*****************************************************************************
+ 函 数 名  : pnr_stristr
+ 功能描述  : 不care大小写的字符串查找
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+char* pnr_stristr (const char * str1,const char * str2)
+{
+    char *cp = (char *) str1;
+    char *s1, *s2;
+
+    if ( !*str2 )
+    {
+        return((char *)str1);
+    }
+
+    while (*cp)
+    {
+        s1 = cp;
+        s2 = (char *) str2;
+        while (*s1 && *s2)
+        {
+            char ch1=*s1,ch2=*s2;
+            if (isascii(*s1) && isupper(*s1) ) 
+                ch1 = _tolower(*s1);
+            if (isascii(*s2) && isupper(*s2) ) 
+                ch2 = _tolower(*s2);
+
+            if(ch1-ch2==0) 
+                s1++, s2++;
+            else 
+                break;
+        }
+
+        if (!*s2)
+            return(cp);
+        cp++;
+    }
+    return(NULL);
+}
 

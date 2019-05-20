@@ -288,6 +288,7 @@ void *server_discovery_thread(void *args)
 			} else if (!memcmp(textb64, "MAC", 3)) {
 				type = 2;
 			} else {
+			    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rcv(%s) continue",textb64);
 				continue;
 			}
 			
@@ -334,6 +335,10 @@ void *server_discovery_thread(void *args)
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sendto err!(%s:%d)(%d)", inet_ntoa(source_addr.sin_addr), source_addr.sin_port, errno);
             }
 		}
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "recvfrom err!(%d)(%d)", ret,errno);
+        }        
     }
 
     return NULL;

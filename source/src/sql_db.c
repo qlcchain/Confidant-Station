@@ -5193,6 +5193,42 @@ int pnr_groupuser_gremark_dbupdate_byid(int gid,int uindex,char* gname)
     return OK;
 }
 /***********************************************************************************
+  Function:      pnr_groupuser_lastmsgid_dbupdate_byid
+  Description:  根据id修改对应读取最新的msgid
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_groupuser_lastmsgid_dbupdate_byid(int gid,int uindex,int last_msgid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(gid < 0 || gid > PNR_GROUP_MAXNUM || last_msgid <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupuser_lastmsgid_dbupdate_byid:input err");
+        return ERROR;
+    }
+    //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update groupuser_tbl set lastmsgid=%d where gid=%d and uindex=%d;",last_msgid,gid,uindex);
+    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/***********************************************************************************
   Function:      pnr_groupuser_dbdelete_byuid
   Description:  根据id删除对应群中用户
   Calls:

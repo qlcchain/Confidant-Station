@@ -176,6 +176,7 @@ enum PNR_FUNCENABLE_ENUM
     PNR_FUNCENABLE_NOTICE_NEWMSG = 1,
     PNR_FUNC_SET_LOGDEBUG_LEVER = 2,
     PNR_FUNC_SET_UDP_RECDEBUGFLAG = 3,
+    PNR_FUNC_SET_MSGDEBUG_FLAG = 4,
     PNR_FUNCENABLE_BUTT,
 };
 enum PNR_FILESEND_RETCODE_ENUM
@@ -1162,11 +1163,11 @@ struct im_user_msg_sendfile {
     char ver_str;//文件传输版本号
 	char content[SEG_CONTENT_LEN];
 };
-#define PNR_REAL_FILENAME_GET(filename,uid,srcfrom,fid)\  
+#define PNR_REAL_FILENAME_GET(filename,uid,srcfrom,fid)\
 {\
     snprintf(filename,PNR_FILENAME_MAXLEN,"U%03dS%02dF%u",uid,srcfrom,fid);\
 }
-#define PNR_REAL_FILEPATH_GET(filepath,uid,srcfrom,fid,gid,filename)\  
+#define PNR_REAL_FILEPATH_GET(filepath,uid,srcfrom,fid,gid,filename)\
 {\
     switch(srcfrom)\
     {\
@@ -1223,6 +1224,7 @@ enum {
 #define PAPUSHMSG_HTTPSSERVER_PREURL "/v1/pareg/pushmsg"
 #define PAPUSHMSGS_HTTPSSERVER_PREURL "/v1/pareg/pushmsgs"
 #define PNR_HTTPSSERVER_DEVREGISTER "/v1/pprmap/devreg"
+#define PNR_HTTPSSERVER_DEVRWARN "/v1/pprmap/devwarn"
 enum PUSHMSG_PRI_LEVER
 {
     PUSHMSG_PRI_LEVER_LOW = 1,
@@ -1340,6 +1342,30 @@ struct pnr_rid_node
     char tox_id[TOX_ID_STR_LEN+1];
     char node_name[PNR_USERNAME_MAXLEN+1];
 };
+#define  PNR_NETSTAT_RECQMAXNUM      50000
+#define  PNR_SYSSOURCE_TMPBUFF_MAXNUM      90
+#define  PNR_SYSSOURCE_CPUINFO_MAXNUM      90
+#define PNR_NETSTAT_ERRPROCESS_RNGD        "rngd"
+#define PNR_NETSTAT_ERRPROCESS_PNRSERVER        "pnr_server"
+#define PNR_NETSTAT_ERRPROCESS_FRPC        "frpc"
+enum PNR_MONITORINFO_ERRNUM
+{
+    PNR_MONITORINFO_ENUM_OK = 0,
+    PNR_MONITORINFO_ENUM_NETSTATERR = 1,
+    PNR_MONITORINFO_ENUM_TMPOVER = 2,
+    PNR_MONITORINFO_ENUM_CPUOVER = 3,
+    PNR_MONITORINFO_ENUM_BUTT
+};
+struct pnr_monitor_errinfo
+{
+    int err_no;
+    int dev_num;
+    int mode_num;
+    char tox_id[TOX_ID_STR_LEN+1];
+    char mac[MACSTR_MAX_LEN+1];
+    char err_info[PNR_ATTACH_INFO_MAXLEN+1];
+    char repair_info[PNR_ATTACH_INFO_MAXLEN+1];
+};
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
@@ -1376,4 +1402,5 @@ int pnr_relogin_pushbylws(int index,int type);
 int pnr_relogin_pushbytox(int index,int type);
 static void *pnr_dev_register_task(void *para);
 int pnr_rnode_debugmsg_send(char* pcmd);
+void *self_monitor_thread(void *para);
 #endif
