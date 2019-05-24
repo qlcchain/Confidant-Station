@@ -208,6 +208,7 @@ extern Tox *qlinkNode;
 extern char g_dev_hwaddr_full[MACSTR_MAX_LEN];
 extern char g_dev1_hwaddr_full[MACSTR_MAX_LEN];
 extern int g_debug_level;
+extern pthread_mutex_t g_toxmsg_cache_lock[PNR_IMUSER_MAXNUM+1];
 int CreatedP2PNetwork_new(int user_index);
 void im_send_file_by_tox(Tox* tox, struct lws_cache_msg_struct *msg, int push);
 /**********************************************************************************
@@ -1531,7 +1532,7 @@ int im_msg_if_limited(int type)
 
     return 1;
 }
-
+char g_tox_sendmsg_cache[1500] = {0};
 /*****************************************************************************
  函 数 名  : im_send_msg_deal
  功能描述  : 处理待发送消息
@@ -1660,17 +1661,86 @@ void im_send_msg_deal(int direction)
                             continue;
 						}
 
-                        if (msg->msglen > MAX_CRYPTO_DATA_SIZE) {
-                            DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"retlen(%d) MAX_CRYPTO_DATA_SIZE(%d)",msg->msglen,MAX_CRYPTO_DATA_SIZE);
-                            pnr_msgcache_dbdelete_nolock(msg);
-                        } else {
-                        	ret = tox_friend_get_connection_status(g_tox_linknode[msg->userid], msg->friendnum, NULL);
-                        	if (ret == TOX_CONNECTION_TCP || ret == TOX_CONNECTION_UDP) {
-								tox_friend_send_message(g_tox_linknode[msg->userid], 
+                    	ret = tox_friend_get_connection_status(g_tox_linknode[msg->userid], msg->friendnum, NULL);
+                    	if (ret == TOX_CONNECTION_TCP || ret == TOX_CONNECTION_UDP) 
+                        {
+                            if(msg->msglen > MAX_CRYPTO_DATA_SIZE)
+                            {
+                                cJSON *RspJson = cJSON_Parse(msg->msg);
+                				if (!RspJson) {
+                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse retbuf(%s) err!", msg->msg);
+                                    continue;
+                				}
+
+                                cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "data");
+                				if (!RspJsonParams) {
+                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse data(%s) err!", msg->msg);
+                					cJSON_Delete(RspJson);
+                                    continue;
+                				}
+
+                				char *RspStrParams = RspJsonParams->valuestring;
+                				if (!RspStrParams) 
+                                {
+                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print params(%s) err!", msg->msg);
+                					cJSON_Delete(RspJson);
+                                    continue;
+                				}
+                                struct tox_msg_send *tox_msg = (struct tox_msg_send *)calloc(1, sizeof(*tox_msg));
+                                if(tox_msg == NULL)
+                                {
+                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "alloc tox_msg failed");
+                					cJSON_Delete(RspJson);
+                                    continue;
+                				}
+                                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"$$$get RspStrParams(%s)",RspStrParams);
+                                memset(tox_msg,0,sizeof(struct tox_msg_send));
+                                tox_msg->msg = RspStrParams;
+                			    tox_msg->msgid = msg->msgid;
+                			    tox_msg->friendnum = msg->friendnum;
+                			    tox_msg->msglen = strlen(RspStrParams);
+                                for(;tox_msg->offset < tox_msg->msglen;)
+                                {
+                                    cJSON *JsonFrame = cJSON_Duplicate(RspJson, true);
+                    			    if (!JsonFrame) {
+                    			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
+                    					break;
+                    				}
+                                    //去掉原始的data字段
+                    				cJSON_DeleteItemFromObject(JsonFrame, "data");
+                                    //填充新的字段
+                                    strncpy(g_tox_sendmsg_cache, tox_msg->msg+tox_msg->offset, MAX_SEND_DATA_SIZE);
+                                	cJSON_AddNumberToObject(JsonFrame, "offset", tox_msg->offset);
+                                    tox_msg->offset += MAX_SEND_DATA_SIZE;
+                                    if(tox_msg->offset >= tox_msg->msglen)
+                                    {
+                                        cJSON_AddNumberToObject(JsonFrame, "more", 0);
+                                    }
+                                    else
+                                    {
+                                        cJSON_AddNumberToObject(JsonFrame, "more", 1);
+                                    }
+                    				cJSON_AddStringToObject(JsonFrame, "data", g_tox_sendmsg_cache);
+                    				char *RspStrSend = cJSON_PrintUnformatted_noescape(JsonFrame);
+                    				if (!RspStrSend) {
+                    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print RspJsonSend err!");
+                    					cJSON_Delete(JsonFrame);
+                    					break;
+                    				}
+                    				tox_friend_send_message(g_tox_linknode[msg->userid], msg->friendnum, TOX_MESSAGE_TYPE_NORMAL, 
+                                		(uint8_t *)RspStrSend, strlen(RspStrSend), NULL);
+                    				cJSON_Delete(JsonFrame);
+                    				free(RspStrSend);
+                                }
+                                cJSON_Delete(RspJson);
+                            }
+                            else
+                            {
+                                tox_friend_send_message(g_tox_linknode[msg->userid], 
                                     msg->friendnum, TOX_MESSAGE_TYPE_NORMAL, 
                                     (uint8_t *)msg->msg, msg->msglen, NULL);
-                                msg->resend++;
                             }
+                            msg->resend++;
                         }
                         break;
 
@@ -1714,48 +1784,8 @@ void im_send_msg_deal(int direction)
                     case PNR_MSG_CACHE_TYPE_TOXA:
                     case PNR_MSG_CACHE_TYPE_LWS:
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) ctype(%d) online_type(%d)",msg->userid,msg->ctype,g_imusr_array.usrnode[msg->userid].user_online_type);
-						switch (g_imusr_array.usrnode[msg->userid].user_online_type) {
-						case USER_ONLINE_TYPE_TOX:
-						case USER_ONLINE_TYPE_LWS:
-							if (msg->resend++ > 50) {
-								//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg 30times failed!(user:%d:%s)", 
-								//	msg->userid, msg->msg);
-								//pnr_msgcache_dbdelete_nolock(msg);
-								//continue;
-							}
-							break;
-
-						default:
-                            if(g_noticepost_enable == TRUE)
-                            {
-                                if(msg->notice_flag == FALSE)
-                                {
-                                    switch(msg->type)
-                                    {
-                                        //case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
-                                        //case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
-                                        case PNR_IM_CMDTYPE_PUSHMSG:
-                                        case PNR_IM_CMDTYPE_PUSHFILE:
-                                        case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
-                                        case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                                            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                                            post_newmsg_notice(g_daemon_tox.user_toxid,
-                                                g_imusr_array.usrnode[msg->userid].user_toxid,
-                                                PNR_POSTMSG_PAYLOAD,TRUE);                                    
-                                            break;
-                                        default:
-                                            break;
-                                    }
-                                    msg->notice_flag = TRUE;
-                                }
-                            }
-							if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
-								pnr_msgcache_dbdelete_nolock(msg);
-								continue;
-							}
-						}
-						
-                        if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_TOX) 
+                        if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_TOX 
+                            && g_imusr_array.usrnode[msg->userid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
                         {
                             DEBUG_PRINT(DEBUG_LEVEL_INFO,"push user(%d)(%d:%s)",
                                 g_imusr_array.usrnode[msg->userid].appid,msg->msglen,msg->msg);
@@ -1763,10 +1793,38 @@ void im_send_msg_deal(int direction)
                                 g_imusr_array.usrnode[msg->userid].appid, TOX_MESSAGE_TYPE_NORMAL, 
                                 (uint8_t *)msg->msg, msg->msglen, NULL);
 	                    }
-						else if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_LWS) 
+						else if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_LWS
+                            && g_imusr_array.usrnode[msg->userid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
 	                    {
 	                        insert_lws_msgnode_ring(msg->userid, msg->msg, msg->msglen);
 	                    }
+                        else
+                        {
+                            if(g_noticepost_enable == TRUE && msg->notice_flag == FALSE)
+                            {
+                                switch(msg->type)
+                                {
+                                    //case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
+                                    //case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
+                                    case PNR_IM_CMDTYPE_PUSHMSG:
+                                    case PNR_IM_CMDTYPE_PUSHFILE:
+                                    case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
+                                    case PNR_IM_CMDTYPE_GROUPMSGPUSH:
+                                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
+                                        post_newmsg_notice(g_daemon_tox.user_toxid,
+                                            g_imusr_array.usrnode[msg->userid].user_toxid,
+                                            PNR_POSTMSG_PAYLOAD,TRUE);                                    
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                msg->notice_flag = TRUE;
+                            }
+							if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
+								pnr_msgcache_dbdelete_nolock(msg);
+								continue;
+							}
+                        }
 						break;
 					default:
 						DEBUG_PRINT(DEBUG_LEVEL_ERROR, "wrong cache type(%d)", msg->ctype);
@@ -3758,7 +3816,7 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",msg->touser_toxid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->msg_buff,IM_MSG_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcKey",msg->msg_srckey,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",msg->msg_dstkey,PNR_RSA_KEY_MAXLEN);
     msg->msgtype = PNR_IM_MSGTYPE_TEXT;
@@ -3922,7 +3980,7 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",msg->touser_toxid,TOX_ID_STR_LEN);
 #endif
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->msg_buff,IM_MSG_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",msg->sign,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",msg->nonce,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",msg->prikey,PNR_RSA_KEY_MAXLEN);
@@ -4372,7 +4430,8 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 if(g_imusr_array.usrnode[index].appactive_flag != active)
                 {
                     g_imusr_array.usrnode[index].appactive_flag = active;
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_heartbeat_cmd_deal:user(%d) appstatus change to %d",index,active);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_heartbeat_cmd_deal:user(%d) appstatus change to %s",
+                        index,(active == PNR_APPACTIVE_STATUS_FRONT?"front":"backend"));
                 }
             }
             g_imusr_array.usrnode[index].heartbeat_count = 0;
@@ -4435,8 +4494,8 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
-    struct im_sendmsg_msgstruct msg;
-    struct im_sendmsg_msgstruct tmp_msg;
+    struct im_sendmsg_msgstruct* pmsg = NULL;
+    struct im_sendmsg_msgstruct* ptmp_msg = NULL;
     int msgnum = 0;
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
@@ -4452,13 +4511,24 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
+    pmsg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*pmsg));
+    if (!pmsg) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
+        return ERROR;
+    }
+    ptmp_msg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*ptmp_msg));
+    if (!ptmp_msg) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err2");
+        free(pmsg);
+        return ERROR;
+    }
 
     //解析参数
-    memset(&msg,0,sizeof(msg));
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.fromuser_toxid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg.touser_toxid,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",msg.msgtype,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",msg.log_id,TOX_ID_STR_LEN);
+    memset(pmsg,0,sizeof(struct im_sendmsg_msgstruct));
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",pmsg->fromuser_toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",pmsg->touser_toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",pmsg->msgtype,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",pmsg->log_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgNum",msgnum,TOX_ID_STR_LEN);
 
     //useid 处理
@@ -4467,19 +4537,19 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msgnum(%s)",msgnum);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
-    else if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN || strlen(msg.touser_toxid) != TOX_ID_STR_LEN)
+    else if(strlen(pmsg->fromuser_toxid) != TOX_ID_STR_LEN || strlen(pmsg->touser_toxid) != TOX_ID_STR_LEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",msg.fromuser_toxid,msg.touser_toxid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",pmsg->fromuser_toxid,pmsg->touser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg.fromuser_toxid);
+        index = get_indexbytoxid(pmsg->fromuser_toxid);
         if(index == 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",msg.fromuser_toxid);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",pmsg->fromuser_toxid);
         }
         else
         {
@@ -4505,6 +4575,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
         cJSON_Delete(ret_root);
+        free(pmsg);
+        free(ptmp_msg);
         return ERROR;
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
@@ -4513,8 +4585,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 	cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLMSG));
 #if 1
-    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(msg.fromuser_toxid));
-    cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(msg.touser_toxid));
+    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(pmsg->fromuser_toxid));
+    cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(pmsg->touser_toxid));
 #endif
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
 
@@ -4526,15 +4598,15 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             msgnum = PNR_IMCMD_PULLMSG_MAXNUM;
         }
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
-        if(msg.log_id == 0)
+        if(pmsg->log_id == 0)
         {
             snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,ext,ext2,skey,dkey,id from msg_tbl where "
 				"userindex=%d and ((from_user='%s' and to_user='%s') or "
 				"(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
 				"order by id desc limit %d)temp order by id;",
-                index, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
         else
@@ -4544,20 +4616,20 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 				"userindex=%d and id<%d and ((from_user='%s' and to_user='%s') or "
                 "(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
                 "order by id desc limit %d)temp order by id;",
-                index,msg.log_id, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index,pmsg->log_id, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
 #else
-        if(msg.log_id == 0)
+        if(pmsg->log_id == 0)
         {
             snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,ext,ext2,sign,prikey,id from msg_tbl where "
 				"userindex=%d and ((from_user='%s' and to_user='%s') or "
 				"(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
 				"order by id desc limit %d)temp order by id;",
-                index, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
         else
@@ -4567,8 +4639,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 				"userindex=%d and id<%d and ((from_user='%s' and to_user='%s') or "
                 "(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
                 "order by id desc limit %d)temp order by id;",
-                index,msg.log_id, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index,pmsg->log_id, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
 #endif
@@ -4579,19 +4651,19 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             offset = nColumn; //字段值从offset开始呀
             for( i = 0; i < nRow ; i++ )
             {				
-                memset(&tmp_msg,0,sizeof(tmp_msg));
-                tmp_msg.db_id = atoi(dbResult[offset++]);
-                tmp_msg.log_id = atoi(dbResult[offset++]);
-                tmp_msg.timestamp = atoi(dbResult[offset++]);
-                tmp_msg.msg_status = atoi(dbResult[offset++]);
-                snprintf(tmp_msg.fromuser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.touser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.msg_buff,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
-				tmp_msg.msgtype = atoi(dbResult[offset++]);
-				snprintf(tmp_msg.ext,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
-                tmp_msg.ext2 = atoi(dbResult[offset++]);
-				snprintf(tmp_msg.msg_srckey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
-				snprintf(tmp_msg.msg_dstkey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
+                memset(ptmp_msg,0,sizeof(struct im_sendmsg_msgstruct));
+                ptmp_msg->db_id = atoi(dbResult[offset++]);
+                ptmp_msg->log_id = atoi(dbResult[offset++]);
+                ptmp_msg->timestamp = atoi(dbResult[offset++]);
+                ptmp_msg->msg_status = atoi(dbResult[offset++]);
+                snprintf(ptmp_msg->fromuser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->touser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->msg_buff,IM_MSG_PAYLOAD_MAXLEN,"%s",dbResult[offset++]);
+				ptmp_msg->msgtype = atoi(dbResult[offset++]);
+				snprintf(ptmp_msg->ext,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
+                ptmp_msg->ext2 = atoi(dbResult[offset++]);
+				snprintf(ptmp_msg->msg_srckey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
+				snprintf(ptmp_msg->msg_dstkey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
                 //跳过id值
 				offset ++;
                 pJsonsub = cJSON_CreateObject();
@@ -4599,24 +4671,26 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
                     cJSON_Delete(ret_root);
+                    free(pmsg);
+                    free(ptmp_msg);
                     return ERROR;
                 }
                 cJSON_AddItemToArray(pJsonArry,pJsonsub); 
-                cJSON_AddNumberToObject(pJsonsub,"MsgId",tmp_msg.db_id); 
+                cJSON_AddNumberToObject(pJsonsub,"MsgId",ptmp_msg->db_id); 
                 //cJSON_AddNumberToObject(pJsonsub,"DbId",tmp_msg.db_id); 
-                cJSON_AddNumberToObject(pJsonsub,"MsgType",tmp_msg.msgtype); 
-                cJSON_AddNumberToObject(pJsonsub,"TimeStamp",tmp_msg.timestamp); 
+                cJSON_AddNumberToObject(pJsonsub,"MsgType",ptmp_msg->msgtype); 
+                cJSON_AddNumberToObject(pJsonsub,"TimeStamp",ptmp_msg->timestamp); 
 #if 1
-                if(strcmp(tmp_msg.fromuser_toxid,msg.fromuser_toxid) == OK)
+                if(strcmp(ptmp_msg->fromuser_toxid,pmsg->fromuser_toxid) == OK)
                 {
-                    cJSON_AddNumberToObject(pJsonsub,"Status",tmp_msg.msg_status); 
+                    cJSON_AddNumberToObject(pJsonsub,"Status",ptmp_msg->msg_status); 
                     cJSON_AddNumberToObject(pJsonsub,"Sender",USER_MSG_SENDER_SELF);
-                    cJSON_AddStringToObject(pJsonsub,"UserKey",tmp_msg.msg_srckey);
+                    cJSON_AddStringToObject(pJsonsub,"UserKey",ptmp_msg->msg_srckey);
                 }
                 else
                 {
                     cJSON_AddNumberToObject(pJsonsub,"Sender",USER_MSG_RECIVEVE_SELF);
-                    cJSON_AddStringToObject(pJsonsub,"UserKey",tmp_msg.msg_dstkey);
+                    cJSON_AddStringToObject(pJsonsub,"UserKey",ptmp_msg->msg_dstkey);
                 }
 #else
                 cJSON_AddStringToObject(pJsonsub,"From",tmp_msg.fromuser_toxid);
@@ -4631,19 +4705,19 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
 #endif                
 				/* need to return filepath */
-				switch (tmp_msg.msgtype) 
+				switch (ptmp_msg->msgtype) 
                 {
     				case PNR_IM_MSGTYPE_FILE:
     				case PNR_IM_MSGTYPE_IMAGE:
     				case PNR_IM_MSGTYPE_AUDIO:
     				case PNR_IM_MSGTYPE_MEDIA:
-    					cJSON_AddStringToObject(pJsonsub, "FileName", tmp_msg.msg_buff);
-    					cJSON_AddStringToObject(pJsonsub, "FilePath", tmp_msg.ext);
-                        cJSON_AddNumberToObject(pJsonsub, "FileSize", tmp_msg.ext2);
+    					cJSON_AddStringToObject(pJsonsub, "FileName", ptmp_msg->msg_buff);
+    					cJSON_AddStringToObject(pJsonsub, "FilePath", ptmp_msg->ext);
+                        cJSON_AddNumberToObject(pJsonsub, "FileSize", ptmp_msg->ext2);
     					break;
 
     				default:
-    					cJSON_AddStringToObject(pJsonsub, "Msg", tmp_msg.msg_buff);
+    					cJSON_AddStringToObject(pJsonsub, "Msg", ptmp_msg->msg_buff);
 				}
                 /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_pullmsg_cmd_deal:id(%d) logid(%d)(%s->%s) Msg(%s)",
                     i,tmp_msg.log_id,tmp_msg.fromuser_toxid,tmp_msg.touser_toxid,tmp_msg.msg_buff);*/
@@ -4662,6 +4736,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
+    free(pmsg);
+    free(ptmp_msg);
     *retmsg_len = strlen(ret_buff);
     if(*retmsg_len < VERSION_MAXLEN || *retmsg_len >= IM_JSON_MAXLEN)
     {
@@ -4692,8 +4768,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
-    struct im_sendmsg_msgstruct msg;
-    struct im_sendmsg_msgstruct tmp_msg;
+    struct im_sendmsg_msgstruct* pmsg = NULL;
+    struct im_sendmsg_msgstruct* ptmp_msg = NULL;
     int msgnum = 0;
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
@@ -4715,18 +4791,29 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
+    pmsg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*pmsg));
+    if (!pmsg) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
+        return ERROR;
+    }
+    ptmp_msg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*ptmp_msg));
+    if (!ptmp_msg) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err2");
+        free(pmsg);
+        return ERROR;
+    }
 
     //解析参数
-    memset(&msg,0,sizeof(msg));
+    memset(pmsg,0,sizeof(struct im_sendmsg_msgstruct));
 #if 0//暂时不用
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.from_uid,PNR_USER_HASHID_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg.to_uid,PNR_USER_HASHID_MAXLEN);
 #else
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.fromuser_toxid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg.touser_toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",pmsg->fromuser_toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",pmsg->touser_toxid,TOX_ID_STR_LEN);
 #endif
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",msg.msgtype,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",msg.log_id,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",pmsg->msgtype,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",pmsg->log_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgNum",msgnum,TOX_ID_STR_LEN);
 
     //useid 处理
@@ -4743,19 +4830,19 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
 #endif
-    else if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN || strlen(msg.touser_toxid) != TOX_ID_STR_LEN)
+    else if(strlen(pmsg->fromuser_toxid) != TOX_ID_STR_LEN || strlen(pmsg->touser_toxid) != TOX_ID_STR_LEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",msg.fromuser_toxid,msg.touser_toxid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",pmsg->fromuser_toxid,pmsg->touser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg.fromuser_toxid);
+        index = get_indexbytoxid(pmsg->fromuser_toxid);
         if(index == 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",msg.fromuser_toxid);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",pmsg->fromuser_toxid);
         }
         else
         {
@@ -4772,6 +4859,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_root == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        free(pmsg);
+        free(ptmp_msg);
         return ERROR;
     }
     cJSON *ret_params = cJSON_CreateObject();
@@ -4781,6 +4870,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
         cJSON_Delete(ret_root);
+        free(pmsg);
+        free(ptmp_msg);
         return ERROR;
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
@@ -4792,8 +4883,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(msg.from_uid));
     cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(msg.to_uid));
 #else
-    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(msg.fromuser_toxid));
-    cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(msg.touser_toxid));
+    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(pmsg->fromuser_toxid));
+    cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(pmsg->touser_toxid));
 #endif
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
 
@@ -4804,15 +4895,15 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"msgmun(%d) outof maxnum(%d)",msgnum,PNR_IMCMD_PULLMSG_MAXNUM);
             msgnum = PNR_IMCMD_PULLMSG_MAXNUM;
         }
-        if(msg.log_id == 0)
+        if(pmsg->log_id == 0)
         {
             snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,ext,ext2,sign,nonce,prikey,id from msg_tbl where "
 				"userindex=%d and ((from_user='%s' and to_user='%s') or "
 				"(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
 				"order by id desc limit %d)temp order by id;",
-                index, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
         else
@@ -4822,8 +4913,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 				"userindex=%d and id<%d and ((from_user='%s' and to_user='%s') or "
                 "(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
                 "order by id desc limit %d)temp order by id;",
-                index,msg.log_id, msg.fromuser_toxid, msg.touser_toxid,
-                msg.touser_toxid, msg.fromuser_toxid,
+                index,pmsg->log_id, pmsg->fromuser_toxid, pmsg->touser_toxid,
+                pmsg->touser_toxid, pmsg->fromuser_toxid,
                 PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
         }
 
@@ -4834,20 +4925,20 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
             offset = nColumn; //字段值从offset开始呀
             for( i = 0; i < nRow ; i++ )
             {				
-                memset(&tmp_msg,0,sizeof(tmp_msg));
-                tmp_msg.db_id = atoi(dbResult[offset++]);
-                tmp_msg.log_id = atoi(dbResult[offset++]);
-                tmp_msg.timestamp = atoi(dbResult[offset++]);
-                tmp_msg.msg_status = atoi(dbResult[offset++]);
-                snprintf(tmp_msg.fromuser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.touser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.msg_buff,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
-				tmp_msg.msgtype = atoi(dbResult[offset++]);
-				snprintf(tmp_msg.ext,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
-                tmp_msg.ext2 = atoi(dbResult[offset++]);
-                snprintf(tmp_msg.sign,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.nonce,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
-                snprintf(tmp_msg.prikey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
+                memset(ptmp_msg,0,sizeof(struct im_sendmsg_msgstruct));
+                ptmp_msg->db_id = atoi(dbResult[offset++]);
+                ptmp_msg->log_id = atoi(dbResult[offset++]);
+                ptmp_msg->timestamp = atoi(dbResult[offset++]);
+                ptmp_msg->msg_status = atoi(dbResult[offset++]);
+                snprintf(ptmp_msg->fromuser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->touser_toxid,TOX_ID_STR_LEN+1,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->msg_buff,IM_MSG_PAYLOAD_MAXLEN,"%s",dbResult[offset++]);
+				ptmp_msg->msgtype = atoi(dbResult[offset++]);
+				snprintf(ptmp_msg->ext,IM_MSG_MAXLEN,"%s",dbResult[offset++]);
+                ptmp_msg->ext2 = atoi(dbResult[offset++]);
+                snprintf(ptmp_msg->sign,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->nonce,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
+                snprintf(ptmp_msg->prikey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
                 //跳过id值
 				offset ++;
                 pJsonsub = cJSON_CreateObject();
@@ -4858,13 +4949,13 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                     return ERROR;
                 }
                 cJSON_AddItemToArray(pJsonArry,pJsonsub); 
-                cJSON_AddNumberToObject(pJsonsub,"MsgId",tmp_msg.db_id); 
-                //cJSON_AddNumberToObject(pJsonsub,"DbId",tmp_msg.db_id); 
-                cJSON_AddNumberToObject(pJsonsub,"MsgType",tmp_msg.msgtype); 
-                cJSON_AddNumberToObject(pJsonsub,"TimeStamp",tmp_msg.timestamp); 
-                cJSON_AddNumberToObject(pJsonsub,"Status",tmp_msg.msg_status); 
+                cJSON_AddNumberToObject(pJsonsub,"MsgId",ptmp_msg->db_id); 
+                //cJSON_AddNumberToObject(pJsonsub,"DbId",ptmp_msg->db_id); 
+                cJSON_AddNumberToObject(pJsonsub,"MsgType",ptmp_msg->msgtype); 
+                cJSON_AddNumberToObject(pJsonsub,"TimeStamp",ptmp_msg->timestamp); 
+                cJSON_AddNumberToObject(pJsonsub,"Status",ptmp_msg->msg_status); 
 #if 1
-                if(strcmp(tmp_msg.fromuser_toxid,msg.fromuser_toxid) == OK)
+                if(strcmp(ptmp_msg->fromuser_toxid,pmsg->fromuser_toxid) == OK)
                 {
                     cJSON_AddNumberToObject(pJsonsub,"Sender",USER_MSG_SENDER_SELF);
                 }
@@ -4872,9 +4963,9 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     cJSON_AddNumberToObject(pJsonsub,"Sender",USER_MSG_RECIVEVE_SELF);
                 }
-                cJSON_AddStringToObject(pJsonsub,"Nonce",tmp_msg.nonce);
-                cJSON_AddStringToObject(pJsonsub,"Sign",tmp_msg.sign);
-                cJSON_AddStringToObject(pJsonsub,"PriKey",tmp_msg.prikey);
+                cJSON_AddStringToObject(pJsonsub,"Nonce",ptmp_msg->nonce);
+                cJSON_AddStringToObject(pJsonsub,"Sign",ptmp_msg->sign);
+                cJSON_AddStringToObject(pJsonsub,"PriKey",ptmp_msg->prikey);
 #else
                 cJSON_AddStringToObject(pJsonsub,"From",tmp_msg.fromuser_toxid);
                 cJSON_AddStringToObject(pJsonsub,"To",tmp_msg.touser_toxid);
@@ -4888,17 +4979,17 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                 }
 #endif                
 				/* need to return filepath */
-				switch (tmp_msg.msgtype) 
+				switch (ptmp_msg->msgtype) 
                 {
     				case PNR_IM_MSGTYPE_FILE:
     				case PNR_IM_MSGTYPE_IMAGE:
     				case PNR_IM_MSGTYPE_AUDIO:
     				case PNR_IM_MSGTYPE_MEDIA:
-    					cJSON_AddStringToObject(pJsonsub, "FileName", tmp_msg.msg_buff);
-                        ptmp = strchr(tmp_msg.ext,PNR_FILEINFO_ATTACH_FLAG);
+    					cJSON_AddStringToObject(pJsonsub, "FileName", ptmp_msg->msg_buff);
+                        ptmp = strchr(ptmp_msg->ext,PNR_FILEINFO_ATTACH_FLAG);
                         if(ptmp != NULL)
                         {
-                            fileinfo_len = tmp_msg.ext+strlen(tmp_msg.ext)-ptmp;
+                            fileinfo_len = ptmp_msg->ext+strlen(ptmp_msg->ext)-ptmp;
                             fileinfo_len = ((fileinfo_len >= PNR_FILEINFO_MAXLEN)?PNR_FILEINFO_MAXLEN:fileinfo_len);
                             memset(fileinfo,0,PNR_FILEINFO_MAXLEN);
                             strncpy(fileinfo,ptmp,fileinfo_len);
@@ -4906,24 +4997,24 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                             ptmp[0] = 0;
                             cJSON_AddStringToObject(pJsonsub, "FileInfo", fileinfo+1);
                         }
-                        if(strncmp(tmp_msg.ext,WS_SERVER_INDEX_FILEPATH,strlen(WS_SERVER_INDEX_FILEPATH)) == OK)
+                        if(strncmp(ptmp_msg->ext,WS_SERVER_INDEX_FILEPATH,strlen(WS_SERVER_INDEX_FILEPATH)) == OK)
                         {
-                            cJSON_AddStringToObject(pJsonsub, "FilePath", tmp_msg.ext+strlen(WS_SERVER_INDEX_FILEPATH));
-                            md5_hash_file(tmp_msg.ext, filemd5);
+                            cJSON_AddStringToObject(pJsonsub, "FilePath", ptmp_msg->ext+strlen(WS_SERVER_INDEX_FILEPATH));
+                            md5_hash_file(ptmp_msg->ext, filemd5);
                             cJSON_AddStringToObject(pJsonsub, "FileMD5", filemd5);
                         }
                         else
                         {
-                            snprintf(filepath,PNR_FILEPATH_MAXLEN,"%s/%s",WS_SERVER_INDEX_FILEPATH,tmp_msg.ext);
+                            snprintf(filepath,PNR_FILEPATH_MAXLEN,"%s/%s",WS_SERVER_INDEX_FILEPATH,ptmp_msg->ext);
                             md5_hash_file(filepath, filemd5);
                             cJSON_AddStringToObject(pJsonsub, "FileMD5", filemd5);
-                            cJSON_AddStringToObject(pJsonsub, "FilePath", tmp_msg.ext);
+                            cJSON_AddStringToObject(pJsonsub, "FilePath", ptmp_msg->ext);
                         }
-                        cJSON_AddNumberToObject(pJsonsub, "FileSize", tmp_msg.ext2);
+                        cJSON_AddNumberToObject(pJsonsub, "FileSize", ptmp_msg->ext2);
     					break;
 
     				default:
-    					cJSON_AddStringToObject(pJsonsub, "Msg", tmp_msg.msg_buff);
+    					cJSON_AddStringToObject(pJsonsub, "Msg", ptmp_msg->msg_buff);
 				}
                 /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_pullmsg_cmd_deal:id(%d) logid(%d)(%s->%s) Msg(%s)",
                     i,tmp_msg.log_id,tmp_msg.fromuser_toxid,tmp_msg.touser_toxid,tmp_msg.msg_buff);*/
@@ -4942,6 +5033,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
+    free(pmsg);
+    free(ptmp_msg);
     *retmsg_len = strlen(ret_buff);
     if(*retmsg_len < VERSION_MAXLEN || *retmsg_len >= IM_JSON_MAXLEN)
     {
@@ -6783,6 +6876,7 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	pthread_mutex_unlock(&g_formating_lock);
 	
 	system(cmd);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr format cmd(%s)",cmd);
 	g_format_reboot_time = time(NULL) + 5;
 	
 OUT:
@@ -6953,11 +7047,13 @@ int im_replaymsg_deal(cJSON *params, int cmd, struct imcmd_msghead_struct *head,
         case PNR_IM_CMDTYPE_PUSHFILE_TOX:
         case PNR_IM_CMDTYPE_GROUPMSGPUSH:
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Retcode",ret,0);
+#if 0//现在不在这里作消息推送
             if(g_imusr_array.usrnode[index].appactive_flag == PNR_APPACTIVE_STATUS_BACKEND)
             {
                 post_newmsg_notice(g_daemon_tox.user_toxid,toid,PNR_POSTMSG_PAYLOAD,TRUE); 
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d:%s)  post_newmsg_notice###",index,toid);
             }
+#endif
             break;  
 
         case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
@@ -8559,11 +8655,19 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal:g_p2pnet_init_flag not ready");
         ret_code = PNR_ROUTERLOGIN_RETCODE_BUSY;
     }
-    else if((g_pnrdevtype ==PNR_DEV_TYPE_ONESPACE && (strncasecmp(mac_string,g_dev_hwaddr_full,MACSTR_MAX_LEN) != OK) && (strncasecmp(mac_string,g_dev1_hwaddr_full,MACSTR_MAX_LEN) != OK))
-        || (g_pnrdevtype !=PNR_DEV_TYPE_ONESPACE && (strncasecmp(mac_string,g_dev_hwaddr_full,MACSTR_MAX_LEN) != OK)))
+    else if((g_pnrdevtype ==PNR_DEV_TYPE_ONESPACE && (strncasecmp(mac_string,g_dev_hwaddr_full,MACSTR_MAX_LEN-1) != OK) && (strncasecmp(mac_string,g_dev1_hwaddr_full,MACSTR_MAX_LEN-1) != OK))
+        || (g_pnrdevtype !=PNR_DEV_TYPE_ONESPACE && (strncasecmp(mac_string,g_dev_hwaddr_full,MACSTR_MAX_LEN-1) != OK)))
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal bad mac:input(%s) but real(%s)",
-            mac_string,g_dev_hwaddr_full);
+        if(g_pnrdevtype ==PNR_DEV_TYPE_ONESPACE)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal onespace bad mac:input(%s) but real(%s,%s)",
+                mac_string,g_dev_hwaddr_full,g_dev1_hwaddr_full);
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal bad mac:input(%s) but real(%s)",
+                mac_string,g_dev_hwaddr_full);
+        }
         ret_code = PNR_ROUTERLOGIN_RETCODE_BADMAC;
     }
     else if(strcmp(loginkey,g_devadmin_loginkey) != OK)
@@ -13303,7 +13407,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if(head->api_version >= PNR_API_VERSION_V5)
             {
                 filenum = atoi(fileid);
-                PNR_REAL_FILEPATH_GET(filepath,uindex,PNR_FILE_SRCFROM_GROUPSEND,filenum,gid,NULL);
+                PNR_REAL_FILEPATH_GET(filepath,uindex,PNR_FILE_SRCFROM_GROUPSEND,filenum,gid,(char*)NULL);
                 strcpy(fullfillpath,WS_SERVER_INDEX_FILEPATH);
                 strcat(fullfillpath,filepath);
             }
@@ -17401,34 +17505,38 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     char fullfile[UPLOAD_FILENAME_MAXLEN*2] = {0};
     struct imcmd_msghead_struct msg_head;
     struct im_friend_msgstruct friend;
-    struct im_sendmsg_msgstruct sendmsg;
-	struct im_sendfile_struct sendfile;
+    struct im_sendfile_struct sendfile;
     struct im_userdev_mapping_struct devinfo;
+    struct im_sendmsg_msgstruct* psendmsg = NULL;
 
     if(pmsg == NULL)
     {
         return ERROR;
     }
-    
+
+    psendmsg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(struct im_sendmsg_msgstruct));
+    if (!psendmsg) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
+        return ERROR;
+    }
     root = cJSON_Parse(pmsg);
     if(root == NULL) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get root failed");
         return ERROR;
     }
-    
     params = cJSON_GetObjectItem(root, "params");
     if((params == NULL))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get params failed");
         goto OUT;
     }
-	
     memset(&msg_head, 0, sizeof(msg_head));
     memset(&friend, 0, sizeof(friend));
-    memset(&sendmsg, 0, sizeof(sendmsg));
     memset(&sendfile, 0, sizeof(sendfile));
     memset(&devinfo, 0, sizeof(devinfo));
+    memset(psendmsg, 0, sizeof(struct im_sendmsg_msgstruct));
     msg_head.no_parse_msgid = 1;
     if (im_msghead_parses(root,params,&msg_head) != OK) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_msghead_parses failed");
@@ -17476,10 +17584,10 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
         case PNR_IM_CMDTYPE_PUSHMSG:
             if(msg_head.api_version == PNR_API_VERSION_V1)
             {
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",sendmsg.fromuser_toxid,TOX_ID_STR_LEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",sendmsg.touser_toxid,TOX_ID_STR_LEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcKey",sendmsg.msg_srckey,PNR_RSA_KEY_MAXLEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",sendmsg.msg_dstkey,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",psendmsg->fromuser_toxid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",psendmsg->touser_toxid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcKey",psendmsg->msg_srckey,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",psendmsg->msg_dstkey,PNR_RSA_KEY_MAXLEN);
             }
             else if(msg_head.api_version == PNR_API_VERSION_V3)
             {
@@ -17489,28 +17597,28 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 pnr_gettoxid_byhashid(sendmsg.from_uid,sendmsg.fromuser_toxid);
                 pnr_gettoxid_byhashid(sendmsg.to_uid,sendmsg.touser_toxid);
 #else
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",sendmsg.fromuser_toxid,TOX_ID_STR_LEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",sendmsg.touser_toxid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",psendmsg->fromuser_toxid,TOX_ID_STR_LEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",psendmsg->touser_toxid,TOX_ID_STR_LEN);
 #endif
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",sendmsg.sign,PNR_RSA_KEY_MAXLEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",sendmsg.nonce,PNR_RSA_KEY_MAXLEN);
-                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",sendmsg.prikey,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",psendmsg->sign,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",psendmsg->nonce,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",psendmsg->prikey,PNR_RSA_KEY_MAXLEN);
             }
-            CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",sendmsg.log_id,TOX_ID_STR_LEN);
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",sendmsg.msg_buff,IM_MSG_MAXLEN);
-            index = get_indexbytoxid(sendmsg.touser_toxid);
+            CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",psendmsg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
+            index = get_indexbytoxid(psendmsg->touser_toxid);
             if(index)
             {
                 pnr_msglog_getid(index, &msgid);
                 if(msg_head.api_version == PNR_API_VERSION_V1)
                 {
-                    pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,sendmsg.log_id,MSG_STATUS_SENDOK,sendmsg.fromuser_toxid,
-                        sendmsg.touser_toxid,sendmsg.msg_buff,sendmsg.msg_srckey,sendmsg.msg_dstkey,NULL,0);
+                    pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
+                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,0);
                 }
                 else if(msg_head.api_version == PNR_API_VERSION_V3)
                 {
-                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,sendmsg.log_id,MSG_STATUS_SENDOK,sendmsg.fromuser_toxid,
-                        sendmsg.touser_toxid,sendmsg.msg_buff,sendmsg.sign,sendmsg.nonce,sendmsg.prikey,NULL,0);
+                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
+                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
 #if 0//暂时不用hashid
                     int f_id = 0;
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"PushMsg:src hasdid(%s->%s)",sendmsg.from_uid,sendmsg.to_uid);
@@ -17529,17 +17637,17 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             break;
 
         case PNR_IM_CMDTYPE_READMSGPUSH:
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",sendmsg.fromuser_toxid,TOX_ID_STR_LEN);
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",sendmsg.touser_toxid,TOX_ID_STR_LEN);
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ReadMsgs",sendmsg.msg_buff,IM_MSG_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",psendmsg->fromuser_toxid,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",psendmsg->touser_toxid,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ReadMsgs",psendmsg->msg_buff,IM_MSG_MAXLEN);
             int tmp_msgid = 0;
             char* msgid_buff_end = NULL;
             char* tmp_msgid_head = NULL;
-            index = get_indexbytoxid(sendmsg.touser_toxid);
+            index = get_indexbytoxid(psendmsg->touser_toxid);
             if(index)
             {
-                msgid_buff_end = sendmsg.msg_buff + strlen(sendmsg.msg_buff);
-                tmp_msgid_head = sendmsg.msg_buff;
+                msgid_buff_end = psendmsg->msg_buff + strlen(psendmsg->msg_buff);
+                tmp_msgid_head = psendmsg->msg_buff;
                 while(tmp_msgid_head != NULL)
                 {
                     tmp_msgid = atoi(tmp_msgid_head);
@@ -17570,14 +17678,14 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             im_update_friend_nickname(friend.fromuser_toxid,friend.touser_toxid,friend.nickname);
             break;           
         case PNR_IM_CMDTYPE_DELMSGPUSH:
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",sendmsg.fromuser_toxid,TOX_ID_STR_LEN);
-            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",sendmsg.touser_toxid,TOX_ID_STR_LEN);
-            CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",sendmsg.log_id,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",psendmsg->fromuser_toxid,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",psendmsg->touser_toxid,TOX_ID_STR_LEN);
+            CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
             //这里要修改推送到app的msgid
-            index = get_indexbytoxid(sendmsg.touser_toxid);
+            index = get_indexbytoxid(psendmsg->touser_toxid);
             if(index)
             {
-                pnr_msglog_dbget_dbid_bylogid(index,sendmsg.log_id,sendmsg.fromuser_toxid,sendmsg.touser_toxid,&msgid);
+                pnr_msglog_dbget_dbid_bylogid(index,psendmsg->log_id,psendmsg->fromuser_toxid,psendmsg->touser_toxid,&msgid);
                 cJSON_ReplaceItemInObject(params,"MsgId",cJSON_CreateNumber(msgid));
                 //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###renew msgid(%d)",msgid);
             }
@@ -17652,29 +17760,29 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     case PNR_IM_CMDTYPE_PUSHMSG:
         if(msg_head.api_version == PNR_API_VERSION_V1)
         {
-            pnr_msgcache_dbinsert(msgid, sendmsg.fromuser_toxid, sendmsg.touser_toxid, 
-                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, sendmsg.log_id, 
-                PNR_MSG_CACHE_TYPE_TOXA, 0, sendmsg.msg_srckey,sendmsg.msg_dstkey);
+            pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
+                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
+                PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
         }
         else if(msg_head.api_version == PNR_API_VERSION_V3)
         {
-            pnr_msgcache_dbinsert_v3(msgid, sendmsg.fromuser_toxid, sendmsg.touser_toxid, 
-                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, sendmsg.log_id, 
-                PNR_MSG_CACHE_TYPE_TOXA, 0, sendmsg.sign,sendmsg.nonce,sendmsg.prikey);
+            pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
+                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
+                PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
         }
         free(pmsg);
         break;
     case PNR_IM_CMDTYPE_DELMSGPUSH:
     case PNR_IM_CMDTYPE_READMSGPUSH:
 		if (msg_head.im_cmdtype == PNR_IM_CMDTYPE_DELMSGPUSH) {
-			int userindex = get_indexbytoxid(sendmsg.touser_toxid);
-			pnr_msgcache_dbdelete_by_logid(userindex, &sendmsg);
-            pnr_msglog_dbdelete(userindex, 0, sendmsg.log_id, sendmsg.fromuser_toxid, sendmsg.touser_toxid);
+			int userindex = get_indexbytoxid(psendmsg->touser_toxid);
+			pnr_msgcache_dbdelete_by_logid(userindex, psendmsg);
+            pnr_msglog_dbdelete(userindex, 0, psendmsg->log_id, psendmsg->fromuser_toxid, psendmsg->touser_toxid);
         }
 		
-        pnr_msgcache_dbinsert(msgid, sendmsg.fromuser_toxid, sendmsg.touser_toxid, 
-            msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, sendmsg.log_id, 
-            PNR_MSG_CACHE_TYPE_TOXA, 0, sendmsg.msg_srckey,sendmsg.msg_dstkey);
+        pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
+            msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
+            PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
         free(pmsg);
         break;
 
@@ -17706,6 +17814,10 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     }
 
 OUT:
+    if(psendmsg)
+    {
+        free(psendmsg);
+    }
 	cJSON_Delete(root);
     return OK;
 }
@@ -17796,7 +17908,7 @@ int im_server_init(void)
         pthread_mutex_init(&(g_user_friendlock[i]),NULL);
         pthread_mutex_init(&(g_user_msgidlock[i]),NULL);
         pthread_mutex_init(&(g_user_toxdatalock[i]),NULL);
-
+        pthread_mutex_init(&(g_toxmsg_cache_lock[i]),NULL);
 		//用户信息初始化,现在不用instance表了，直接在account表初始化的时候就赋值了
         //pnr_usr_instance_get(i);
         if(g_imusr_array.usrnode[i].user_toxid[0] != 0)
@@ -18901,7 +19013,22 @@ char g_post_userstring[PNR_POST_USERSTR_MAXLEN+1] = {0};
 pthread_mutex_t g_postlock = PTHREAD_MUTEX_INITIALIZER;
 int g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
 int g_udpdebug_flag = FALSE;
-static int pnr_post_attach_touser(char* uid)
+/**********************************************************************************
+  Function:      pnr_post_attach_touser
+  Description:   post_newmsg用户添加
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+int pnr_post_attach_touser(char* uid)
 {
     if(uid == NULL || strlen(uid)!= TOX_ID_STR_LEN)
     {
@@ -19996,7 +20123,7 @@ int pnr_devinfo_get(struct pnrdev_register_info* pinfo)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/ 
-static void *pnr_dev_register_task(void *para)
+void *pnr_dev_register_task(void *para)
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
@@ -20059,6 +20186,7 @@ static void *pnr_dev_register_task(void *para)
     cJSON_AddItemToObject(params, "SshPort", cJSON_CreateNumber(netinfo.ssh_port));
     cJSON_AddItemToObject(params, "FrpPort", cJSON_CreateNumber(netinfo.frp_port));
     cJSON_AddItemToObject(params, "PubIp", cJSON_CreateString(netinfo.pub_ipstr));
+    cJSON_AddItemToObject(params, "NodeName", cJSON_CreateString(g_dev_nickname));
     cJSON_AddItemToObject(params, "Info", cJSON_CreateString(netinfo.attach));
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);

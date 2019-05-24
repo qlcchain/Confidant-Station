@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "common_lib.h"
 
 #define SET_ERROR_PARAMETER(param, x) do { if (param) { *param = x; } } while (0)
 
@@ -67,7 +68,19 @@ void tox_options_set_savedata_data(struct Tox_Options *options, const uint8_t *d
     options->savedata_data = data;
     options->savedata_length = length;
 }
-
+extern struct pnr_ini_config_struct g_pn_iniconfig;
+void tox_options_byiniconfig(struct Tox_Options *options)
+{
+    if (options) {
+        struct Tox_Options default_options = { 0 };
+        *options = default_options;
+        tox_options_set_ipv6_enabled(options, true);
+        tox_options_set_udp_enabled(options, (bool)g_pn_iniconfig.tox_udp_enable);
+        tox_options_set_proxy_type(options, TOX_PROXY_TYPE_NONE);
+        tox_options_set_hole_punching_enabled(options, true);
+        tox_options_set_local_discovery_enabled(options, (bool)g_pn_iniconfig.tox_local_discovery_enable);
+    }
+}
 void tox_options_default(struct Tox_Options *options)
 {
     if (options) {
@@ -80,13 +93,21 @@ void tox_options_default(struct Tox_Options *options)
         tox_options_set_local_discovery_enabled(options, true);
     }
 }
-
 struct Tox_Options *tox_options_new(TOX_ERR_OPTIONS_NEW *error)
 {
     struct Tox_Options *options = (struct Tox_Options *)malloc(sizeof(struct Tox_Options));
 
     if (options) {
-        tox_options_default(options);
+        if(g_pn_iniconfig.ini_config_init == TRUE)
+        {
+            tox_options_byiniconfig(options);
+        }
+        else
+        {
+            tox_options_default(options);
+        }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"tox_options_new:set udp_enable(%d) local_discovery(%d)",
+            options->udp_enabled,options->local_discovery_enabled);
         SET_ERROR_PARAMETER(error, TOX_ERR_OPTIONS_NEW_OK);
         return options;
     }

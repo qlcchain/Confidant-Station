@@ -55,6 +55,7 @@
 #include "pn_imserver.h"
 #include "version.h"
 #include "tox_seg_msg.h"
+#include "pn_ini.h"
 
 static struct option long_opts[] = {
     {"help", no_argument, 0, 'h'},
@@ -67,6 +68,7 @@ static struct option long_opts[] = {
 
 const char *opts_str = "4bdeou:t:s:h:v:p:P:T:";
 struct arg_opts_struct g_arg_opts;
+struct pnr_ini_config_struct g_pn_iniconfig;
 char g_post_ret_buf[POST_RET_MAX_LEN] = {0};
 extern sqlite3 *g_db_handle;
 extern sqlite3 *g_friendsdb_handle;
@@ -119,6 +121,69 @@ void print_version(void)
         PNR_SERVER_LOWVERSION,
         PNR_SERVER_BUILD_TIME,
 	PNR_SERVER_BUILD_HASH);
+}
+/**********************************************************************************
+  Function:      pnini_handler
+  Description:   读取ini配置文件回调接口
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+static int pnini_handler(void* user, const char* section, const char* name,
+                   const char* value)
+{
+    struct pnr_ini_config_struct* pconfig = (struct pnr_ini_config_struct*)user;
+    if(pconfig == NULL)
+    {
+        return ERROR;
+    }
+    memset(pconfig,0,sizeof(struct pnr_ini_config_struct));
+    #define INI_MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
+    if (INI_MATCH("tox_config", "udp_enable")) {
+        pconfig->tox_udp_enable = atoi(value);
+        pconfig->ini_config_init = TRUE;
+    }
+    else if (INI_MATCH("tox_config", "local_discovery")) {
+        pconfig->tox_local_discovery_enable = atoi(value);
+        pconfig->ini_config_init = TRUE;
+    } 
+    if(pconfig->ini_config_init)
+    {
+        return OK;
+    }
+    return ERROR;
+}
+/**********************************************************************************
+  Function:      pnr_config_ini_read
+  Description:   读取ini配置文件，可能不存在
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+void pnr_config_ini_read(void)
+{
+    if (ini_parse(DAEMON_CONFIG_INI, pnini_handler, &g_pn_iniconfig) < 0) {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"Can't load iniconfig(%s)",DAEMON_CONFIG_INI);
+        return;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get iniconfig:udp_enable(%d),local_discovery(%d)",
+        g_pn_iniconfig.tox_udp_enable,g_pn_iniconfig.tox_local_discovery_enable);
 }
 
 /**********************************************************************************
@@ -795,6 +860,7 @@ int32 main(int argc,char *argv[])
 	}
 
     //读取配置信息
+    pnr_config_ini_read();
     /*建立消息队列*/
     
     /*启动主tox进程，建立P2P网络*/

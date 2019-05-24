@@ -258,9 +258,84 @@ int map_msg(char* type)
 	}
 }
 
+struct tox_msg_cache g_toxmsg_caches[PNR_IMUSER_MAXNUM+1][PERUSER_TOXMSG_CACHENUM];
+pthread_mutex_t g_toxmsg_cache_lock[PNR_IMUSER_MAXNUM+1];
+int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int msgid = 0,offset = 0,more_flag = -1;
+    int cache_id = -1,found_flag = FALSE;
+    char u_toxid[TOX_ID_STR_LEN+1] = {0};
+    char buf_cache[1500] = {0};
+    int i = 0,uid = -1;
+    if(pJson == NULL)
+    {
+        return ERROR;
+    }
+    CJSON_GET_VARINT_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"MsgId",msgid,0);
+    CJSON_GET_VARINT_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"more",more_flag,0);
+    CJSON_GET_VARINT_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"offset",offset,0);
+    CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"data",buf_cache,1500);
+    CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"user",u_toxid,TOX_ID_STR_LEN);
+    uid = get_indexbytoxid(u_toxid);
+    if(uid  <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad uid(%d:%s)",uid,u_toxid);
+        return ERROR;
+    }
+
+    if(offset < 0 || (offset+1500) > IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad offset(%d)",offset);
+        return ERROR;
+    }
+    //先做data数据缓存
+    pthread_mutex_lock(&g_toxmsg_cache_lock[uid]);
+    for(i=0;i<PERUSER_TOXMSG_CACHENUM;i++)
+    {
+        if(cache_id < 0 && g_toxmsg_caches[uid][i].used_flag == 0)
+        {
+            cache_id = i;
+        }
+        if(g_toxmsg_caches[uid][i].f_num == f_num && g_toxmsg_caches[uid][i].msgid == msgid)
+        {
+            found_flag = TRUE;
+            memcpy(g_toxmsg_caches[uid][i].msg_buff+offset,buf_cache,strlen(buf_cache));
+            g_toxmsg_caches[uid][i].reclen += strlen(buf_cache);
+            cache_id = i;
+            break;
+        }
+    }
+    if(found_flag == FALSE && cache_id >= 0)
+    {
+        found_flag = TRUE;
+        memcpy(g_toxmsg_caches[uid][cache_id].msg_buff+offset,buf_cache,strlen(buf_cache)); 
+        g_toxmsg_caches[uid][cache_id].used_flag = TOX_CACHE_STATUS_USED;
+        g_toxmsg_caches[uid][cache_id].f_num = f_num;
+        g_toxmsg_caches[uid][cache_id].msgid = msgid;
+        g_toxmsg_caches[uid][cache_id].reclen += strlen(buf_cache);
+    }
+    pthread_mutex_unlock(&g_toxmsg_cache_lock[uid]);
+    if(found_flag == FALSE)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"cache not found");
+        return ERROR;
+    }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"firend_toxmsg_segcache:uid(%d) f_num(%d) offset(%d) get_cache(%s)",uid,f_num,offset,buf_cache);
+    if(more_flag == 0)
+    {
+        *cacheover_flag = cache_id; 
+        *p_uid = uid;
+    }
+    return OK;
+}
 int friend_Message_process(Tox *m, int friendnum, char *message)
 {
 	char type[32] = {0};
+    cJSON *pSub = NULL;
+    int cache_id = -1;
+    int uid = -1;
 
 	if (!message)
 		return -1;
@@ -269,26 +344,69 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
 	if (!pJson)																						  
 		return -2;
 
-	cJSON *pSub = cJSON_GetObjectItem(pJson, "type");
-	if (!pSub)
-		return -3;
-
-	strcpy(type, pSub->valuestring);
-
-    switch (map_msg(type)) {
-    case TYPE_immsgForward:
-		processImMsgForward(m, pJson, friendnum);
-        break;
-    case TYPE_immsgForwardRes:
-        processImMsgForwardRes(m, pJson, friendnum);
-        break;
-	case TYPE_UNKNOW:
-		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "UNKNOW Message(%s)", type);
-		break;
-	default:
-		break;
+    pSub = cJSON_GetObjectItem(pJson, "more");
+    if(pSub)
+    {
+        //如果有more字段标明是分片数据
+        firend_toxmsg_segcache(friendnum,pJson,&cache_id,&uid);
+        if(cache_id < 0)
+        {
+            cJSON_Delete(pJson);
+            return 0;
+        }
+        else
+        {
+            if(cache_id < 0 || cache_id >= PERUSER_TOXMSG_CACHENUM
+                || uid < 0 || uid >= PNR_IMUSER_MAXNUM)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad cache_id(%d) uid(%d)",cache_id,uid);
+                cJSON_Delete(pJson);
+                return ERROR;
+            }
+            cJSON *JsonFrame = cJSON_Duplicate(pJson, true);
+            if (!JsonFrame) {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
+                return ERROR;
+        	}
+            //去掉原始的data字段
+        	cJSON_DeleteItemFromObject(JsonFrame, "data");
+            //填充新的字段
+        	cJSON_AddStringToObject(JsonFrame, "data", g_toxmsg_caches[uid][cache_id].msg_buff);
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get data(%s)",g_toxmsg_caches[uid][cache_id].msg_buff);
+            cJSON_Delete(pJson);
+            pJson = JsonFrame;
+            char *RspStrcache = cJSON_PrintUnformatted_noescape(pJson);
+        	if(RspStrcache)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"get toxmsg(%s)",RspStrcache);
+                free(RspStrcache);
+            }   
+            pthread_mutex_lock(&g_toxmsg_cache_lock[uid]);
+            memset(&g_toxmsg_caches[uid][cache_id],0,sizeof(struct tox_msg_cache));
+            pthread_mutex_unlock(&g_toxmsg_cache_lock[uid]);
+        }
     }
-	
+	pSub = cJSON_GetObjectItem(pJson, "type");
+	if (!pSub)
+    {  
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json get type failed");
+		return -3;
+    }
+	strcpy(type, pSub->valuestring);
+    switch (map_msg(type)) 
+    {
+        case TYPE_immsgForward:
+    		processImMsgForward(m, pJson, friendnum);
+            break;
+        case TYPE_immsgForwardRes:
+            processImMsgForwardRes(m, pJson, friendnum);
+            break;
+    	case TYPE_UNKNOW:
+    		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "UNKNOW Message(%s)", type);
+    		break;
+    	default:
+    		break;
+    }
 	cJSON_Delete(pJson);
 	return 0;
 }
@@ -1856,6 +1974,8 @@ int insert_tox_msgnode(int userid, char *from, char *to,
     int toxfriend_id = 0;//tox链表里的
     char *ptox_msg = NULL;
     int ret = 0;
+    char* pmsg_base64 = NULL;
+    int msg_len = 0,tar_msglen = 0;
 
     if (userid <=0 || userid > PNR_IMUSER_MAXNUM
         ||from == NULL || to == NULL || pmsg == NULL) {
@@ -1869,25 +1989,33 @@ int insert_tox_msgnode(int userid, char *from, char *to,
         pnr_msgcache_dbdelete(msgid, 0);
         return -1;
     }
-
 	cJSON *ret_root = cJSON_CreateObject();
     if (!ret_root) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"insert_tox_msgnode err");
         pnr_msgcache_dbdelete(msgid, 0);
         return -1;
     }
-    
     cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
     cJSON_AddItemToObject(ret_root, "user", cJSON_CreateString(to));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msgid));
-    cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
+    msg_len = strlen(pmsg);
+    tar_msglen = 2*msg_len;
+    pmsg_base64 = malloc(tar_msglen);
+    if(pmsg_base64 == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"insert_tox_msgnode malloc err");
+        pnr_msgcache_dbdelete(msgid, 0);
+    }
+    memset(pmsg_base64,0,2*msg_len);
+    pnr_base64_encode(pmsg,msg_len,pmsg_base64,&tar_msglen);
+    //cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
+    cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg_base64));
     //这里消息内容不能做转义，要不然对端收到会出错
     ptox_msg = cJSON_PrintUnformatted_noescape(ret_root);
-
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)", msgid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)(%s)", msgid,ptox_msg);
     pnr_msgcache_dbinsert(msgid, from, to, type, 
         ptox_msg, strlen(ptox_msg), NULL, NULL, logid, PNR_MSG_CACHE_TYPE_TOX, 0, skey, dkey);
-        
+    free(pmsg_base64);
     free(ptox_msg);
     cJSON_Delete(ret_root);
     return ret;
@@ -1947,6 +2075,8 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
     int toxfriend_id = 0;//tox链表里的
     char *ptox_msg = NULL;
     int ret = 0;
+    char* pmsg_base64 = NULL;
+    int msg_len = 0,tar_msglen = 0;
 
     if (userid <=0 || userid > PNR_IMUSER_MAXNUM
         ||from == NULL || to == NULL || pmsg == NULL) {
@@ -1971,14 +2101,24 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
     cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
     cJSON_AddItemToObject(ret_root, "user", cJSON_CreateString(to));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msgid));
-    cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
+    msg_len = strlen(pmsg);
+    tar_msglen = 2*msg_len;
+    pmsg_base64 = malloc(tar_msglen);
+    if(pmsg_base64 == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"insert_tox_msgnode malloc err");
+        pnr_msgcache_dbdelete(msgid, 0);
+    }
+    memset(pmsg_base64,0,2*msg_len);
+    pnr_base64_encode(pmsg,msg_len,pmsg_base64,&tar_msglen);
+    //cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
+    cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg_base64));
     //这里消息内容不能做转义，要不然对端收到会出错
     ptox_msg = cJSON_PrintUnformatted_noescape(ret_root);
-
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)", msgid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)(%s)", msgid,ptox_msg);
     pnr_msgcache_dbinsert_v3(msgid, from, to, type, 
         ptox_msg, strlen(ptox_msg), NULL, NULL, logid, PNR_MSG_CACHE_TYPE_TOX, 0, sign, nonce, prikey);
-        
+    free(pmsg_base64);
     free(ptox_msg);
     cJSON_Delete(ret_root);
     return ret;
@@ -2066,9 +2206,11 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
 {
     cJSON* data_info = NULL;
     cJSON* user_info = NULL;
+    char* pmsg_decode = NULL;
     char* pmsg = NULL;
     char* pusr = NULL;
     int index = 0;
+    int msg_len = 0,tar_msglen = 0;;
     
 	if (NULL == pJson)
 	{
@@ -2102,10 +2244,18 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
 		return -2;
 	}
 	pmsg =  data_info->valuestring;
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"#####get msg(%s)",pmsg);
-
-    imtox_pushmsg_predeal(index,pusr,pmsg,strlen(pmsg));
-    
+    msg_len = strlen(pmsg);
+    tar_msglen = 2*msg_len;
+    pmsg_decode = malloc(tar_msglen);
+    if(pmsg_decode == NULL)
+    {
+        return -3;
+    }
+    memset(pmsg_decode,0,tar_msglen);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"#####get srcmsg(%d:%s)",msg_len,pmsg);
+    pnr_base64_decode(pmsg,msg_len,pmsg_decode,&tar_msglen);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"#####get msg(%s)",pmsg_decode);
+    imtox_pushmsg_predeal(index,pusr,pmsg_decode,strlen(pmsg_decode));
 	return 0;
 }
 int tox_datafile_check(int user_index,char* datafile,int* newdata_flag)

@@ -539,13 +539,13 @@ static void DHT_bootstrap(Tox *m)
         tox_bootstrap(m, addr, node->port, (uint8_t *) node->key, &err);
 
         if (err != TOX_ERR_BOOTSTRAP_OK) {
-            fprintf(stderr, "Failed to bootstrap %s:%d\n", addr, node->port);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Failed to bootstrap %s:%d", addr, node->port);
         }
 
         tox_add_tcp_relay(m, addr, node->port, (uint8_t *) node->key, &err);
 
         if (err != TOX_ERR_BOOTSTRAP_OK) {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Failed to add TCP relay %s:%d\n", addr, node->port);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Failed to add TCP relay %s:%d", addr, node->port);
         }
     }
 

@@ -43,7 +43,7 @@ typedef  long long int64;
 #define ENCRYPTION_TYPE_MAXLEN 64
 #define ENCRYPTION_KEY_MAXLEN 256
 #define IM_MSG_MAXLEN    2048
-#define IM_MSG_PAYLOAD_MAXLEN    1024
+#define IM_MSG_PAYLOAD_MAXLEN    50000//1024
 #define IM_JSON_MAXLEN    65535
 #define ID_TYPE_STRING_MAXLEN 4
 #define ID_CODE_STRING_MAXLEN 128
@@ -502,6 +502,12 @@ struct pnrdev_register_resp
     char rid[TOX_ID_STR_LEN+1];
     char eth0_mac[MACSTR_MAX_LEN+1];
 };
+struct pnr_ini_config_struct{
+    int ini_config_init;
+    int tox_udp_enable;
+    int tox_local_discovery_enable;
+};
+
 //function declaration
 int get_cmd_ret(char* pcmd);
 //unsigned int ip_aton(const char* ip);

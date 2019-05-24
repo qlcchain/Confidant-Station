@@ -1717,7 +1717,15 @@ int dev_hwaddr_init(void)
             get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
         }
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"dev_hwaddr_init(%s)(%s)",g_dev_hwaddr,g_dev_hwaddr_full);
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"dev_hwaddr_init onespace dev0(%s,%s)dev1(%s,%s)",
+            g_dev_hwaddr,g_dev_hwaddr_full,g_dev1_hwaddr,g_dev1_hwaddr_full);
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"dev_hwaddr_init(%s)(%s)",g_dev_hwaddr,g_dev_hwaddr_full);
+    }
     return OK;
 }
 

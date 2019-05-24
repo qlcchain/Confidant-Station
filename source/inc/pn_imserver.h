@@ -593,7 +593,7 @@ struct im_friend_msgstruct
 #define PNR_GROUP_MANAGER_MAXNUM 5
 #define PNR_GROUP_USERKEY_MAXLEN 128
 #define PNR_GROUP_EXTINFO_MAXLEN 1024
-#define PNR_GROUP_USERMSG_MAXLEN 1024
+#define PNR_GROUP_USERMSG_MAXLEN 50000//1024
 #define PNR_GROUP_EXTINFO_MAXNUM 10
 
 //群用户结构
@@ -760,7 +760,7 @@ struct im_sendmsg_msgstruct
     char to_uid[PNR_USER_HASHID_MAXLEN+1];
     char fromuser_toxid[TOX_ID_STR_LEN+1];
     char touser_toxid[TOX_ID_STR_LEN+1];
-    char msg_buff[IM_MSG_MAXLEN+1];
+    char msg_buff[IM_MSG_PAYLOAD_MAXLEN+1];
 	char ext[IM_MSG_MAXLEN+1];
     char msg_srckey[PNR_RSA_KEY_MAXLEN+1];
     char msg_dstkey[PNR_RSA_KEY_MAXLEN+1];
@@ -1366,6 +1366,21 @@ struct pnr_monitor_errinfo
     char err_info[PNR_ATTACH_INFO_MAXLEN+1];
     char repair_info[PNR_ATTACH_INFO_MAXLEN+1];
 };
+#define PERUSER_TOXMSG_CACHENUM  30
+enum TOX_CACHE_STATUS_ENUM
+{
+    TOX_CACHE_STATUS_NONE = 0,
+    TOX_CACHE_STATUS_USED = 1,
+    TOX_CACHE_STATUS_OVER = 2,
+};
+struct tox_msg_cache
+{
+    int used_flag;
+    int f_num;
+    int msgid;
+    int reclen;
+    char msg_buff[IM_JSON_MAXLEN+1];
+};
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
@@ -1395,12 +1410,12 @@ int im_group_fileinfo_analyze(char* fileinfo,struct group_fileinfo_struct* pfinf
 int post_devinfo_upload_once(void* param);
 void post_devinfo_upload_task(void *para);
 void post_newmsgs_loop_task(void *para);
-static int pnr_post_attach_touser(char* uid);
+int pnr_post_attach_touser(char* uid);
 int pnr_router_node_friend_init(void);
 int get_rnodefidbytoxid(char* p_toxid);
 int pnr_relogin_pushbylws(int index,int type);
 int pnr_relogin_pushbytox(int index,int type);
-static void *pnr_dev_register_task(void *para);
+void *pnr_dev_register_task(void *para);
 int pnr_rnode_debugmsg_send(char* pcmd);
 void *self_monitor_thread(void *para);
 #endif

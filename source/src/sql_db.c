@@ -1688,11 +1688,28 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
     char *p_newskey = "";
     char *p_newdkey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
-    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL)
+    {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbinsert:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    }
+    if (pext) 
+    {
         ext = pext;
     }
     if(skey != NULL)
@@ -1727,26 +1744,41 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
 
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
+    snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
         "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey) "
         "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s');",
         recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
 #else
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-        "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
-        recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);    
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    }
+
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
     g_imusr_array.usrnode[recode_userindex].msglog_dbid++;
     pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
     return OK;
 }
 
@@ -1773,11 +1805,29 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
     char *p_newskey = "";
     char *p_newdkey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
-    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+    
+    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
+    {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbinsert_specifyid:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    }
+    if (pext) 
+    {
         ext = pext;
     }
     if(skey != NULL)
@@ -1811,25 +1861,39 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
+    snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
         "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey) "
         "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s');",
         recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
 #else
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
-        recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);  
+    }
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
         return ERROR;
     }
     pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
     return OK;
 }
 
@@ -1856,11 +1920,28 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
     char *ext = "";
     char *p_newskey = "";
     char *p_newdkey = "";
-    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
+    {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbupdate:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    }
+    if (pext) 
+    {
         ext = pext;
     }
     if(skey != NULL)
@@ -1882,25 +1963,38 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
 #else
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
+    snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
         "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey) "
         "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s');",
         recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
 #else
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
-        recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
+    }
 #endif
 #endif    
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
     }
-    
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
     return OK;
 }
 /***********************************************************************************
@@ -1927,11 +2021,29 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
     char *p_nonce = "";
     char *p_prikey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
-    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+    
+    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL)
+    {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbinsert_v3:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    }
+    if (pext)
+    {
         ext = pext;
     }
     if(sign != NULL)
@@ -1968,19 +2080,38 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
 	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-    "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-    "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
-        recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }
         return ERROR;
     }
     g_imusr_array.usrnode[recode_userindex].msglog_dbid++;
     pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
     return OK;
 }
 /***********************************************************************************
@@ -2006,13 +2137,29 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
     char *p_sign = "";
     char *p_nonce = "";
     char *p_prikey = "";
-    
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+    
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbinsert_specifyid_v3:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    } 
+    if (pext) 
+    {
         ext = pext;
     }
     if(sign != NULL)
@@ -2037,7 +2184,7 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
 		int ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
 		if (ret == SQLITE_OK) {
 			if (nRow > 0) {
-				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", from_toxid, to_toxid);
+				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", from_toxid, log_id);
 				sqlite3_free_table(dbResult);
 				return OK;
 			}
@@ -2049,18 +2196,36 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
 	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
-        recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }
         return ERROR;
     }
     pthread_mutex_unlock(&(g_user_msgidlock[recode_userindex]));
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
     return OK;
 }
 /***********************************************************************************
@@ -2087,11 +2252,29 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
     char *p_sign = "";
     char *p_nonce = "";
     char *p_prikey = "";
-    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
+
+    if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
+    {
         return ERROR;
     }
-
-    if (pext) {
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msglog_dbinsert_specifyid_v3:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
+    } 
+    if (pext) 
+    {
         ext = pext;
     }
     if(p_sign != NULL)
@@ -2106,19 +2289,35 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
     {
         p_prikey = prikey;
     }
-
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey,sign,nonce,prikey);
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "insert into msg_tbl "
-        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
-        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
-        recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",sql_cmd);
-    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], sql_cmd, 0, 0, &errMsg)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey) "
+            "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+            recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+    }
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",p_sql);
+    if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }  
         return ERROR;
     }
-    
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }  
     return OK;
 }
 /***********************************************************************************
@@ -2291,7 +2490,7 @@ int32 pnr_msglog_dbget_callbak(void* obj, int n_columns, char** column_values,ch
     }
 	if(column_values[6] != NULL)
 	{
-        snprintf(pmsg->msg_buff,IM_MSG_MAXLEN+1,"%s",column_values[6]);
+        snprintf(pmsg->msg_buff,IM_MSG_PAYLOAD_MAXLEN+1,"%s",column_values[6]);
     }
 	if(column_values[7] != NULL)
 	{
@@ -2565,17 +2764,38 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     char *p_newskey = "";
     char *p_newdkey = "";
     int msg_totallen = 0;
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
 
     if(len <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:len(%d) err",len);
         return ERROR;
     }
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql;
+    }
+
     //id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey
     if (filepath) {
         ret = stat(filepath, &fstat);
         if (ret < 0) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get file stat err(%s-%d)", filepath, errno);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         } else {
             filesize = fstat.st_size;
@@ -2591,6 +2811,10 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
         userid = get_indexbytoxid(fromid);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", fromid);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         }
 
@@ -2599,20 +2823,35 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
         userid = get_indexbytoxid(toid);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", toid);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         }
 
 		snprintf(fpath, sizeof(fpath), "/user%d/r/%s", userid, fname);
     }
+    if(filepath)
+    {
+        memset(fpath,0,PNR_FILEPATH_MAXLEN);
+        if(strncmp(filepath,WS_SERVER_INDEX_FILEPATH,strlen(WS_SERVER_INDEX_FILEPATH)) == OK)
+        {
+            strcpy(fpath,filepath+strlen(WS_SERVER_INDEX_FILEPATH));
+        }
+        else
+        {
+            strcpy(fpath,filepath);
+        }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_msgcache_dbinsert: src(%s) fpath(%s)",filepath,fpath);
+    }
 
     if (skey) {
         p_newskey = skey;
     }
-    
     if (dkey) {
         p_newdkey = dkey;
     }
-
 	if (logid) {
 		snprintf(sql, MSGSQL_CMD_LEN, "select id from msg_tbl where fromid='%s' and logid=%d;",
 			fromid, logid);
@@ -2624,12 +2863,20 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 			if (nRow > 0) {
 				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", fromid, logid);
 				sqlite3_free_table(dbResult);
-				return OK;
+                if(sql_malloc_flag == TRUE)
+                {
+                    free(p_sql);
+                }  
+                return OK;
 			}
 		} else {
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", sql);
 			sqlite3_free(err);
-			return ERROR;
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
+            return ERROR;
 		}
 	}
     
@@ -2642,31 +2889,51 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 #else
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey);
-    snprintf(sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+    snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
     "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey)"
     "values (%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','%s');",
         msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
         filesize,logid, ftype, p_newskey, p_newdkey);
 #else
     //table msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey);
-    snprintf(sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
-    "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
-    "values (%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','','%s');",
-        msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
-        filesize,logid, ftype, p_newskey, p_newdkey);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
+            "values (%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','','%s');",
+            msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
+            filesize,logid, ftype, p_newskey, p_newdkey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
+            "values (%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','','%s');",
+            msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
+            filesize,logid, ftype, p_newskey, p_newdkey);
+    }
+    
 #endif
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", sql);
-    if (sqlite3_exec(g_msgcachedb_handle[userid], sql, 0, 0, &err)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", p_sql);
+    if (sqlite3_exec(g_msgcachedb_handle[userid], p_sql, 0, 0, &err))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", p_sql, err);
         sqlite3_free(err);
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }
         return ERROR;
     }
-	
     msg_totallen = sizeof(struct lws_cache_msg_struct) + len + 1;
 	msg = (struct lws_cache_msg_struct *)malloc(msg_totallen);
 	if (!msg) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "malloc err!");
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }
 		return ERROR;
 	}
     memset(msg, 0, msg_totallen);
@@ -2710,7 +2977,11 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 OUT:
     pthread_mutex_unlock(&lws_cache_msglock[userid]);
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,len);    
-	return OK;
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }
+    return OK;
 }
 /*****************************************************************************
  函 数 名  : pnr_msgcache_dbinsert_v3
@@ -2745,22 +3016,42 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
     struct lws_cache_msg_struct *msg = NULL;
 	struct lws_cache_msg_struct *tmsg = NULL;
     struct lws_cache_msg_struct *n = NULL;
-    char fpath[255] = {0};
+    char fpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char *fname = "";
     char *p_sign = "";
     char *p_nonce = "";
     char *p_prikey = "";
     int msg_totallen = 0;
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
     if(len <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:len(%d) err",len);
         return ERROR;
+    }
+    if(pmsg != NULL && strlen(pmsg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msgcache_dbinsert:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql;
     }
     //id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey
     if (filepath) {
         ret = stat(filepath, &fstat);
         if (ret < 0) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get file stat err(%s-%d)", filepath, errno);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         } else {
             filesize = fstat.st_size;
@@ -2776,6 +3067,10 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
         userid = get_indexbytoxid(fromid);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", fromid);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         }
 
@@ -2784,12 +3079,28 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
         userid = get_indexbytoxid(toid);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", toid);
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
             return ERROR;
         }
 
 		snprintf(fpath, sizeof(fpath), "/user%d/r/%s", userid, fname);
     }
-
+    if(filepath)
+    {
+        memset(fpath,0,PNR_FILEPATH_MAXLEN);
+        if(strncmp(filepath,WS_SERVER_INDEX_FILEPATH,strlen(WS_SERVER_INDEX_FILEPATH)) == OK)
+        {
+            strcpy(fpath,filepath+strlen(WS_SERVER_INDEX_FILEPATH));
+        }
+        else
+        {
+            strcpy(fpath,filepath);
+        }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_msgcache_dbinsert_v3:renew fpath(%s)",fpath);
+    }
     if (sign) {
         p_sign = sign;
     }
@@ -2805,7 +3116,6 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 	if (logid) {
 		snprintf(sql, MSGSQL_CMD_LEN, "select id from msg_tbl where fromid='%s' and logid=%d;",
 			fromid, logid);
-
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
 		ret = sqlite3_get_table(g_msgcachedb_handle[userid], sql, &dbResult, &nRow, &nColumn, &err);
@@ -2813,12 +3123,20 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 			if (nRow > 0) {
 				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", fromid, logid);
 				sqlite3_free_table(dbResult);
-				return OK;
+                if(sql_malloc_flag == TRUE)
+                {
+                    free(p_sql);
+                }  
+                return OK;
 			}
 		} else {
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", sql);
 			sqlite3_free(err);
-			return ERROR;
+            if(sql_malloc_flag == TRUE)
+            {
+                free(p_sql);
+            }  
+            return ERROR;
 		}
 	}
     
@@ -2830,16 +3148,32 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 		logid, ftype, p_newskey, p_newdkey, msgid);
 #else
     //table msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey);
-    snprintf(sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
-    "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
-    "values(%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','%s','%s');",
-        msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
-        filesize,logid, ftype, p_sign, p_nonce, p_prikey);
+    if(sql_malloc_flag == TRUE)
+    {
+        snprintf(p_sql, MSGSQL_ALLOC_MAXLEN, "insert into msg_tbl "
+            "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
+            "values(%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','%s','%s');",
+            msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
+            filesize,logid, ftype, p_sign, p_nonce, p_prikey);
+    }
+    else
+    {
+        snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
+            "(id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,sign,nonce,prikey)"
+            "values(%d,'%s','%s',%d,%d,'%s',%d,'%s','%s',%d,%d,%d,'%s','%s','%s');",
+            msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
+            filesize,logid, ftype, p_sign, p_nonce, p_prikey);
+    }
+    
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", sql);
-    if (sqlite3_exec(g_msgcachedb_handle[userid], sql, 0, 0, &err)) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", p_sql);
+    if (sqlite3_exec(g_msgcachedb_handle[userid], p_sql, 0, 0, &err)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", p_sql, err);
         sqlite3_free(err);
+        if(sql_malloc_flag == TRUE)
+        {
+            free(p_sql);
+        }  
         return ERROR;
     }
 	
@@ -2890,8 +3224,11 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 
 OUT:
     pthread_mutex_unlock(&lws_cache_msglock[userid]);
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }  
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,len);    
-	
 	return OK;
 }
 /*****************************************************************************
@@ -5291,15 +5628,31 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
 {
 	int8* errMsg = NULL;
     int count = 0;
-	char sql_cmd[SQL_CMD_LEN] = {0};
+	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     char* p_attend = "";
     char* p_ext = "";
     char* p_ext2 = "";
     char* p_filekey = "";
+    char* p_sql = NULL;
+    int sql_malloc_flag = FALSE;
     if(sender  == NULL || msg == NULL  || gid < 0 || uindex < 0 )
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbinsert:input err");
         return ERROR;
+    }
+    if(msg != NULL && strlen(msg) > SQL_CMD_LEN)
+    {
+        p_sql = malloc(MSGSQL_ALLOC_MAXLEN);
+        if(p_sql == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_groupmsg_dbinsert:malloc failed");
+            return ERROR;
+        }
+        sql_malloc_flag = TRUE;
+    }
+    else
+    {
+        p_sql = sql_cmd;
     }
     if(attend != NULL)
     {
@@ -5318,7 +5671,7 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
         p_filekey = filekey;
     }
     //这里要检查一下，避免重复插入
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)   
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from groupmsg_tbl where gid=%d and msgid=%d;",gid,msgid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
     {
@@ -5332,15 +5685,27 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
         return OK;
     }      
     //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
-             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbinsert:sql(%s)",sql_cmd);
-    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    if(sql_malloc_flag == TRUE)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+    	snprintf(p_sql,MSGSQL_ALLOC_MAXLEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
+             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey);
+    }
+    else
+    {
+    	snprintf(p_sql,MSGSQL_CMD_LEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
+             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey);
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbinsert:sql(%s)",p_sql);
+    if(sqlite3_exec(g_groupdb_handle,p_sql,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
     }
+    if(sql_malloc_flag == TRUE)
+    {
+        free(p_sql);
+    }   
     return OK;
 }
 /***********************************************************************************

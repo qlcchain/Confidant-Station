@@ -32,6 +32,14 @@ struct tox_msg_send {
     char frame[256];
 };
 
+struct tox_textmsg_info
+{
+    int msgid;
+    int friendnum;
+    int msglen;
+    int offset;
+    char* pmsg;
+};
 extern struct list_head g_tox_msg_send_list;
 extern pthread_rwlock_t g_tox_msg_send_lock;
 
