@@ -17503,6 +17503,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     char filepath[UPLOAD_FILENAME_MAXLEN] = {0};
     char fileinfo[PNR_FILEINFO_MAXLEN+1] = {0};
     char fullfile[UPLOAD_FILENAME_MAXLEN*2] = {0};
+    char* p_realfilename = NULL;
     struct imcmd_msghead_struct msg_head;
     struct im_friend_msgstruct friend;
     struct im_sendfile_struct sendfile;
@@ -17704,13 +17705,23 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcKey",sendfile.srckey,PNR_RSA_KEY_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",sendfile.dstkey,PNR_RSA_KEY_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileInfo",fileinfo,PNR_FILEINFO_MAXLEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,UPLOAD_FILENAME_MAXLEN);
             //这里要修改推送到app的msgid
             index = get_indexbytoxid(sendfile.touser_toxid);
             if(index)
             {
                 char fullfilename[512] = {0};
+                p_realfilename = strrchr(filepath,'/');
+                if(p_realfilename)
+                {
+                    p_realfilename++;
+                }
+                else
+                {
+                    p_realfilename = sendfile.filename;
+                }
     			snprintf(fullfilename, sizeof(fullfilename), "%sr/%s", 
-				    g_imusr_array.usrnode[index].userdata_pathurl, sendfile.filename);
+				    g_imusr_array.usrnode[index].userdata_pathurl,p_realfilename);
                 if(strlen(fileinfo) > 0)
                 {
                     strcat(fullfilename,",");
@@ -17739,78 +17750,87 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     	cJSON_Delete(dup);
     }
 
-    switch (msg_head.im_cmdtype) {
-    case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
-    case PNR_IM_CMDTYPE_ONLINESTATUSPUSH:
-        pnr_msgcache_dbinsert(msgid, "", puser, msg_head.im_cmdtype, pmsg, 
-            strlen(pmsg), NULL, NULL, 0, PNR_MSG_CACHE_TYPE_TOXA, 0, "","");
-        free(pmsg);
-        break;
+    switch (msg_head.im_cmdtype) 
+    {
+        case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
+        case PNR_IM_CMDTYPE_ONLINESTATUSPUSH:
+            pnr_msgcache_dbinsert(msgid, "", puser, msg_head.im_cmdtype, pmsg, 
+                strlen(pmsg), NULL, NULL, 0, PNR_MSG_CACHE_TYPE_TOXA, 0, "","");
+            free(pmsg);
+            break;
 
-	case PNR_IM_CMDTYPE_DELFRIENDPUSH:
-		break;
-		
-    case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
-    case PNR_IM_CMDTYPE_USERINFOPUSH:
-        pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid, 
-            msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, 0, 
-            PNR_MSG_CACHE_TYPE_TOXA, 0, "","");
-        free(pmsg);
-        break;
-    case PNR_IM_CMDTYPE_PUSHMSG:
-        if(msg_head.api_version == PNR_API_VERSION_V1)
-        {
+    	case PNR_IM_CMDTYPE_DELFRIENDPUSH:
+    		break;
+    		
+        case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
+        case PNR_IM_CMDTYPE_USERINFOPUSH:
+            pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid, 
+                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, 0, 
+                PNR_MSG_CACHE_TYPE_TOXA, 0, "","");
+            free(pmsg);
+            break;
+        case PNR_IM_CMDTYPE_PUSHMSG:
+            if(msg_head.api_version == PNR_API_VERSION_V1)
+            {
+                pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
+                    msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
+                    PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
+            }
+            else if(msg_head.api_version == PNR_API_VERSION_V3)
+            {
+                pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
+                    msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
+                    PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
+            }
+            free(pmsg);
+            break;
+        case PNR_IM_CMDTYPE_DELMSGPUSH:
+        case PNR_IM_CMDTYPE_READMSGPUSH:
+    		if (msg_head.im_cmdtype == PNR_IM_CMDTYPE_DELMSGPUSH) {
+    			int userindex = get_indexbytoxid(psendmsg->touser_toxid);
+    			pnr_msgcache_dbdelete_by_logid(userindex, psendmsg);
+                pnr_msglog_dbdelete(userindex, 0, psendmsg->log_id, psendmsg->fromuser_toxid, psendmsg->touser_toxid);
+            }
+    		
             pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                 msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
                 PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
-        }
-        else if(msg_head.api_version == PNR_API_VERSION_V3)
-        {
-            pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
-                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
-                PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
-        }
-        free(pmsg);
-        break;
-    case PNR_IM_CMDTYPE_DELMSGPUSH:
-    case PNR_IM_CMDTYPE_READMSGPUSH:
-		if (msg_head.im_cmdtype == PNR_IM_CMDTYPE_DELMSGPUSH) {
-			int userindex = get_indexbytoxid(psendmsg->touser_toxid);
-			pnr_msgcache_dbdelete_by_logid(userindex, psendmsg);
-            pnr_msglog_dbdelete(userindex, 0, psendmsg->log_id, psendmsg->fromuser_toxid, psendmsg->touser_toxid);
-        }
-		
-        pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
-            msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
-            PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
-        free(pmsg);
-        break;
-
-    case PNR_IM_CMDTYPE_PUSHFILE:
-        snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, sendfile.filename);
-        snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
-            g_imusr_array.usrnode[id].userdata_pathurl, sendfile.filename);
-                
-        dup = cJSON_Duplicate(root, 1);
-        params = cJSON_GetObjectItem(dup, "params");
-        if (!params) {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get params err");
-            cJSON_Delete(dup);
+            free(pmsg);
             break;
-        }
 
-        cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
-        cJSON_AddItemToObject(params, "FilePath", cJSON_CreateString(filepath));
-        
-        pmsg = cJSON_PrintUnformatted(dup);
-        cJSON_Delete(dup);
-        
-        pnr_msgcache_dbinsert(msgid, sendfile.fromuser_toxid, sendfile.touser_toxid,
-            msg_head.im_cmdtype, pmsg, strlen(pmsg), sendfile.filename, fullfile,
-            sendfile.log_id, PNR_MSG_CACHE_TYPE_TOXA, sendfile.msgtype, sendfile.srckey,sendfile.dstkey);
-        
-        free(pmsg);
-        break;        
+        case PNR_IM_CMDTYPE_PUSHFILE:
+            //新版逻辑名称
+            if(p_realfilename)
+            {            
+                snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, p_realfilename);
+                snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
+                    g_imusr_array.usrnode[id].userdata_pathurl, p_realfilename);
+            }
+            else
+            {
+                snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, sendfile.filename);
+                snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
+                    g_imusr_array.usrnode[id].userdata_pathurl, sendfile.filename);
+            }
+            dup = cJSON_Duplicate(root, 1);
+            params = cJSON_GetObjectItem(dup, "params");
+            if (!params)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get params err");
+                cJSON_Delete(dup);
+                break;
+            }
+            cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
+            cJSON_AddItemToObject(params, "FilePath", cJSON_CreateString(filepath));
+            pmsg = cJSON_PrintUnformatted(dup);
+            cJSON_Delete(dup);
+            pnr_msgcache_dbinsert(msgid, sendfile.fromuser_toxid, sendfile.touser_toxid,
+                msg_head.im_cmdtype, pmsg, strlen(pmsg), sendfile.filename, fullfile,
+                sendfile.log_id, PNR_MSG_CACHE_TYPE_TOXA, sendfile.msgtype, sendfile.srckey,sendfile.dstkey);
+            free(pmsg);
+            break;  
+        default:
+            break;
     }
 
 OUT:
