@@ -28,6 +28,7 @@
 
 enum PNR_IM_CMDTYPE_ENUM
 {
+    PNR_IM_CMDTYPE_NONE = 0x0,
     PNR_IM_CMDTYPE_LOGIN = 0x01,
     PNR_IM_CMDTYPE_DESTORY,   
     PNR_IM_CMDTYPE_ADDFRIENDREQ ,   
@@ -100,11 +101,12 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_UPDATEAVATAR,
     PNR_IM_CMDTYPE_PULLTMPACCOUNT,
     PNR_IM_CMDTYPE_DELUSER,
-
+    PNR_IM_CMDTYPE_ENABLEQLCNODE,
+    PNR_IM_CMDTYPE_CHECKQLCNODE,
     //rid独有的消息
-    PNR_IM_CMDTYPE_SYSDEBUGMSG = 0xF1,
-    PNR_IM_CMDTYPE_USRDEBUGMSG = 0xF2,
-    PNR_IM_CMDTYPE_SYSDERLYMSG = 0xF3,
+    PNR_IM_CMDTYPE_SYSDEBUGMSG,
+    PNR_IM_CMDTYPE_USRDEBUGMSG,
+    PNR_IM_CMDTYPE_SYSDERLYMSG,
     PNR_IM_CMDTYPE_BUTT ,   
 };
 enum PNR_SYSDEBUG_CMDTYPE_ENUM
@@ -310,10 +312,14 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_UPDATEAVATAR       "UpdateAvatar"
 #define PNR_IMCMD_PULLTMPACCOUNT       "PullTmpAccount"
 #define PNR_IMCMD_DELUSER   "DelUser"
+#define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
+#define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
 #define PNR_IMCMD_SYSDERLYCMD   "SysDeRelay"
+
+#define PNR_IMCMD_BUTT  "Butt"
 
 #define PNR_CMDTYPE_MSG_REGISTER "register user : "
 #define PNR_CMDTYPE_MSG_DESTROY "user destroy account byself"
@@ -334,10 +340,13 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_API_VERSION_V3     3
 #define PNR_API_VERSION_V4     4
 #define PNR_API_VERSION_V5     5
-
+#define PNR_API_VERSION_V6     6
+#define PNR_API_VERSION_MAXNUM     PNR_API_VERSION_V6
 #define SEG_CONTENT_LEN	(1024*1024*2)
 #define MAX_FILE_BUFF	(1024*1024*3)
 #define IM_MSG_MAGIC	0x0dadc0de
+#define PNR_RETCODE_ERR_BADSIGN      0xE1
+#define PNR_RETCODE_ERR_TIMEOUT      0xE2
 #ifdef DEV_ONESPACE
 #define PNR_DB_USERFILE_HEAD     "/media"
 #define DAEMON_PNR_TOP_DIR "/media/pnrouter/"
@@ -361,6 +370,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_FILECACHE_DIR "cache/"
 #define PNR_AVATAR_FULLDIR "/media/pnrouter/userdata/avatar/"
 #define PNR_FILECACHE_FULLDIR "/media/pnrouter/userdata/cache/"
+#define PNR_SYSWARNING_LOG    "/media/pnrouter/syswarning.log"
 #else
 #define PNR_DB_USERFILE_HEAD     "/user"
 #define DAEMON_PNR_TOP_DIR "/usr/pnrouter/"
@@ -384,6 +394,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_FILECACHE_DIR "cache/"
 #define PNR_AVATAR_FULLDIR "/usr/pnrouter/userdata/avatar/"
 #define PNR_FILECACHE_FULLDIR "/usr/pnrouter/userdata/cache/"
+#define PNR_SYSWARNING_LOG    "/usr/pnrouter/syswarning.log"
 #endif
 enum PNR_DBFILE_INDEX_ENUM
 {
@@ -458,11 +469,13 @@ struct imcmd_msghead_struct
 	int offset;
     int repeat_flag;
 	long msgid;
-    void *toxmsg;
     //int cmd;
     int no_parse_msgid;
-    char appid[APPID_MAXLEN+1];
     int to_userid;
+    int debug_flag;
+    void *toxmsg;
+    struct per_session_data__minimal *pss;
+    char appid[APPID_MAXLEN+1];
 };
 struct im_cmd_common_struct
 {
@@ -1272,6 +1285,7 @@ struct newmsgs_notice_params{
 struct disk_total_info{
     int mode;
     int count;
+    int errnum;
     int used_percent;
     char used_capacity[MANU_NAME_MAXLEN+1];
     char total_capacity[MANU_NAME_MAXLEN+1];
@@ -1354,6 +1368,8 @@ enum PNR_MONITORINFO_ERRNUM
     PNR_MONITORINFO_ENUM_NETSTATERR = 1,
     PNR_MONITORINFO_ENUM_TMPOVER = 2,
     PNR_MONITORINFO_ENUM_CPUOVER = 3,
+    PNR_MONITORINFO_ENUM_DISKFORMAT = 4,
+    PNR_MONITORINFO_ENUM_SYSREBOOT = 5,
     PNR_MONITORINFO_ENUM_BUTT
 };
 struct pnr_monitor_errinfo
@@ -1381,12 +1397,28 @@ struct tox_msg_cache
     int reclen;
     char msg_buff[IM_JSON_MAXLEN+1];
 };
+typedef int ppr_cmddeal_cb(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+struct ppr_func_struct
+{
+    int cmd;
+    int api_version;
+    int need_reply;
+    ppr_cmddeal_cb* p_cmddeal_cb;
+};
+enum PNR_QLCNODE_ENABLE_ENUM
+{
+    PNR_QLCNODE_ENABLE_OK = 0,
+    PNR_QLCNODE_ENABLE_NOSOURCE = 1,
+    PNR_QLCNODE_ENABLE_NOLIMIT =2,
+
+};
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
 	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index);
 int lws_send_onemsg(int id,struct lws *wsi,int* break_flag);
 int imuser_friendstatus_push(int index,int online_status);
+int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey);
 int imuser_heartbeat_deal(void);
 int im_global_info_show(char* pcmd);
 int get_indexbytoxid(char* p_toxid);
@@ -1418,4 +1450,9 @@ int pnr_relogin_pushbytox(int index,int type);
 void *pnr_dev_register_task(void *para);
 int pnr_rnode_debugmsg_send(char* pcmd);
 void *self_monitor_thread(void *para);
+int im_debug_pushnewnotice_deal(char* pbuf);
+void post_devinfo_upload_task(void *para);
+int pnr_sysoperation_done(int type);
+int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
+	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index);
 #endif

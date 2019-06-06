@@ -482,12 +482,12 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
 {
 	int msgid = 0;
 	char *pmsg = NULL;
-	int *userindex = (int *)userdata;
+	int userindex = *(int *)userdata;
     cJSON *item = NULL;
 	char *itemstr = NULL;
 	struct im_friend_msgstruct friend;
     struct im_userdev_mapping_struct devinfo;
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "recv friend msg:%s", data);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "recv friend(%d) msg:%s", userindex,data);
 	cJSON *rootJson = cJSON_Parse((char *)data);
 	if (!rootJson) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse json err(%s)", data);
@@ -504,7 +504,7 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
 		cJSON_Delete(rootJson);
 		return;
 	}
-	pnr_msgcache_getid(*userindex, &msgid);
+	pnr_msgcache_getid(userindex, &msgid);
 	cJSON_AddItemToObject(rootJson, "msgid", cJSON_CreateNumber(msgid));
 	pmsg = cJSON_PrintUnformatted(rootJson);
 	if (!strcmp(action->valuestring, PNR_IMCMD_ADDFRIENDREPLY)) 
@@ -523,8 +523,8 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
         //这里需要反向一下
         if (friend.result == OK) {
             pnr_friend_dbinsert(friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
-            im_nodelist_addfriend(*userindex, friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
-            pnr_check_update_devinfo_bytoxid(*userindex,friend.fromuser_toxid,devinfo.user_devid,devinfo.user_devname);
+            im_nodelist_addfriend(userindex, friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
+            pnr_check_update_devinfo_bytoxid(userindex,friend.fromuser_toxid,devinfo.user_devid,devinfo.user_devname);
         }
 		pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid,
             PNR_IM_CMDTYPE_ADDFRIENDREPLY, pmsg, strlen(pmsg), NULL, NULL, 0, 
@@ -543,7 +543,7 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_userdev_mapping_dbupdate failed");
         }
-        pnr_msgcache_dbinsert(msgid, "", g_imusr_array.usrnode[*userindex].user_toxid, 
+        pnr_msgcache_dbinsert(msgid, "", g_imusr_array.usrnode[userindex].user_toxid, 
 			PNR_IM_CMDTYPE_ADDFRIENDPUSH, pmsg, strlen(pmsg), NULL, NULL, 0, 
 			PNR_MSG_CACHE_TYPE_TOXA, 0, "", "");
 	}
@@ -608,7 +608,8 @@ static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE ty
     memcpy(null_string, string, length);
     null_string[length] = 0;
     
-    im_tox_rcvmsg_deal(m, (char *)null_string, length, friendnumber);
+    //im_tox_rcvmsg_deal(m, (char *)null_string, length, friendnumber);
+    pnr_cmdbytox_handle(m, (char *)null_string, length, friendnumber);
     //free(null_string);
 }
 
@@ -1000,6 +1001,38 @@ int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,
     }
     return ERROR;
 }
+int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex)
+{
+	uint8_t fr_bin[TOX_ADDRESS_SIZE];
+    char fr_str[FRADDR_TOSTR_BUFSIZE];
+    int i = 0;
+
+    if(tox == NULL)
+    {
+        return ERROR;
+    }
+
+	if (tox_friend_get_public_key(tox, friendnumber, fr_bin, NULL)) {
+		frpuk_to_str(fr_bin, fr_str);
+	}
+    else
+    {
+        return ERROR;
+    }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get friend pubkey(%s)",fr_str);
+    for(i = 1; i<= PNR_IMUSER_MAXNUM; i++)
+    {
+        if(strncasecmp(fr_str,g_imusr_array.usrnode[i].user_toxid,TOX_PUBLIC_KEY_SIZE) == OK)
+        {
+            *uindex = i;
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_uindex_by_toxfriendnum friend(%d) user(%d:%s)",
+                friendnumber,i,g_imusr_array.usrnode[i].user_toxid);
+            return OK;
+        }
+    }
+    return ERROR;
+}
+
 static void print_online(Tox *tox, uint32_t friendnumber, TOX_CONNECTION status, void *userdata)
 {
 	//char name[TOX_MAX_NAME_LENGTH + 1];
@@ -1044,7 +1077,7 @@ static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION s
     int i = 0;
     if(tox == NULL)
     {
-        return ERROR;
+        return;
     }
 
 	if (tox_friend_get_public_key(tox, friendnumber, fr_bin, NULL)) {

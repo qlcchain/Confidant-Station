@@ -846,13 +846,22 @@ static int callback_minimal(struct lws *wsi, enum lws_callback_reasons reason,
 		break;
 
 	case LWS_CALLBACK_RECEIVE:
+#if 0
         if (im_rcvmsg_deal(pss, in, len, pss->msgretbuf,
 			&retmsg_len, &ret_flag, &pss->user_index) != OK) {
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_rcvmsg_deal failed");
             snprintf(pss->msgretbuf,1024,IMSERVER_BAD_MSG_RET);
             retmsg_len = IMSERVER_BAD_MSG_RETLEN;
         }
-		
+#else
+        if (pnr_cmdbylws_handle(pss, in, len, pss->msgretbuf,
+			&retmsg_len, &ret_flag, &pss->user_index) != OK) {
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_rcvmsg_deal failed");
+            snprintf(pss->msgretbuf,1024,IMSERVER_BAD_MSG_RET);
+            retmsg_len = IMSERVER_BAD_MSG_RETLEN;
+        }
+#endif
+        
         if (pss->user_index > 0 && pss->user_index <= PNR_IMUSER_MAXNUM) {
             g_lws_handler[pss->user_index] = wsi;
             g_imusr_array.usrnode[pss->user_index].pss = pss;
@@ -2070,7 +2079,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "Result",cJSON_CreateNumber(pfriend->result));
             cJSON_AddItemToObject(ret_params, "FriendName",cJSON_CreateString(pfriend->friend_nickname));
             cJSON_AddItemToObject(ret_params, "UserKey",cJSON_CreateString(pfriend->user_pubkey));
-            if(apiversion == PNR_API_VERSION_V4)
+            if(apiversion >= PNR_API_VERSION_V4)
             {
                 cJSON_AddItemToObject(ret_params, "Sign",cJSON_CreateString(pfriend->sign));
             }
@@ -2110,7 +2119,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                     pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,0);                
                 }
-                else if(apiversion == PNR_API_VERSION_V3)
+                else if(apiversion >= PNR_API_VERSION_V3)
                 {
                     pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
@@ -2131,7 +2140,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 cJSON_AddItemToObject(ret_params, "SrcKey",cJSON_CreateString(psendmsg->msg_srckey));  
                 cJSON_AddItemToObject(ret_params, "DstKey",cJSON_CreateString(psendmsg->msg_dstkey));  
             }
-            else if(apiversion == PNR_API_VERSION_V3)
+            else if(apiversion >= PNR_API_VERSION_V3)
             {
                 cJSON_AddItemToObject(ret_params, "Sign",cJSON_CreateString(psendmsg->sign));  
                 cJSON_AddItemToObject(ret_params, "Nonce",cJSON_CreateString(psendmsg->nonce)); 
@@ -2583,7 +2592,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                     psendmsg->touser_toxid, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
                     pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->msg_srckey,psendmsg->msg_dstkey);
             }
-            else if(apiversion == PNR_API_VERSION_V3)
+            else if(apiversion >= PNR_API_VERSION_V3)
             {
                 pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, 
                     psendmsg->touser_toxid, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
@@ -2777,7 +2786,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
             cJSON_AddItemToObject(ret_params, "SrcKey", cJSON_CreateString(psendmsg->msg_srckey));  
             cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(psendmsg->msg_dstkey));  
         }
-        else if(apiversion == PNR_API_VERSION_V3)
+        else if(apiversion >= PNR_API_VERSION_V3)
         {
 #if 0 //暂时不用hashid
             cJSON_AddItemToObject(ret_params, "From", cJSON_CreateString(psendmsg->from_uid));
@@ -2898,7 +2907,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
                 psendmsg->touser_toxid, pmsg, msg_len, cmd, psendmsg->log_id,
                 msgid, psendmsg->msg_srckey, psendmsg->msg_dstkey);
         }
-        else if(apiversion == PNR_API_VERSION_V3)
+        else if(apiversion >= PNR_API_VERSION_V3)
         {
             insert_tox_msgnode_v3(index, psendmsg->fromuser_toxid,
                     psendmsg->touser_toxid, pmsg, msg_len, cmd, psendmsg->log_id,
@@ -3202,7 +3211,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGIN));
@@ -3317,7 +3326,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_DESTORY));
@@ -3533,7 +3542,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",msg->user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendKey",friend_pubkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Result",msg->result,TOX_ID_STR_LEN);
-    if(head->api_version == PNR_API_VERSION_V4)
+    if(head->api_version >= PNR_API_VERSION_V4)
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",msg->sign,PNR_RSA_KEY_MAXLEN);
     }
@@ -4344,7 +4353,7 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_ONLINESTATUSCHECK));
@@ -4453,7 +4462,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_HEARTBEAT));
@@ -4581,7 +4590,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 	cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLMSG));
 #if 1
@@ -5122,7 +5131,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
 	cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLFRIEDN));
@@ -5408,7 +5417,7 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SYNCHDATAFILE));
@@ -5752,7 +5761,7 @@ OUT:
 		
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
@@ -5863,7 +5872,7 @@ OUT:
 		
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
@@ -5973,7 +5982,7 @@ OUT:
 		
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
@@ -6167,7 +6176,7 @@ int im_get_disk_info_deal(cJSON *params, char *retmsg, int *retmsg_len,
 
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
@@ -6331,9 +6340,10 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             goto OUT;
         }
         CJSON_GET_VARINT_BYKEYWORD(json_cache, tmp_item, tmp_json_buff, "count", totalinfo.count, 0);
-        if(totalinfo.count < 0 || totalinfo.count > PNR_DISK_MAXNUM)
+        CJSON_GET_VARINT_BYKEYWORD(json_cache, tmp_item, tmp_json_buff, "errno", totalinfo.errnum, 0);
+        if(totalinfo.count < 0 || totalinfo.count > PNR_DISK_MAXNUM || totalinfo.errnum <0 || totalinfo.errnum > totalinfo.count)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares get count(%d) err", totalinfo.count);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares get count(%d) errno(%d)", totalinfo.count,totalinfo.errnum);
             ret_code = 1;
             goto OUT;
         }
@@ -6352,7 +6362,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             ret_code = 1;
             goto OUT;
         }
-        if(get_disk_capacity(totalinfo.count,totalinfo.used_capacity,totalinfo.total_capacity,&totalinfo.used_percent) != OK)
+        if(get_disk_capacity(totalinfo.count-totalinfo.errnum,totalinfo.used_capacity,totalinfo.total_capacity,&totalinfo.used_percent) != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_disk_capacity err");
             ret_code = 1;
@@ -6408,7 +6418,14 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         	}  
             CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Power_On_Hours", detailinfo[slot].power_on, 0);
             CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Temperature_Celsius", detailinfo[slot].temperature, 0);
-            detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+            if(totalinfo.errnum == totalinfo.count)
+            {
+                detailinfo[slot].status = PNR_DISK_STATUS_NOINIT;
+            }
+            else
+            {
+                detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+            }
             if(totalinfo.count == PNR_DISK_MAXNUM)
             {
                 subjson_item = cJSON_GetArrayItem(subjson_cache,1);
@@ -6434,7 +6451,14 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
             	}  
                 CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Power_On_Hours", detailinfo[slot].power_on, 0);
                 CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "Temperature_Celsius", detailinfo[slot].temperature, 0);
-                detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+                if(totalinfo.errnum == totalinfo.count)
+                {
+                    detailinfo[slot].status = PNR_DISK_STATUS_NOINIT;
+                }
+                else
+                {
+                    detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
+                }
             }
             //获取磁盘信息
             memset(buf, 0, sizeof(buf));
@@ -6450,7 +6474,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         		ret_code = 1;
         		goto OUT;
         	}
-            if(totalinfo.mode == PNR_DISK_MODE_BASIC)
+            if(totalinfo.mode == PNR_DISK_MODE_BASIC || totalinfo.mode == PNR_DISK_MODE_NONE)
             {
                 json_index = 0;
             }
@@ -6566,7 +6590,7 @@ OUT:
                 cJSON_AddItemToArray(pJsonArry,pJsonsub); 
                 cJSON_AddNumberToObject(pJsonsub,"Slot",i);
                 cJSON_AddNumberToObject(pJsonsub,"Status",detailinfo[i].status);
-                if(detailinfo[i].status == PNR_DISK_STATUS_RUNNING)
+                if(detailinfo[i].status == PNR_DISK_STATUS_RUNNING || detailinfo[i].status == PNR_DISK_STATUS_NOINIT)
                 {
                     cJSON_AddNumberToObject(pJsonsub,"PowerOn",detailinfo[i].power_on);
                     cJSON_AddNumberToObject(pJsonsub,"Temperature",detailinfo[i].temperature);
@@ -6576,6 +6600,10 @@ OUT:
                 }
             }
             cJSON_AddItemToObject(ret_params,"Info", pJsonArry);
+            if(totalinfo.errnum > 0)
+            {
+                cJSON_AddItemToObject(ret_params, "ErrNum", cJSON_CreateNumber(totalinfo.errnum));
+            }
         }
     }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
@@ -6652,7 +6680,7 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
     }
     else
     {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_detailinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_detailinfo_deal:g_pnrdevtype(%d)",g_pnrdevtype);
         if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
         {
         	int ret = OK;
@@ -6677,22 +6705,22 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         		ret_code = 1;
         		goto OUT;
         	}
-            subjson_cache = cJSON_GetArrayItem(json_cache,1);
-        	if (!json_cache) {
-        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+            subjson_cache = cJSON_GetArrayItem(json_cache,0);
+        	if (!subjson_cache) {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err");
         		ret_code = 1;
         		goto OUT;
         	}
             subjson_item = cJSON_GetObjectItem(subjson_cache, "info");
         	if (!subjson_item) {
-        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares info err");
         		ret_code = 1;
         		goto OUT;
         	}
             CJSON_GET_VARINT_BYKEYWORD(subjson_item, tmp_item, tmp_json_buff, "slot", tmp_slot, 0);
             if(slot != tmp_slot)
             {
-                subjson_cache = cJSON_GetArrayItem(json_cache,2);
+                subjson_cache = cJSON_GetArrayItem(json_cache,1);
             	if (!json_cache) {
             		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json pares subjson_cache 1 err", buf);
             		ret_code = 1;
@@ -6827,6 +6855,15 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	char diskerr[128] = {0};
 	char cmd[512] = {0};
 
+    if(head->api_version >= PNR_API_VERSION_V6)
+    {
+        if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_format_disk_deal:bad index(%d)",*plws_index);
+            ret_code = 1;
+            goto OUT;
+        }
+    }
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "Mode", mode, 16);
     i = 1;
 	while (g_valid_disk_mode[i]) {
@@ -6874,8 +6911,8 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	pthread_mutex_lock(&g_formating_lock);
 	g_formating = 1;
 	pthread_mutex_unlock(&g_formating_lock);
-	
 	system(cmd);
+    pnr_sysoperation_done(PNR_MONITORINFO_ENUM_DISKFORMAT);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr format cmd(%s)",cmd);
 	g_format_reboot_time = time(NULL) + 5;
 	
@@ -6896,18 +6933,24 @@ OUT:
 		
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_FORMATDISK));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-
+    if(head->api_version >= PNR_API_VERSION_V6)
+    {
+        if(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM)
+        {
+          cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+        }
+    }
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-	
     *retmsg_len = strlen(ret_buff);
-    if (*retmsg_len >= IM_JSON_MAXLEN) {
+    if (*retmsg_len >= IM_JSON_MAXLEN) 
+    {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad ret(%d)", *retmsg_len);
         free(ret_buff);
         return ERROR;
@@ -6915,7 +6958,6 @@ OUT:
 	
     strcpy(retmsg, ret_buff);
     free(ret_buff);
-	
 	return OK;
 }
 
@@ -6952,21 +6994,32 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
         return ERROR;
     }
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",fromid,TOX_ID_STR_LEN);
-
-    //参数检查
-    if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+    if(head->api_version < PNR_API_VERSION_V6)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
-        ret_code = PNR_REBOOT_RETURN_NOOWNER;
+        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",fromid,TOX_ID_STR_LEN);
+        //参数检查
+        if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
+            ret_code = PNR_REBOOT_RETURN_NOOWNER;
+        }
     }
     else
+    {
+        if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad index(%d)",*plws_index);
+            ret_code = PNR_REBOOT_RETURN_NOOWNER;
+        }
+    }
+    if(ret_code == OK)
     {
         //这时候也不允许format操作
         pthread_mutex_lock(&g_formating_lock);
     	g_formating = 1;
     	pthread_mutex_unlock(&g_formating_lock);
     	g_format_reboot_time = time(NULL) + 5;
+        pnr_sysoperation_done(PNR_MONITORINFO_ENUM_SYSREBOOT);
         DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"###node will reboot###");
     }
     
@@ -6986,7 +7039,17 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_REBOOT));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(fromid));
+    if(head->api_version < PNR_API_VERSION_V6)
+    {
+        cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(fromid));
+    }
+    else
+    {
+        if(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM)
+        {
+          cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+        }
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -7017,8 +7080,8 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int im_replaymsg_deal(cJSON *params, int cmd, struct imcmd_msghead_struct *head, 
-    int friendnum)
+int im_replaymsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
@@ -7039,7 +7102,7 @@ int im_replaymsg_deal(cJSON *params, int cmd, struct imcmd_msghead_struct *head,
     }
 
 	pnr_msgcache_dbdelete(head->msgid, index);
-    switch(cmd)
+    switch(head->im_cmdtype)
     {
         //case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
         case PNR_IM_CMDTYPE_PUSHMSG:
@@ -7069,11 +7132,11 @@ int im_replaymsg_deal(cJSON *params, int cmd, struct imcmd_msghead_struct *head,
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Retcode",ret,0);
             break;  
         default:
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad cmd(%d) failed",cmd);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad cmd(%d) failed",head->im_cmdtype);
             return ERROR;
     }
 	
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rec msg(%d) ret(%d)",cmd,ret);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rec msg(%d) ret(%d)",head->im_cmdtype,ret);
     return OK;
 }
 
@@ -7714,7 +7777,7 @@ SENDRET:
 	
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SENDFILE));
@@ -7822,7 +7885,7 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 			
 	    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
 	    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-	    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+	    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_MAXNUM));
 
 	    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SENDFILE_END));
 	    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
@@ -8014,7 +8077,7 @@ err:
     
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLFILE));
@@ -8142,7 +8205,7 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_CREATENORMALUSER));
@@ -8190,8 +8253,7 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                   Modification:Initialize
 ***********************************************************************************/
 int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
-	int* plws_index, struct imcmd_msghead_struct *head, int cur_friendnum,
-	struct per_session_data__minimal *cur_pss)
+	int* plws_index, struct imcmd_msghead_struct *head)
 {
     struct pnr_account_struct account;
     struct pnr_account_struct src_account;
@@ -8320,7 +8382,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
         //检测是否已经有用户登陆了，如果是，需要向之前用户推送消息
         if(g_imusr_array.usrnode[index].user_onlinestatus == USER_ONLINE_STATUS_ONLINE)
         {
-            pnr_relogin_push(index,head->iftox,cur_friendnum,cur_pss);    
+            pnr_relogin_push(index,head->iftox,head->friendnum,head->pss);    
         }
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
@@ -8338,7 +8400,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGIN));
@@ -8503,7 +8565,7 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGINIDENTIFY));
@@ -8595,7 +8657,7 @@ int im_logout_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGOUT));
@@ -8691,7 +8753,7 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_ROUTERLOGIN));
@@ -8794,7 +8856,7 @@ int im_reset_routerkey_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_RESETROUTERKEY));
@@ -8901,7 +8963,7 @@ int im_reset_useridcode_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_RESETUSERIDCODE));
@@ -9003,7 +9065,7 @@ int im_changeremarks_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_CHANGEREMARKS));
@@ -9110,7 +9172,7 @@ int im_user_preregister_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PREREGISTER));
@@ -9268,6 +9330,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                                pnr_account_dbupdate(&account);
                            }
                            strcpy(g_imusr_array.usrnode[index].user_nickname,account.nickname);
+                           strcpy(g_imusr_array.usrnode[index].user_pubkey,account.user_pubkey);
                            g_imusr_array.cur_user_num++;
                            //新用户注册激活对应数据库句柄
                            if(g_msglogdb_handle[index] == NULL)
@@ -9323,7 +9386,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_REGISTER));
@@ -9400,7 +9463,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
     memset(&src_account,0,sizeof(src_account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);
-    if(head->api_version == PNR_API_VERSION_V4)
+    if(head->api_version >= PNR_API_VERSION_V4)
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Pubkey",src_account.user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     }
@@ -9410,7 +9473,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_RECOVERY_RETCODE_BAD_RID;
     }
-    else if(head->api_version == PNR_API_VERSION_V4)
+    else if(head->api_version >= PNR_API_VERSION_V4)
     {
         if(strlen(src_account.user_pubkey) > 0)
         {
@@ -9615,7 +9678,7 @@ int im_user_recoveryidentify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_RECOVERYIDENTIFY));
@@ -10071,7 +10134,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V1));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLUSERLIST));
@@ -10291,7 +10354,7 @@ int im_get_relationship_status_cmd_deal(cJSON *params, char *retmsg, int *retmsg
 	
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_QUERYFRIEND));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
@@ -10330,8 +10393,7 @@ ERR:
                   Modification:Initialize
 ***********************************************************************************/
 int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
-	int* plws_index, struct imcmd_msghead_struct *head, int cur_friendnum,
-	struct per_session_data__minimal *cur_pss,int debugflag)
+	int* plws_index, struct imcmd_msghead_struct *head)
 {
     struct pnr_account_struct account;
     struct pnr_account_struct src_account;
@@ -10402,7 +10464,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
 #else
         //pubkey验证
-        else if(debugflag != TRUE && pnr_sign_check(sign,strlen(sign),src_account.user_pubkey,TRUE) != OK)
+        else if(head->debug_flag != TRUE && pnr_sign_check(sign,strlen(sign),src_account.user_pubkey,TRUE) != OK)
         {
             ret_code = PNR_LOGIN_RETCODE_BAD_LOGINKEY;
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v4_deal:input sign(%s) usrkey(%s) check failed",sign,src_account.user_pubkey);
@@ -10486,7 +10548,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         //检测是否已经有用户登陆了，如果是，需要向之前用户推送消息
         if(g_imusr_array.usrnode[index].user_onlinestatus == USER_ONLINE_STATUS_ONLINE)
         {
-            pnr_relogin_push(index,head->iftox,cur_friendnum,cur_pss);    
+            pnr_relogin_push(index,head->iftox,head->friendnum,head->pss);    
         }
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
@@ -10691,6 +10753,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                            //注册激活的时候记录一下
                            //pnr_logcache_dbinsert(PNR_IM_CMDTYPE_REGISTER,account.toxid,account.toxid,PNR_CMDTYPE_MSG_REGISTER##account.nickname,PNR_CMDTYPE_EXT_SUCCESS);
                            strcpy(g_imusr_array.usrnode[index].user_nickname,account.nickname);
+                           strcpy(g_imusr_array.usrnode[index].user_pubkey,account.user_pubkey);
                            g_imusr_array.cur_user_num++;
                            //新用户注册激活对应数据库句柄
                            if(g_msglogdb_handle[index] == NULL)
@@ -13133,7 +13196,6 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_root == NULL || ret_params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
-        cJSON_Delete(ret_root);
         free(pmsg);
         return ERROR;
     }
@@ -13201,7 +13263,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
     memset(&src_account,0,sizeof(src_account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);
-    if(head->api_version == PNR_API_VERSION_V4)
+    if(head->api_version >= PNR_API_VERSION_V4)
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Pubkey",src_account.user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     }
@@ -13211,7 +13273,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_RECOVERY_RETCODE_BAD_RID;
     }
-    else if(head->api_version == PNR_API_VERSION_V4)
+    else if(head->api_version >= PNR_API_VERSION_V4)
     {
         if(strlen(src_account.user_pubkey) > 0)
         {
@@ -13407,7 +13469,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if(head->api_version >= PNR_API_VERSION_V5)
             {
                 filenum = atoi(fileid);
-                PNR_REAL_FILEPATH_GET(filepath,uindex,PNR_FILE_SRCFROM_GROUPSEND,filenum,gid,(char*)NULL);
+                PNR_REAL_FILEPATH_GET(filepath,uindex,PNR_FILE_SRCFROM_GROUPSEND,filenum,gid,(char*)"");
                 strcpy(fullfillpath,WS_SERVER_INDEX_FILEPATH);
                 strcat(fullfillpath,filepath);
             }
@@ -13476,7 +13538,6 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_root == NULL || ret_params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
-        cJSON_Delete(ret_root);
         free(pmsg);
         return ERROR;
     }
@@ -14258,7 +14319,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
 #endif
                         //调用推送消息
-                        im_pushmsg_callback(toid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, TRUE, PNR_API_VERSION_V1,msg);
+                        im_pushmsg_callback(toid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, TRUE, head->api_version,msg);
                         ret_code = PNR_FILEFORWARD_RETCODE_OK;
                     }
                     else
@@ -15259,7 +15320,159 @@ int im_cmd_rnode_msgreply_deal(cJSON * params,char* retmsg,int* retmsg_len,
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"Rnode(%s) cmd(%d) ret(%d) info(%s)",userid,cmd,ret,info);
     return OK;
 }
+/**********************************************************************************
+  Function:      im_cmd_enableqlcnode_deal
+  Description: IM模块消息处理qlc节点使能
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
 
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_enableqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int enable = 0;
+    int cur_status = 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Enable",enable,0);
+
+    //参数检查
+    if(enable != TRUE && enable != FALSE)
+    {
+        ret_code = PNR_QLCNODE_ENABLE_NOSOURCE;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad params enable(%d)",enable);
+    }
+    else if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+    {
+        ret_code = PNR_QLCNODE_ENABLE_NOLIMIT;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) no limit to enable qlcnode",*plws_index);
+    }
+    else 
+    {
+        pnr_get_qlcnode_status(&cur_status);
+        if(enable != cur_status)
+        {
+            pnr_set_qlcnode_enable(enable);
+        }
+        ret_code = PNR_QLCNODE_ENABLE_OK;
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_ENABLEQLCNODE));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_cmd_checkqlcnode_deal
+  Description: IM模块消息获取qlc节点状态
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int cur_status = 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+
+    //参数检查
+    if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+    {
+        ret_code = PNR_QLCNODE_ENABLE_NOSOURCE;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) no limit to check qlcnode status",*plws_index);
+    }
+    else 
+    {
+        pnr_get_qlcnode_status(&cur_status);
+        ret_code = PNR_QLCNODE_ENABLE_OK;
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_CHECKQLCNODE));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Status", cJSON_CreateNumber(cur_status));
+    cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(""));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 /**********************************************************************************
   Function:      im_cmd_template_deal
   Description: IM模块消息处理模板函数
@@ -15510,7 +15723,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
             case PNR_IM_CMDTYPE_DELMSGPUSH:
             case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             case PNR_IM_CMDTYPE_PUSHFILE:
-                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                if(im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -15551,7 +15764,8 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 *ret_flag = TRUE;
                 break;
             case PNR_IM_CMDTYPE_LOGIN:
-                if (im_userlogin_v2_deal(params,retmsg,retmsg_len,plws_index,&msg_head,-1,pss)) 
+                msg_head.pss = pss;
+                if (im_userlogin_v2_deal(params,retmsg,retmsg_len,plws_index,&msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_userlogin_v2_deal failed");
                     return ERROR;
@@ -15607,7 +15821,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 *ret_flag = TRUE;
                 break;
             case PNR_IM_CMDTYPE_READMSGPUSH:
-                if (im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index)) 
+                if (im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_readmsg_cmd_deal PNR_IM_CMDTYPE_READMSGPUSH failed");
                     return ERROR;
@@ -15622,7 +15836,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 *ret_flag = TRUE;
                 break;
             case PNR_IM_CMDTYPE_USERINFOPUSH:
-                if (im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index)) 
+                if (im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_readmsg_cmd_deal PNR_IM_CMDTYPE_USERINFOPUSH failed");
                     return ERROR;
@@ -15760,7 +15974,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
             case PNR_IM_CMDTYPE_PUSHMSG:
             case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             case PNR_IM_CMDTYPE_PUSHFILE:
-                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                if(im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -15824,7 +16038,8 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 *ret_flag = TRUE;
                 break;
             case PNR_IM_CMDTYPE_LOGIN:
-                if (im_userlogin_v4_deal(params,retmsg,retmsg_len,plws_index,&msg_head,-1,pss,FALSE))
+                msg_head.pss = pss;
+                if (im_userlogin_v4_deal(params,retmsg,retmsg_len,plws_index,&msg_head))
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_format_disk_deal failed");
                     return ERROR;
@@ -15866,7 +16081,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
             case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
             case PNR_IM_CMDTYPE_ONLINESTATUSPUSH:
-                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                if(im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -16020,7 +16235,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
             case PNR_IM_CMDTYPE_VERIFYGROUPPUSH:
             case PNR_IM_CMDTYPE_GROUPSYSPUSH:
             case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                if(im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -16100,7 +16315,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 break;
             case PNR_IM_CMDTYPE_PUSHFILE:
             case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                if(im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,*plws_index) != OK)
+                if(im_replaymsg_deal(params, retmsg, retmsg_len, plws_index, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -16322,7 +16537,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
         case PNR_IM_CMDTYPE_DELMSGPUSH:
         case PNR_IM_CMDTYPE_PUSHFILE:
         case PNR_IM_CMDTYPE_PUSHFILE_TOX:
-            if (im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0)) {
+            if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                 return ERROR;
             }
@@ -16346,7 +16561,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 needret = TRUE;
                 break;
             case PNR_IM_CMDTYPE_LOGIN:
-                if (im_userlogin_v2_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head, friendnum, NULL)) 
+                if (im_userlogin_v2_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_userlogin_v2_deal failed");
                     return ERROR;
@@ -16402,7 +16617,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 needret = TRUE;
                 break;
             case PNR_IM_CMDTYPE_READMSGPUSH:
-                if (im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,0)) 
+                if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal PNR_IM_CMDTYPE_READMSGPUSH failed");
                     return ERROR;
@@ -16417,7 +16632,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 needret = TRUE;
                 break;
             case PNR_IM_CMDTYPE_USERINFOPUSH:
-                if (im_replaymsg_deal(params,msg_head.im_cmdtype,&msg_head,0)) 
+                if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal PNR_IM_CMDTYPE_USERINFOPUSH failed");
                     return ERROR;
@@ -16563,7 +16778,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
             case PNR_IM_CMDTYPE_PUSHMSG:
             case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             case PNR_IM_CMDTYPE_PUSHFILE:
-                if (im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0)) {
+                if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
                 }
@@ -16626,7 +16841,8 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
 				needret = TRUE;
                 break;
             case PNR_IM_CMDTYPE_LOGIN:
-                if (im_userlogin_v4_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head, friendnum, NULL,FALSE))
+                msg_head.pss = NULL;
+                if (im_userlogin_v4_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head))
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_userlogin_v4_deal failed");
                     return ERROR;
@@ -16668,7 +16884,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
             case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
             case PNR_IM_CMDTYPE_ONLINESTATUSPUSH:
-                if (im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0)) 
+                if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) 
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -16822,7 +17038,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
             case PNR_IM_CMDTYPE_VERIFYGROUPPUSH:
             case PNR_IM_CMDTYPE_GROUPSYSPUSH:
             case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-               if (im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0)) {
+               if (im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head)) {
                    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                    return ERROR;
                }
@@ -16916,7 +17132,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
                 break;
             case PNR_IM_CMDTYPE_PUSHFILE:
             case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                if(im_replaymsg_deal(params, msg_head.im_cmdtype, &msg_head, 0) != OK)
+                if(im_replaymsg_deal(params, g_tox_retbuf, &retlen, &userindex, &msg_head) != OK)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_replaymsg_deal cmd(%d) failed",msg_head.im_cmdtype);
                     return ERROR;
@@ -17062,6 +17278,1519 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
     }
     return OK;
 }
+struct ppr_func_struct g_cmddeal_cb_v1[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V1,TRUE,im_userlogin_deal},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V1,TRUE,im_userdestory_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V1,TRUE,im_addfriend_req_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V1,TRUE,im_addfriend_deal_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V1,TRUE,im_delfriend_cmd_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V1,TRUE,im_sendmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V1,TRUE,im_delmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V1,TRUE,im_heartbeat_cmd_deal},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V1,TRUE,im_onlinestatus_check_deal},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V1,TRUE,im_pullmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V1,TRUE,im_pullfriend_cmd_deal},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V1,TRUE,im_sendfile_cmd_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V1,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V1,TRUE,im_sysch_datafile_deal},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V1,TRUE,im_pullfile_cmd_deal},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V1,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V1,FALSE,NULL},
+};
+struct ppr_func_struct g_cmddeal_cb_v2[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V2,TRUE,im_userlogin_v2_deal},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V2,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V2,TRUE,im_readmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V2,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V2,TRUE,im_create_normaluser_cmd_deal},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V2,TRUE,im_login_identify_deal},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V2,TRUE,im_user_preregister_deal},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V2,TRUE,im_user_register_deal},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V2,TRUE,im_user_recoveryidentify_deal},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V2,TRUE,im_user_recovery_deal},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V2,TRUE,im_pulluserlist_cmd_deal},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V2,TRUE,im_logout_deal},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V2,FALSE,im_userinfoupdate_cmd_deal},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V2,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V2,TRUE,im_changeremarks_deal},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V2,TRUE,im_get_relationship_status_cmd_deal},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V2,TRUE,im_pull_file_list_deal},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V2,TRUE,im_upload_file_req_deal},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V2,TRUE,im_upload_file_deal},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V2,TRUE,im_delete_file_deal},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V2,TRUE,im_routerlogin_deal},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V2,TRUE,im_reset_routerkey_deal},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V2,TRUE,im_reset_useridcode_deal},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V2,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V2,FALSE,NULL},
+};
+struct ppr_func_struct g_cmddeal_cb_v3[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V3,TRUE,im_addfriend_req_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V3,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V3,FALSE,im_addfriend_deal_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V3,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V3,TRUE,im_sendmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V3,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V3,TRUE,im_pullmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V3,TRUE,im_pullfriend_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V3,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V3,TRUE,im_get_disk_detailinfo_deal},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V3,TRUE,im_get_disk_totalinfo_deal},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V3,TRUE,im_format_disk_deal},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V3,TRUE,im_reboot_deal},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V3,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V3,FALSE,NULL},
+};
+struct ppr_func_struct g_cmddeal_cb_v4[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V4,TRUE,im_userlogin_v4_deal},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V4,TRUE,im_addfriend_req_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V4,TRUE,im_addfriend_deal_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V4,TRUE,im_pullfriend_cmd_deal_v4},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V4,TRUE,im_user_register_v4_deal},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V4,TRUE,im_user_recovery_deal},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V4,TRUE,im_logout_deal},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V4,TRUE,im_reset_routername_deal},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V4,TRUE,im_get_disk_detailinfo_deal},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V4,TRUE,im_group_create_deal},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V4,TRUE,im_group_invite_deal},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V4,TRUE,im_group_invitedeal_deal},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V4,TRUE,im_group_verify_deal},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V4,TRUE,im_group_quit_deal},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V4,TRUE,im_group_pulllist_deal},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V4,TRUE,im_group_pulluser_deal},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V4,TRUE,im_group_pullmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V4,TRUE,im_group_sendmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V4,TRUE,im_group_sendfile_predeal},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V4,TRUE,im_group_sendfile_done_deal},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V4,TRUE,im_group_delmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V4,TRUE,im_group_config_deal},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V4,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V4,TRUE,im_file_rename_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V4,TRUE,im_file_forward_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V4,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V4,TRUE,im_upload_avatar_deal},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V4,TRUE,im_updata_avatar_deal},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V4,TRUE,im_pull_tmpaccount_deal},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V4,TRUE,im_account_delete_deal},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V4,FALSE,NULL},
+};
+struct ppr_func_struct g_cmddeal_cb_v5[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V5,TRUE,NULL},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V5,TRUE,im_pullmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V5,TRUE,im_pullfile_cmd_deal},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V5,TRUE,im_pull_file_list_deal},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V5,TRUE,im_delete_file_deal},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V5,TRUE,im_group_pullmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V5,TRUE,im_group_sendfile_done_deal},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V5,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V5,TRUE,im_file_rename_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V5,FALSE,NULL},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V5,FALSE,NULL},
+};
+struct ppr_func_struct g_cmddeal_cb_v6[]=
+{
+    {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V6,FALSE,NULL},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V6,TRUE,im_userlogin_v4_deal},
+    {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V6,TRUE,im_userdestory_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V6,TRUE,im_addfriend_req_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V6,TRUE,im_addfriend_deal_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V6,TRUE,im_delfriend_cmd_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V6,TRUE,im_sendmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V6,TRUE,im_readmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V6,TRUE,im_delmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V6,TRUE,im_heartbeat_cmd_deal},
+    {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V6,TRUE,im_onlinestatus_check_deal},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V6,TRUE,im_pullmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V6,TRUE,im_pullfriend_cmd_deal_v4},
+    {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V6,TRUE,im_sendfile_cmd_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V6,TRUE,im_sysch_datafile_deal},
+    {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V6,TRUE,im_create_normaluser_cmd_deal},
+    {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V6,TRUE,im_login_identify_deal},
+    {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V6,TRUE,im_user_preregister_deal},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V6,TRUE,im_user_register_v4_deal},
+    {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V6,TRUE,im_user_recoveryidentify_deal},
+    {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V6,TRUE,im_user_recovery_deal},
+    {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V6,TRUE,im_pulluserlist_cmd_deal},
+    {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V6,TRUE,im_pullfile_cmd_deal},
+    {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V6,TRUE,im_logout_deal},
+    {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V6,TRUE,im_userinfoupdate_cmd_deal},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V6,TRUE,im_changeremarks_deal},
+    {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V6,TRUE,im_get_relationship_status_cmd_deal},
+    {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V6,TRUE,im_pull_file_list_deal},
+    {PNR_IM_CMDTYPE_UPLOADFILEREQ,PNR_API_VERSION_V6,TRUE,im_upload_file_req_deal},
+    {PNR_IM_CMDTYPE_UPLOADFILE,PNR_API_VERSION_V6,TRUE,im_upload_file_deal},
+    {PNR_IM_CMDTYPE_DELETEFILE,PNR_API_VERSION_V6,TRUE,im_delete_file_deal},
+    {PNR_IM_CMDTYPE_ROUTERLOGIN,PNR_API_VERSION_V6,TRUE,im_routerlogin_deal},
+    {PNR_IM_CMDTYPE_RESETROUTERKEY,PNR_API_VERSION_V6,TRUE,im_reset_routerkey_deal},
+    {PNR_IM_CMDTYPE_RESETUSERIDCODE,PNR_API_VERSION_V6,TRUE,im_reset_useridcode_deal},
+    {PNR_IM_CMDTYPE_RESETROUTERNAME,PNR_API_VERSION_V6,TRUE,im_reset_routername_deal},
+    {PNR_IM_CMDTYPE_GETDISKDETAILINFO,PNR_API_VERSION_V6,TRUE,im_get_disk_detailinfo_deal},
+    {PNR_IM_CMDTYPE_GETDISKTOTALINFO,PNR_API_VERSION_V6,TRUE,im_get_disk_totalinfo_deal},
+    {PNR_IM_CMDTYPE_FORMATDISK,PNR_API_VERSION_V6,TRUE,im_format_disk_deal},
+    {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V6,TRUE,im_reboot_deal},
+    {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V6,TRUE,im_group_create_deal},
+    {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V6,TRUE,im_group_invite_deal},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V6,TRUE,im_group_invitedeal_deal},
+    {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V6,TRUE,im_group_verify_deal},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V6,TRUE,im_group_quit_deal},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V6,TRUE,im_group_pulllist_deal},
+    {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V6,TRUE,im_group_pulluser_deal},
+    {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V6,TRUE,im_group_pullmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V6,TRUE,im_group_sendmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V6,TRUE,im_group_sendfile_predeal},
+    {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V6,TRUE,im_group_sendfile_done_deal},
+    {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V6,TRUE,im_group_delmsg_deal},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V6,TRUE,im_group_config_deal},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V6,TRUE,im_file_rename_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V6,TRUE,im_file_forward_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V6,TRUE,im_upload_avatar_deal},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V6,TRUE,im_updata_avatar_deal},
+    {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V6,TRUE,im_pull_tmpaccount_deal},
+    {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V6,TRUE,im_account_delete_deal},
+    {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_enableqlcnode_deal},
+    {PNR_IM_CMDTYPE_CHECKQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_checkqlcnode_deal},
+};
+char * g_pnr_cmdstring[]=
+{
+    NULL,
+    PNR_IMCMD_LOGIN,
+    PNR_IMCMD_DESTORY,   
+    PNR_IMCMD_ADDFRIEDNREQ,   
+    PNR_IMCMD_ADDFRIENDPUSH ,   
+    PNR_IMCMD_ADDREIENDDEAL,   
+    PNR_IMCMD_ADDFRIENDREPLY ,   
+    PNR_IMCMD_DELFRIENDCMD ,   
+    PNR_IMCMD_DELFRIENDPUSH ,   
+    PNR_IMCMD_SENDMSG ,   
+    PNR_IMCMD_PUSHMSG ,   
+    PNR_IMCMD_READMSG ,   
+    PNR_IMCMD_READMSGPUSH ,   
+    PNR_IMCMD_DELMSG ,   
+    PNR_IMCMD_DELMSGPUSH ,   
+    PNR_IMCMD_HEARTBEAT ,
+    PNR_IMCMD_ONLINESTATUSCHECK ,
+    PNR_IMCMD_ONLINESTATUSPUSH ,
+    PNR_IMCMD_PULLMSG,
+    PNR_IMCMD_PULLFRIEDN,
+    PNR_IMCMD_SENDFILE,
+    PNR_IMCMD_PUSHFILE,
+    PNR_IMCMD_PUSHFILE_TOX,
+    PNR_IMCMD_SYNCHDATAFILE,    
+    PNR_IMCMD_CREATENORMALUSER,// 24
+    PNR_IMCMD_LOGINIDENTIFY,
+    PNR_IMCMD_PREREGISTER,
+    PNR_IMCMD_REGISTER,
+    PNR_IMCMD_RECOVERYIDENTIFY,
+    PNR_IMCMD_RECOVERY,
+    PNR_IMCMD_PULLUSERLIST,
+    PNR_IMCMD_PULLFILE,
+    PNR_IMCMD_LOGOUT,
+    PNR_IMCMD_USERINFOUPDATE,
+    PNR_IMCMD_USERINFOPUSH,
+    PNR_IMCMD_CHANGEREMARKS,
+    PNR_IMCMD_QUERYFRIEND,
+    PNR_IMCMD_PULLFILELIST,
+    PNR_IMCMD_UPLOADFILEREQ,
+    PNR_IMCMD_UPLOADFILE,
+    PNR_IMCMD_DELETEFILE,     
+    PNR_IMCMD_ROUTERLOGIN,
+    PNR_IMCMD_RESETROUTERKEY,
+    PNR_IMCMD_RESETUSERIDCODE,
+    PNR_IMCMD_RESETROUTERNAME,
+    PNR_IMCMD_GETDISKDETAILINFO,
+    PNR_IMCMD_GETDISKTOTALINFO,
+    PNR_IMCMD_FORMATDISK,
+    PNR_IMCMD_REBOOT,
+    PNR_IMCMD_CREATEGROUP,
+    PNR_IMCMD_INVITEGROUP,
+    PNR_IMCMD_GROUPINVITEPUSH,
+    PNR_IMCMD_GROUPINVITEDEAL,
+    PNR_IMCMD_VERIFYGROUP,
+    PNR_IMCMD_VERIFYGROUPPUSH,
+    PNR_IMCMD_GROUPQUIT,
+    PNR_IMCMD_GROUPLISTPULL,
+    PNR_IMCMD_GROUPUSERPULL,
+    PNR_IMCMD_GROUPMSGPULL,
+    PNR_IMCMD_GROUPSENDMSG,
+    PNR_IMCMD_GROUPSENDFILEPRE,
+    PNR_IMCMD_GROUPSENDFILEDONE,
+    PNR_IMCMD_GROUPDELMSG,
+    PNR_IMCMD_GROUPMSGPUSH,
+    PNR_IMCMD_GROUPCONFIG,
+    PNR_IMCMD_GROUPSYSPUSH,
+    PNR_IMCMD_FILERENAME,
+    PNR_IMCMD_FILEFORWARD,
+    PNR_IMCMD_FILEFORWARD,//PNR_IM_CMDTYPE_FILEFORWARD_PUSH,
+    PNR_IMCMD_UPLOADAVATAR,
+    PNR_IMCMD_UPDATEAVATAR,
+    PNR_IMCMD_PULLTMPACCOUNT,
+    PNR_IMCMD_DELUSER,
+    PNR_IMCMD_ENABLEQLCNODE,
+    PNR_IMCMD_CHECKQLCNODE,
+    //rid独有的消息
+    PNR_IMCMD_SYSDEBUGCMD,
+    PNR_IMCMD_USRDEBUGCMD,
+    PNR_IMCMD_SYSDERLYCMD,
+    PNR_IMCMD_BUTT,   
+};
+/**********************************************************************************
+  Function:      pnr_msghead_parses
+  Description: IM模块消息头部解析处理
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* phead)
+{
+    char action_buff[PNR_IMCMD_PARAMS_KEYWORD_MAXLEN+1]={0};
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    if(root == NULL || phead == NULL)
+    {
+        return ERROR;
+    }
+
+    CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"timestamp",phead->timestamp,0);
+    CJSON_GET_VARSTR_BYKEYWORD(root,tmp_item,tmp_json_buff,"appid",phead->appid,APPID_MAXLEN);
+    CJSON_GET_VARINT_BYKEYWORD(root,tmp_item,tmp_json_buff,"apiversion",phead->api_version,0);
+    //路由发送过来的消息不解析msgid
+    if (!phead->no_parse_msgid) {
+        CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"msgid",phead->msgid,0);
+    }
+    if (phead->iftox) {
+		CJSON_GET_VARINT_BYKEYWORD(root,tmp_item,tmp_json_buff,"offset",phead->offset,0);	
+        if(phead->offset)
+        {
+            return OK;
+        }
+    }
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Action",action_buff,PNR_IMCMD_PARAMS_KEYWORD_MAXLEN);
+	switch(action_buff[0])
+    {
+        case 'a':
+        case 'A':
+            if(strcasecmp(action_buff,PNR_IMCMD_ADDFRIEDNREQ) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDREQ;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_ADDFRIENDREPLY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDREPLY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_ADDFRIENDPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDPUSH;
+            } 
+            else if(strcasecmp(action_buff,PNR_IMCMD_ADDREIENDDEAL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDDEAL;
+            }  
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'c':
+        case 'C':
+            if(strcasecmp(action_buff,PNR_IMCMD_CREATENORMALUSER) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CREATENORMALUSER;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_CHANGEREMARKS) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CHANGEREMARKS;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_CREATEGROUP) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CREATEGROUP;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_CHECKQLCNODE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKQLCNODE;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'd':
+        case 'D':
+            if(strcasecmp(action_buff,PNR_IMCMD_DESTORY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DESTORY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELFRIENDCMD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELFRIENDCMD;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELFRIENDPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELFRIENDPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELMSG;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_DELETEFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELETEFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELUSER) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELUSER;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'e':
+		case 'E':
+			if(strcasecmp(action_buff,PNR_IMCMD_ENABLEQLCNODE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ENABLEQLCNODE;
+            }
+			else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+			break;
+		case 'f':
+		case 'F':
+			if(strcasecmp(action_buff,PNR_IMCMD_FORMATDISK) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FORMATDISK;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_FILERENAME) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FILERENAME;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_FILEFORWARD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FILEFORWARD;
+            }
+			else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+			break;
+		case 'g':
+		case 'G':
+			if(strcasecmp(action_buff,PNR_IMCMD_GETDISKDETAILINFO) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETDISKDETAILINFO;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GETDISKTOTALINFO) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETDISKTOTALINFO;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPINVITEPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPINVITEPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPINVITEDEAL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPINVITEDEAL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPQUIT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPQUIT;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPLISTPULL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPLISTPULL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPUSERPULL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPUSERPULL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPMSGPULL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPMSGPULL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPSENDMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPSENDMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPSENDFILEPRE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPSENDFILEPRE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPSENDFILEDONE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPSENDFILEDONE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPDELMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPDELMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPMSGPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPMSGPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPCONFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPCONFIG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GROUPSYSPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GROUPSYSPUSH;
+            }
+            else if (strcasecmp(action_buff, PNR_IMCMD_VERIFYGROUP) == OK)
+			{
+				phead->im_cmdtype = PNR_IM_CMDTYPE_VERIFYGROUP;
+			}
+            else if(strcasecmp(action_buff, PNR_IMCMD_VERIFYGROUPPUSH) == OK)
+            {
+				phead->im_cmdtype = PNR_IM_CMDTYPE_VERIFYGROUPPUSH;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+			break;
+        case 'h':
+        case 'H':
+            if(strcasecmp(action_buff,PNR_IMCMD_HEARTBEAT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_HEARTBEAT;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'i':
+        case 'I':
+            if(strcasecmp(action_buff,PNR_IMCMD_INVITEGROUP) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_INVITEGROUP;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'l':
+        case 'L':
+            if(strcasecmp(action_buff,PNR_IMCMD_LOGINIDENTIFY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_LOGINIDENTIFY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_LOGIN) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_LOGIN;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_LOGOUT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_LOGOUT;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'o':
+        case 'O':
+            if(strcasecmp(action_buff,PNR_IMCMD_ONLINESTATUSCHECK) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ONLINESTATUSCHECK;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_ONLINESTATUSPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ONLINESTATUSPUSH;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'p':
+        case 'P':
+            if(strcasecmp(action_buff,PNR_IMCMD_PUSHMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PUSHMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELMSGPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELMSGPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLFRIEDN) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLFRIEND;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_PUSHFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PUSHFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLUSERLIST) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLUSERLIST;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PREREGISTER) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PREREGISTER;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_PULLUSERLIST) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLUSERLIST;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_PUSHFILE_TOX) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PUSHFILE_TOX;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_PULLFILELIST) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLFILELIST;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLTMPACCOUNT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLTMPACCOUNT;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+		case 'q':
+		case 'Q':
+			if (strcasecmp(action_buff, PNR_IMCMD_QUERYFRIEND) == OK)
+			{
+				phead->im_cmdtype = PNR_IM_CMDTYPE_GET_RELATIONSHIP;
+			}
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }  
+			break;
+        case 'r':
+        case 'R':
+            if(strcasecmp(action_buff,PNR_IMCMD_REGISTER) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_REGISTER;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_RECOVERYIDENTIFY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RECOVERYIDENTIFY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_RECOVERY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RECOVERY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_READMSGPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_READMSGPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_READMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_READMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_ROUTERLOGIN) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_ROUTERLOGIN;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_RESETROUTERKEY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RESETROUTERKEY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_RESETROUTERNAME) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RESETROUTERNAME;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_RESETUSERIDCODE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RESETUSERIDCODE;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_REBOOT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_REBOOT;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }        
+            break;
+        case 's':
+        case 'S':
+            if(strcasecmp(action_buff,PNR_IMCMD_SENDMSG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SENDMSG;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_SENDFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SENDFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYNCHDATAFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYNCHDATAFILE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYSDEBUGCMD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDEBUGMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYSDERLYCMD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDERLYMSG;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break; 
+        case 'u':
+        case 'U':
+            if(strcasecmp(action_buff,PNR_IMCMD_USERINFOPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_USERINFOPUSH;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_USERINFOUPDATE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_USERINFOUPDATE;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_UPLOADFILEREQ) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_UPLOADFILEREQ;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_UPLOADFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_UPLOADFILE;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_UPLOADAVATAR) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_UPLOADAVATAR;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_UPDATEAVATAR) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_UPDATEAVATAR;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_USRDEBUGCMD) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_USRDEBUGMSG;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+ 		case 'v':
+		case 'V':
+			if (strcasecmp(action_buff, PNR_IMCMD_VERIFYGROUP) == OK)
+			{
+				phead->im_cmdtype = PNR_IM_CMDTYPE_VERIFYGROUP;
+			}
+            else if(strcasecmp(action_buff, PNR_IMCMD_VERIFYGROUPPUSH) == OK)
+            {
+				phead->im_cmdtype = PNR_IM_CMDTYPE_VERIFYGROUPPUSH;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }  
+			break;       
+        default:
+            phead->im_cmdtype = PNR_IM_CMDTYPE_BUTT;
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            break;
+    }
+    return OK;
+}
+#define PNR_CMDDEAL_CBFUNC_GET(api,cmd,pfunc)\
+{\
+    switch(api)\
+    {\
+        case PNR_API_VERSION_V1:\
+            pfunc = &g_cmddeal_cb_v1[cmd];\
+            break;\
+        case PNR_API_VERSION_V2:\
+            pfunc = &g_cmddeal_cb_v2[cmd];\
+            break;\
+        case PNR_API_VERSION_V3:\
+            pfunc = &g_cmddeal_cb_v3[cmd];\
+            break;\
+        case PNR_API_VERSION_V4:\
+            pfunc = &g_cmddeal_cb_v4[cmd];\
+            break;\
+        case PNR_API_VERSION_V5:\
+            pfunc = &g_cmddeal_cb_v5[cmd];\
+            break;\
+        case PNR_API_VERSION_V6:\
+            pfunc = &g_cmddeal_cb_v6[cmd];\
+            break;\
+        default:\
+            return ERROR;\
+    }\
+}
+/**********************************************************************************
+  Function:      pnr_cmdbylws_handle
+  Description: IM模块lws链接过来的消息处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
+	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index)
+{
+    cJSON *root = NULL;
+    cJSON *params = NULL;
+    int retcode = 0;
+    struct imcmd_msghead_struct msg_head;
+	int uindex = 0;
+    char toxid[TOX_ID_STR_LEN+1]={0};
+    char sign[PNR_RSA_KEY_MAXLEN+1] = {0};
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    struct ppr_func_struct* p_cmddeal_cbnode = NULL;
+
+    if(pmsg == NULL)
+    {
+        return ERROR;
+    }
+    root = cJSON_Parse(pmsg);
+    if(root == NULL) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get root failed");
+        return ERROR;
+    }
+	pmsg[msg_len] = 0;	/* 避免打印乱码 */
+    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"id(%d) rec msg(%d):(%s)",pss->user_index,msg_len,pmsg);
+    params = cJSON_GetObjectItem(root, "params");
+    if (!params) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get params failed");
+        return ERROR;
+    }
+    memset(&msg_head,0,sizeof(msg_head));
+    if(pnr_msghead_parses(root,params,&msg_head) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_msghead_parses failed");
+        return ERROR;
+    }
+    if((msg_head.api_version < PNR_API_VERSION_V1 || msg_head.api_version > PNR_API_VERSION_MAXNUM)
+        || (msg_head.im_cmdtype <= PNR_IM_CMDTYPE_NONE || msg_head.im_cmdtype >= PNR_IM_CMDTYPE_BUTT))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api version(%d) bad cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
+        return ERROR;
+    }
+	pthread_mutex_lock(&g_formating_lock);
+	if (g_formating == 1 && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REBOOT) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "formating...");
+        pthread_mutex_unlock(&g_formating_lock);
+		return ERROR;
+	}
+	pthread_mutex_unlock(&g_formating_lock);
+    memset(retmsg,0,IM_JSON_MAXLEN);
+    PNR_CMDDEAL_CBFUNC_GET(msg_head.api_version,msg_head.im_cmdtype,p_cmddeal_cbnode);
+    if(p_cmddeal_cbnode == NULL)
+    {
+        return ERROR;
+    }
+    //这里按照api接口版本分批处理
+    if(msg_head.api_version >= PNR_API_VERSION_V6)
+    {
+        //对V6及V6以后版本的请求命令，需要判断时间戳有效性和签名校验
+        if(p_cmddeal_cbnode->p_cmddeal_cb != NULL
+            && p_cmddeal_cbnode->need_reply == TRUE)
+        {
+            if(pnr_check_timestamp(msg_head.timestamp) != OK)
+            {
+                retcode = PNR_RETCODE_ERR_TIMEOUT;
+                goto errbreak;
+            }
+            if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGIN)
+            {
+                //获取用户id
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",toxid,TOX_ID_STR_LEN);
+                uindex = get_indexbytoxid(toxid);
+                if(uindex <= 0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toxid(%s)",toxid);
+                    return ERROR;
+                }
+                *plws_index = uindex;
+            }
+            else
+            {
+                uindex = *plws_index;
+            }
+            if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_PREREGISTER
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REGISTER
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERYIDENTIFY
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERY)
+            {
+                if(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM)
+                {
+                    CJSON_GET_VARSTR_BYKEYWORD(root,tmp_item,tmp_json_buff,"sign",sign,PNR_RSA_KEY_MAXLEN);
+                    if(pnr_sign_check(sign,strlen(sign),g_imusr_array.usrnode[*plws_index].user_pubkey,TRUE) != OK)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d:%s) bad sign(%s)",*plws_index,g_imusr_array.usrnode[*plws_index].user_pubkey,sign);
+                        retcode = PNR_RETCODE_ERR_BADSIGN;
+                        goto errbreak;
+                    }
+                }
+            }
+        }        
+    }
+    
+    if(p_cmddeal_cbnode->p_cmddeal_cb != NULL)
+    {
+        p_cmddeal_cbnode->p_cmddeal_cb(params, retmsg, retmsg_len, plws_index, &msg_head);
+        *ret_flag = p_cmddeal_cbnode->need_reply;
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d)",msg_head.api_version);
+        return ERROR;
+    }
+    if(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM)
+    {
+        pthread_mutex_lock(&(g_pnruser_lock[*plws_index]));
+        if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
+        {
+            g_imusr_array.usrnode[*plws_index].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
+        }
+        else
+        {
+            g_imusr_array.usrnode[*plws_index].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+        }
+        g_imusr_array.usrnode[*plws_index].heartbeat_count = 0;
+        g_imusr_array.usrnode[*plws_index].user_online_type = USER_ONLINE_TYPE_LWS;
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) online_type(%d)",*plws_index,g_imusr_array.usrnode[*plws_index].user_online_type);
+        pthread_mutex_unlock(&(g_pnruser_lock[*plws_index]));
+    }
+errbreak:
+    if(retcode != OK)
+    {
+        //构建响应消息
+        char* ret_buff = NULL;
+        cJSON * ret_root = cJSON_CreateObject();
+        cJSON * ret_params = cJSON_CreateObject();
+        if(ret_root == NULL || ret_params == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+            free(pmsg);
+            return ERROR;
+        }
+        cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+        cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+        cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)msg_head.api_version));
+    	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msg_head.msgid));
+    	cJSON_AddItemToObject(ret_root, "retcode", cJSON_CreateNumber(retcode));
+        cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(g_pnr_cmdstring[msg_head.im_cmdtype]));        
+        cJSON_AddItemToObject(ret_root, "params", ret_params);
+        ret_buff = cJSON_PrintUnformatted(ret_root);
+        cJSON_Delete(ret_root);
+        *retmsg_len = strlen(ret_buff);
+        if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+            free(ret_buff);
+            return ERROR;
+        }
+        strcpy(retmsg,ret_buff);
+        free(ret_buff);
+        *ret_flag = TRUE;
+    }
+    return OK;
+}
+/*****************************************************************************
+ Function:      pnr_cmdbytox_handle
+ Description: IM模块tox链接过来的消息处理函数
+ 输入参数  : Tox *m         
+             char *pmsg     
+             int len        
+             int friendnum  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 修改历史      :
+  1.日    期   : 2018年10月25日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
+{
+    cJSON *root = NULL;
+    cJSON *params = NULL;
+    struct imcmd_msghead_struct msg_head;
+    int retlen = 0;
+    int userindex = 0;
+    int needret = 0;
+    char sendmsg[1500] = {0};
+    int i = 0;
+    int retcode = 0;
+    char sign[PNR_RSA_KEY_MAXLEN+1] = {0};
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    struct ppr_func_struct* p_cmddeal_cbnode = NULL;
+
+    root = cJSON_Parse(pmsg);
+    if (!root) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get root failed");
+        return ERROR;
+    }
+	DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "rec app msg(%d):(%s)", len, pmsg);
+    params = cJSON_GetObjectItem(root, "params");
+    if (!params) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get params failed");
+        return ERROR;
+    }
+	memset(&msg_head, 0, sizeof(msg_head));
+	msg_head.iftox = TRUE;
+	msg_head.friendnum = friendnum;
+    if (im_msghead_parses(root, params, &msg_head)) {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "msg head parse failed");
+        return ERROR;
+    }
+    if((msg_head.api_version < PNR_API_VERSION_V1 || msg_head.api_version > PNR_API_VERSION_MAXNUM)
+            || (msg_head.im_cmdtype <= PNR_IM_CMDTYPE_NONE || msg_head.im_cmdtype >= PNR_IM_CMDTYPE_BUTT))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api version(%d) bad cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
+        return ERROR;
+    }
+	pthread_mutex_lock(&g_formating_lock);
+	if (g_formating == 1 && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REBOOT) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "formating...");
+        pthread_mutex_unlock(&g_formating_lock);
+		return ERROR;
+	}
+	pthread_mutex_unlock(&g_formating_lock);
+	//request other segment
+	if (msg_head.offset > 0) {
+		tox_seg_msg_process(m, friendnum, &msg_head);
+		return OK;
+	}   
+	memset(g_tox_retbuf, 0, IM_JSON_MAXLEN);
+    PNR_CMDDEAL_CBFUNC_GET(msg_head.api_version,msg_head.im_cmdtype,p_cmddeal_cbnode);
+    if(p_cmddeal_cbnode == NULL)
+    {
+        return ERROR;
+    }
+    //这里按照api接口版本分批处理
+    if(msg_head.api_version >= PNR_API_VERSION_V6)
+    {
+        //对V6及V6以后版本的请求命令，需要判断时间戳有效性和签名校验
+        if(p_cmddeal_cbnode->p_cmddeal_cb != NULL
+            && p_cmddeal_cbnode->need_reply == TRUE)
+        {
+            if(pnr_check_timestamp(msg_head.timestamp) != OK)
+            {
+                retcode = PNR_RETCODE_ERR_TIMEOUT;
+                goto errbreak;
+            }
+            //get uindex
+        	if(get_uindex_by_toxfriendnum(m,friendnum,&userindex) != OK)
+            {
+        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_uindex_by_toxfriendnum failed");
+                return ERROR;
+            }
+            if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_PREREGISTER
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REGISTER
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERYIDENTIFY
+                && msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERY)
+            {
+                if(userindex > 0 && userindex <= PNR_IMUSER_MAXNUM)
+                {
+                    CJSON_GET_VARSTR_BYKEYWORD(root,tmp_item,tmp_json_buff,"sign",sign,PNR_RSA_KEY_MAXLEN);
+                    if(pnr_sign_check(sign,strlen(sign),g_imusr_array.usrnode[userindex].user_pubkey,TRUE) != OK)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d:%s) bad sign(%s)",userindex,g_imusr_array.usrnode[userindex].user_pubkey,sign);
+                        retcode = PNR_RETCODE_ERR_BADSIGN;
+                        goto errbreak;
+                    }
+                }
+            }
+        }        
+    }
+    if(p_cmddeal_cbnode->p_cmddeal_cb != NULL)
+    {
+        p_cmddeal_cbnode->p_cmddeal_cb(params, g_tox_retbuf, &retlen, &userindex, &msg_head);
+        needret = p_cmddeal_cbnode->need_reply;
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad api_version(%d) cmd(%d)",msg_head.api_version,msg_head.im_cmdtype);
+        return ERROR;
+    }
+    if (userindex > 0 && userindex <= PNR_IMUSER_MAXNUM) 
+    {
+		for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) {
+			if (g_imusr_array.usrnode[i].appid == friendnum)
+				g_imusr_array.usrnode[i].appid = -1;
+		}
+		g_imusr_array.usrnode[userindex].appid = friendnum;
+        pthread_mutex_lock(&(g_pnruser_lock[userindex]));
+        if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
+        {
+            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
+        }
+        else
+        {
+            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+        }
+        g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+        g_imusr_array.usrnode[userindex].heartbeat_count = 0;
+        g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
+        pthread_mutex_unlock(&(g_pnruser_lock[userindex]));
+    }
+        
+    if (needret) 
+    {
+    	if (retlen >= MAX_CRYPTO_DATA_SIZE) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"retlen(%d) MAX_CRYPTO_DATA_SIZE(%d)",retlen,MAX_CRYPTO_DATA_SIZE);
+			while (1) {
+				cJSON *RspJson = cJSON_Parse(g_tox_retbuf);
+				if (!RspJson) {
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse retbuf(%s) err!", g_tox_retbuf);
+					break;
+				}
+
+                cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "params");
+				if (!RspJsonParams) {
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse params(%s) err!", g_tox_retbuf);
+					cJSON_Delete(RspJson);
+					break;
+				}
+
+				char *RspStrParams = cJSON_PrintUnformatted_noescape(RspJsonParams);
+				if (!RspStrParams) {
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print params(%s) err!", g_tox_retbuf);
+					cJSON_Delete(RspJson);
+					break;
+				}
+				cJSON *JsonFrame = cJSON_Duplicate(RspJson, true);
+			    if (!JsonFrame) {
+			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
+					cJSON_Delete(RspJson);
+					free(RspStrParams);
+					break;
+				}
+
+				cJSON_Delete(RspJson);
+				cJSON_DeleteItemFromObject(JsonFrame, "params");
+
+				char *StrFrame = cJSON_PrintUnformatted_noescape(JsonFrame);
+				if (!StrFrame) {
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print frame err!");
+					cJSON_Delete(JsonFrame);
+					free(RspStrParams);
+					break;
+				}
+				struct tox_msg_send *tmsg = (struct tox_msg_send *)calloc(1, sizeof(*tmsg));
+			    if (!tmsg) {
+			        cJSON_Delete(JsonFrame);
+			        free(StrFrame);
+					free(RspStrParams);
+			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err![%d]", errno);
+			    	break;
+			    }
+
+				tmsg->msg = RspStrParams;
+			    tmsg->msgid = msg_head.msgid;
+			    tmsg->friendnum = friendnum;
+			    tmsg->msglen = strlen(RspStrParams);
+				tmsg->offset = MAX_SEND_DATA_SIZE;
+				tmsg->recvtime = time(NULL);
+			    strncpy(tmsg->frame, StrFrame, sizeof(tmsg->frame) - 1);
+				cJSON_Delete(JsonFrame);
+		        free(StrFrame);
+					
+			    pthread_rwlock_wrlock(&g_tox_msg_send_lock);
+			    list_add_tail(&tmsg->list, &g_tox_msg_send_list);
+			    pthread_rwlock_unlock(&g_tox_msg_send_lock);
+
+				cJSON *RspJsonSend = cJSON_Parse(tmsg->frame);
+				memcpy(sendmsg, tmsg->msg, MAX_SEND_DATA_SIZE);
+				cJSON_AddStringToObject(RspJsonSend, "params", sendmsg);
+            	cJSON_AddNumberToObject(RspJsonSend, "more", 1);
+            	cJSON_AddNumberToObject(RspJsonSend, "offset", 0);
+				char *RspStrSend = cJSON_PrintUnformatted_noescape(RspJsonSend);
+				if (!RspStrSend) {
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print RspJsonSend err!");
+					cJSON_Delete(RspJsonSend);
+					break;
+				}
+                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"resp(%d:%s)",strlen(RspStrSend),RspStrSend);
+				tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
+            		(uint8_t *)RspStrSend, strlen(RspStrSend), NULL);
+				cJSON_Delete(RspJsonSend);
+				free(RspStrSend);
+				break;
+			}
+		}
+        else
+        {
+        	tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
+            	(uint8_t *)g_tox_retbuf, retlen, NULL);
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"resp(%d:%s)",retlen,g_tox_retbuf);
+		}
+    }
+
+    if (msg_head.forward) 
+    {
+        //目标用户是本地用户
+        if(msg_head.to_userid)
+        {
+            im_pushmsg_callback(msg_head.to_userid,msg_head.im_cmdtype,TRUE,msg_head.api_version,msg_head.toxmsg);
+        }
+        else
+        {
+            im_tox_pushmsg_callback(userindex, msg_head.im_cmdtype,msg_head.api_version,msg_head.toxmsg);
+        }
+        free(msg_head.toxmsg);
+    }
+errbreak:
+    if(retcode)
+    {
+        //构建响应消息
+        char* ret_buff = NULL;
+        cJSON * ret_root = cJSON_CreateObject();
+        cJSON * ret_params = cJSON_CreateObject();
+        if(ret_root == NULL || ret_params == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+            free(pmsg);
+            return ERROR;
+        }
+        cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+        cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+        cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)msg_head.api_version));
+        cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msg_head.msgid));
+        cJSON_AddItemToObject(ret_root, "retcode", cJSON_CreateNumber(retcode));
+        cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(g_pnr_cmdstring[msg_head.im_cmdtype]));        
+        cJSON_AddItemToObject(ret_root, "params", ret_params);
+        ret_buff = cJSON_PrintUnformatted(ret_root);
+        cJSON_Delete(ret_root);
+        retlen = strlen(ret_buff);
+        if(retlen < TOX_ID_STR_LEN || retlen >= IM_JSON_MAXLEN)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",retlen,ret_buff);
+            free(ret_buff);
+            return ERROR;
+        }
+        strcpy(g_tox_retbuf,ret_buff);
+        free(ret_buff);
+        tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
+                        (uint8_t *)g_tox_retbuf, retlen, NULL);
+    }    
+    return OK;
+}
 /*****************************************************************************
  函 数 名  : im_send_file_by_tox
  功能描述  : 通过tox发送文件
@@ -17117,7 +18846,7 @@ void im_send_file_deal(struct im_user_msg_sendfile *pfile)
     to = get_indexbytoxid(pfile->toid);
     if(pfile->ver_str != 0)
     {
-        api_version = PNR_API_VERSION_V5;
+        api_version = PNR_API_VERSION_MAXNUM;
     }
     else
     {
@@ -17226,6 +18955,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
             }
 			if (!pss->fd) 
             {
+                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get porperty_flag(%d) ver_str(%d)",(int)pfile->porperty_flag,(int)pfile->ver_str);
                 //添加群文件处理
                 if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//字符的0
                 {
@@ -17504,6 +19234,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     char fileinfo[PNR_FILEINFO_MAXLEN+1] = {0};
     char fullfile[UPLOAD_FILENAME_MAXLEN*2] = {0};
     char* p_realfilename = NULL;
+    char filename[PNR_FILENAME_MAXLEN+1] = {0};
     struct imcmd_msghead_struct msg_head;
     struct im_friend_msgstruct friend;
     struct im_sendfile_struct sendfile;
@@ -17590,7 +19321,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcKey",psendmsg->msg_srckey,PNR_RSA_KEY_MAXLEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",psendmsg->msg_dstkey,PNR_RSA_KEY_MAXLEN);
             }
-            else if(msg_head.api_version == PNR_API_VERSION_V3)
+            else if(msg_head.api_version >= PNR_API_VERSION_V3)
             {
 #if 0//暂时不用hashid
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",sendmsg.from_uid,PNR_USER_HASHID_MAXLEN);
@@ -17616,7 +19347,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                     pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,0);
                 }
-                else if(msg_head.api_version == PNR_API_VERSION_V3)
+                else if(msg_head.api_version >= PNR_API_VERSION_V3)
                 {
                     pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
@@ -17710,9 +19441,8 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             index = get_indexbytoxid(sendfile.touser_toxid);
             if(index)
             {
-                char fullfilename[512] = {0};
                 p_realfilename = strrchr(filepath,'/');
-                if(p_realfilename)
+                if(p_realfilename != NULL)
                 {
                     p_realfilename++;
                 }
@@ -17720,16 +19450,17 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 {
                     p_realfilename = sendfile.filename;
                 }
-    			snprintf(fullfilename, sizeof(fullfilename), "%sr/%s", 
+                strcpy(filename,p_realfilename);
+    			snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s", 
 				    g_imusr_array.usrnode[index].userdata_pathurl,p_realfilename);
                 if(strlen(fileinfo) > 0)
                 {
-                    strcat(fullfilename,",");
-                    strcat(fullfilename,fileinfo);
+                    strcat(fullfile,",");
+                    strcat(fullfile,fileinfo);
                 }
                 pnr_msglog_getid(index, &msgid);
                 pnr_msglog_dbinsert_specifyid(index,sendfile.msgtype,msgid,sendfile.log_id,MSG_STATUS_SENDOK,sendfile.fromuser_toxid,
-                    sendfile.touser_toxid,sendfile.filename,sendfile.srckey,sendfile.dstkey,fullfilename,sendfile.filesize);
+                    sendfile.touser_toxid,sendfile.filename,sendfile.srckey,sendfile.dstkey,fullfile,sendfile.filesize);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",msgid);
                 cJSON_ReplaceItemInObject(params,"MsgId",cJSON_CreateNumber(msgid));
                 //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###renew msgid(%d)",msgid);
@@ -17742,7 +19473,6 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     }
     
     pnr_msgcache_getid(id, &msgid);
-
     if (msg_head.im_cmdtype != PNR_IM_CMDTYPE_PUSHFILE) {
     	dup = cJSON_Duplicate(root, 1);
     	cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
@@ -17776,7 +19506,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                     msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
                     PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
             }
-            else if(msg_head.api_version == PNR_API_VERSION_V3)
+            else if(msg_head.api_version >= PNR_API_VERSION_V3)
             {
                 pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                     msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
@@ -17800,18 +19530,10 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
 
         case PNR_IM_CMDTYPE_PUSHFILE:
             //新版逻辑名称
-            if(p_realfilename)
-            {            
-                snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, p_realfilename);
-                snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
-                    g_imusr_array.usrnode[id].userdata_pathurl, p_realfilename);
-            }
-            else
-            {
-                snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, sendfile.filename);
-                snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
-                    g_imusr_array.usrnode[id].userdata_pathurl, sendfile.filename);
-            }
+            snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, filename);
+            snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
+                g_imusr_array.usrnode[id].userdata_pathurl, filename);
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO, "get filepath(%s) fullfile(%s),p_realfilename(%s)",filepath,fullfile,p_realfilename);
             dup = cJSON_Duplicate(root, 1);
             params = cJSON_GetObjectItem(dup, "params");
             if (!params)
@@ -17821,7 +19543,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 break;
             }
             cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
-            cJSON_AddItemToObject(params, "FilePath", cJSON_CreateString(filepath));
+            cJSON_ReplaceItemInObject(params, "FilePath", cJSON_CreateString(filepath));
             pmsg = cJSON_PrintUnformatted(dup);
             cJSON_Delete(dup);
             pnr_msgcache_dbinsert(msgid, sendfile.fromuser_toxid, sendfile.touser_toxid,
@@ -19297,7 +21019,7 @@ static void *pnr_post_newmsgs_notice_once(void *para)
 *****************************************************************************/
 void post_newmsgs_loop_task(void *para)
 {
-	pthread_t task_id = -1;
+	pthread_t task_id;
     struct newmsgs_notice_params*  pmsg = NULL;
     while(1)
     {
@@ -19528,7 +21250,7 @@ int pnr_relogin_pushbylws(int index,int type)
     pnr_msgcache_getid(index,&msglogid);
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_MAXNUM));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msglogid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGOUTPUSH));
@@ -19637,7 +21359,7 @@ int pnr_relogin_pushbytox(int index,int type)
     pnr_msgcache_getid(index,&msglogid);
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_V2));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)PNR_API_VERSION_MAXNUM));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msglogid));
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_LOGOUTPUSH));
@@ -19854,7 +21576,9 @@ static void *pnr_simulation_user_task(void *para)
                 strcpy(from_id,src_account.toxid);
                 break;
             case PNR_IM_CMDTYPE_LOGIN:
-                if (im_userlogin_v4_deal(params,g_simulation_msgretbuf,&ret_len, &pws_index,&msg_head,-1,NULL,TRUE))
+                msg_head.pss = NULL;
+                msg_head.debug_flag = TRUE;
+                if (im_userlogin_v4_deal(params,g_simulation_msgretbuf,&ret_len, &pws_index,&msg_head))
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR, "im_userlogin_v4_deal failed");
                     return NULL;
@@ -20071,10 +21795,12 @@ int pnr_frpc_enable(int enable)
     
     if(enable == TRUE)
     {
+#if 0
         if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
         {
             system("mount -o remount,rw /");
         }
+#endif
         system("killall frpc");
         snprintf(cmd,CMD_MAXLEN,"frpc -c %s >> /tmp/frp.log &",PNR_FRPC_CONFIG_FILE);
     }
@@ -20901,5 +22627,65 @@ void *self_monitor_thread(void *para)
         sleep(PNR_SELF_MONITOR_CYCLE);
     }
 	return NULL;  
+}
+char* g_pnr_warninginfo[PNR_MONITORINFO_ENUM_BUTT+1]=
+{
+    "NONE",
+    "net state err",
+    "tmp dir over",
+    "cpu over",
+    "disk format",
+    "admin reboot system",
+    "BUTT"
+};
+/*****************************************************************************
+ 函 数 名  : pnr_sysoperation_done
+ 功能描述  : 系统关键性操作处理
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_sysoperation_done(int type)
+{
+    pthread_t task_id = 0;
+    void *status;
+    struct pnr_monitor_errinfo warninfo;
+    char syscmd[CMD_MAXLEN+1] = {0};
+    memset(&warninfo,0,sizeof(warninfo));
+    strcpy(warninfo.tox_id,g_daemon_tox.user_toxid);
+    strcpy(warninfo.mac,g_dev_hwaddr);
+    warninfo.dev_num = g_pnrdevtype;
+    warninfo.mode_num = 1;
+    if(type == PNR_MONITORINFO_ENUM_DISKFORMAT || type == PNR_MONITORINFO_ENUM_SYSREBOOT)
+    {
+        warninfo.err_no = type;
+        strcpy(warninfo.err_info,g_pnr_warninginfo[type]);
+        strcpy(warninfo.repair_info,"Just warning");
+        //本地记录
+        snprintf(syscmd,CMD_MAXLEN,"echo 'time(%d) warntype(%d) info(%s) repair(%s)' >> %s",
+            (int)time(NULL),warninfo.err_no,warninfo.err_info,warninfo.repair_info,PNR_SYSWARNING_LOG);
+        system(syscmd);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"syscmd(%s)",syscmd);
+        //上报
+        if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, &warninfo) != 0) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_sysoperation_done failed");
+        }
+        pthread_join(task_id,&status);
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad type(%d)",type);
+        return ERROR;
+    }
+    return OK;
 }
 

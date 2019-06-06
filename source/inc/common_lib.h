@@ -172,7 +172,7 @@ enum DEBUG_LEVEL
 #define SYSINFO_CHECK_CYCLE      600  //10* 60
 #define HEARTBEAT_CYCLE      60  //60sec
 #define IMUSER_HEARTBEAT_CYCLE 30//30sec
-#define PNR_SELF_MONITOR_CYCLE   60 // 1min
+#define PNR_SELF_MONITOR_CYCLE   300 // 5min
 #ifdef USERDEBUG
 #define DEBUG_INIT(file) log_init(file)
 #define DEBUG_LEVEL(level) log_level(level)
@@ -558,5 +558,8 @@ int pnr_check_process_byname(char* pname,int* pid);
 int get_localip_byname(char* devname,char* local_ip);
 int pnr_check_frp_connstatus(void);
 char* pnr_stristr (const char * str1,const char * str2);
+int pnr_check_timestamp(long timestamp);
+int pnr_get_qlcnode_status(int* status);
+int pnr_set_qlcnode_enable(int enable);
 #endif
 

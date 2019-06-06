@@ -76,5 +76,5 @@ int tox_datafile_check(int user_index,char* datafile,int* new_flag);
 int tox_datafile_backup(int user_index,char* datafile);
 int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath,int msgid,int filefrom);
 int add_friends_force(Tox *plinknode, char *friendid, char *msg);
-
+int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex);
 #endif

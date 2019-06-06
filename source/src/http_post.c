@@ -19,6 +19,7 @@
 #include <openssl/crypto.h>
 #include "common_lib.h"
 #include <cJSON.h>
+#include <pthread.h>
 //#include "https_post.h"
 
 extern pthread_mutex_t g_postlock;

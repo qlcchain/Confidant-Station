@@ -84,6 +84,9 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
 int pnr_account_dbupdate_lastactive_bytoxid(char* p_toxid);
 int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type, 
     char *pmsg, int len, char *filename, char *filepath, int logid, int ctype, int ftype,char* skey,char* dkey);
+int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type, 
+    char *pmsg, int len, char *filename, char *filepath, int logid, int ctype, 
+    int ftype,char* sign,char* nonce,char* prikey);
 int pnr_msgcache_dbdelete(int msgid, int userid);
 int pnr_msgcache_dbdelete_nolock(struct lws_cache_msg_struct *msg);
 int pnr_msgcache_dbdelete_by_friendid(int index, char *friendid);

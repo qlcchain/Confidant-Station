@@ -41,7 +41,6 @@ extern pthread_mutex_t g_user_msgidlock[PNR_IMUSER_MAXNUM+1];
 int sql_db_repair(int uindex,int db_num,int db_tbl_index)
 {
 	int ret = 0;
-	int8 *errMsg = NULL;
     sqlite3 * p_dbhandler = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
     char src_dbfile[PNR_FILENAME_MAXLEN+1] = {0};
@@ -2759,7 +2758,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     struct lws_cache_msg_struct *msg = NULL;
 	struct lws_cache_msg_struct *tmsg = NULL;
     struct lws_cache_msg_struct *n = NULL;
-    char fpath[255] = {0};
+    char fpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char *fname = "";
     char *p_newskey = "";
     char *p_newdkey = "";
@@ -2853,12 +2852,12 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
         p_newdkey = dkey;
     }
 	if (logid) {
-		snprintf(sql, MSGSQL_CMD_LEN, "select id from msg_tbl where fromid='%s' and logid=%d;",
+		snprintf(p_sql, MSGSQL_CMD_LEN, "select id from msg_tbl where fromid='%s' and logid=%d;",
 			fromid, logid);
 
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
-		ret = sqlite3_get_table(g_msgcachedb_handle[userid], sql, &dbResult, &nRow, &nColumn, &err);
+		ret = sqlite3_get_table(g_msgcachedb_handle[userid], p_sql, &dbResult, &nRow, &nColumn, &err);
 		if (ret == SQLITE_OK) {
 			if (nRow > 0) {
 				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", fromid, logid);
@@ -2870,7 +2869,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
                 return OK;
 			}
 		} else {
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", sql);
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", p_sql);
 			sqlite3_free(err);
             if(sql_malloc_flag == TRUE)
             {
@@ -2912,7 +2911,6 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
             msgid,fromid,toid,type,ctype,pmsg,len,fname,fpath,
             filesize,logid, ftype, p_newskey, p_newdkey);
     }
-    
 #endif
 #endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", p_sql);
@@ -3005,7 +3003,8 @@ OUT:
 
 *****************************************************************************/
 int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type, 
-    char *pmsg, int len, char *filename, char *filepath, int logid, int ctype, int ftype,char* sign,char* nonce,char* prikey)
+    char *pmsg, int len, char *filename, char *filepath, int logid, int ctype, 
+    int ftype,char* sign,char* nonce,char* prikey)
 {
     int ret = 0;
 	int8 *err = NULL;
@@ -6027,7 +6026,6 @@ int pnr_netconfig_dbget(struct pnrdev_netconn_info* pinfo)
 int pnr_logcache_dbinsert(int cmd,char* fromid,char* toid,char* msg,char* ext)
 {
 	int8* errMsg = NULL;
-    int count = 0;
 	char sql_cmd[SQL_CMD_LEN] = {0};
     char* p_ext = "";
     char* p_msg = "";
@@ -6238,8 +6236,6 @@ int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int 
 int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char* filename)
 {
 	int8* errMsg = NULL;
-    int attach_flag = FALSE;
-    char sql_tmpstr[CMD_MAXLEN] = {0};
 	char sql_cmd[SQL_CMD_LEN] = {0};
 
     if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM || filename == NULL)
@@ -6359,7 +6355,7 @@ int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad params");
         return ERROR;
     }
-    memset(p_file_dbinfo,0,sizeof(p_file_dbinfo));
+    memset(p_file_dbinfo,0,sizeof(struct pnr_file_dbinfo_struct));
     //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
     snprintf(sql_cmd,SQL_CMD_LEN,"select * from filelist_tbl where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbinfo_getbyid:sql(%s)",sql_cmd);
