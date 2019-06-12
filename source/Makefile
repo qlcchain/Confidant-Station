@@ -1,14 +1,14 @@
 ifeq ($(OPENWRT_BUILD), 1)
 MOUDLE_LDFLAGS += -lm -lpthread -ldl -lcurl -luci -lcrypto -lssl -lubus -lubox -lnl-tiny -lsqlite3 -lsodium -lwebsockets -lcrypto  -lqrencode -lpng
 else
-MOUDLE_LDFLAGS += -lm -lpthread -ldl -lcurl -lsqlite3  -lsodium -lcrypt -lwebsockets -lcrypto -lqrencode -lssl -L../rootfs/usr/lib 
+MOUDLE_LDFLAGS += -lm -lpthread -ldl -lcurl -lsqlite3  -lsodium -lcrypt -lwebsockets -lcrypto -lqrencode -lssl -L../../rootfs/usr/lib 
 endif
 TOOL_INC_DIR:=
 BIN_DIR := ./bin
 TARGET=pnr_server
 
-CROSS_COMPILE = ../gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
-CROSSCOMPILE_INCLUDEPATH = ../rootfs/usr/include/
+CROSS_COMPILE = ../../gcc-linaro-5.3.1-2016.05-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+CROSSCOMPILE_INCLUDEPATH = ../../rootfs/usr/include/
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 AS := $(CROSS_COMPILE)as
@@ -16,7 +16,7 @@ LD := $(CROSS_COMPILE)ld
 NM := $(CROSS_COMPILE)nm
 STRIP := $(CROSS_COMPILE)strip
 
-MOUDLE_CFLAGS += -Wall -g $(CPPFLAGS) -I$(CROSSCOMPILE_INCLUDEPATH) -DDEV_ONESPACE
+MOUDLE_CFLAGS += -Wall -g $(CPPFLAGS) -I$(CROSSCOMPILE_INCLUDEPATH) -DDEV_ONESPACE -pg
 
 CP := cp
 
@@ -28,11 +28,22 @@ MODULE_INC_DIR:=-I$(MODULE_TOP_DIR)/inc $(TOOL_INC_DIR)
 MODULE_SRCS:=$(wildcard $(MODULE_SRC_DIR)/*.c)
 MODULE_OBJS:=$(addprefix $(MODULE_BIN_DIR)/, $(notdir $(patsubst %.c, %.o, $(MODULE_SRCS))))
 MODULE_DEPS:=$(MODULE_OBJS:.o=.d)
+PNRLVERSION=$(shell git log --oneline |wc -l)
+PNRMVERSION=1
+PNRTVERSION=0
+PNRBUILDTIME=$(shell date "+%F %T")
+TAG=$(shell git rev-parse --short HEAD)
 
-all : exec
+all : ver exec
+
+ver :
+	cp ./inc/version.h ./inc/version.h.bak
+	sed -i -e "s/%t/$(PNRTVERSION)/" -e "s/%m/$(PNRMVERSION)/" -e "s/%l/$(PNRLVERSION)/" -e "s/%T/$(PNRBUILDTIME)/" -e "s/%G/$(TAG)/" ./inc/version.h	
+	echo "$(PNRTVERSION).$(PNRMVERSION).$(PNRLVERSION)" > version
 
 exec : $(MODULE_DEPS) $(MODULE_OBJS)
 	$(CC) $(CFLAGS) $(MOUDLE_CFLAGS) -o $(TARGET)  $(MODULE_OBJS) $(LDFLAGS) $(MOUDLE_LDFLAGS)
+	mv ./inc/version.h.bak ./inc/version.h
 
 $(MODULE_OBJS) : %.o : %.d
 	$(MAKE) -f $<
@@ -45,6 +56,7 @@ install:
 	mkdir -p ${BIN_DIR}
 	$(STRIP) $(TARGET)
 	$(CP) $(TARGET) ${BIN_DIR}
+
 clean:
 	rm -rf $(MODULE_OBJS)
 	rm -rf $(MODULE_DEPS)

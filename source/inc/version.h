@@ -1,10 +1,10 @@
 #ifndef __VERSION_H
 #define __VERSION_H
 
-#define PNR_SERVER_TOPVERSION 	"%t"
-#define PNR_SERVER_MIDVERSION	"%m"
-#define PNR_SERVER_LOWVERSION 	"%l"
-#define PNR_SERVER_BUILD_TIME	"%T"
-#define PNR_SERVER_BUILD_HASH   "%G"
+#define PNR_SERVER_TOPVERSION 	"0"
+#define PNR_SERVER_MIDVERSION	"1"
+#define PNR_SERVER_LOWVERSION 	"14"
+#define PNR_SERVER_BUILD_TIME	"2019-06-12 03:17:42"
+#define PNR_SERVER_BUILD_HASH   "dbfab33"
 
 #endif

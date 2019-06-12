@@ -2281,14 +2281,27 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(psendmsg->touser_toxid));
             cJSON_AddItemToObject(ret_params, "FileName", cJSON_CreateString(psendmsg->msg_buff));
             cJSON_AddItemToObject(ret_params, "FileType", cJSON_CreateNumber(psendmsg->msgtype));
-            snprintf(fullfilename, sizeof(fullfilename), "%s%s", DAEMON_PNR_USERDATA_DIR, psendmsg->ext);
+            if(strncmp(psendmsg->ext,WS_SERVER_INDEX_FILEPATH,strlen(WS_SERVER_INDEX_FILEPATH)) == OK)
+            {
+                strcpy(fullfilename,psendmsg->ext);
+            }
+            else
+            {
+                snprintf(fullfilename, sizeof(fullfilename), "%s%s", WS_SERVER_INDEX_FILEPATH, psendmsg->ext);
+            }
             md5_hash_file(fullfilename, md5);
-            DEBUG_PRINT(DEBUG_LEVEL_INFO, "file[%s]-filemd5[%s]", fullfilename, md5);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "file[%s]-filemd5[%s] FileInfo(%s)", fullfilename, md5,psendmsg->nonce);
             cJSON_AddItemToObject(ret_params, "FileSize", cJSON_CreateNumber(psendmsg->ext2));
             cJSON_AddItemToObject(ret_params, "FileMD5", cJSON_CreateString(md5));
 			cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(psendmsg->ext));
             cJSON_AddItemToObject(ret_params, "SrcKey", cJSON_CreateString(psendmsg->sign));
             cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(psendmsg->prikey));
+            if(strlen(psendmsg->nonce) > 0)
+            {
+                strcat(psendmsg->ext,",");
+                strcat(psendmsg->ext,psendmsg->nonce);
+                cJSON_AddItemToObject(ret_params, "FileInfo", cJSON_CreateString(psendmsg->nonce));
+            }
             //目标对象是本地的时候，修改为先记录log，然后推送数据库id，
             if(local_flag == TRUE)
             {
@@ -2678,7 +2691,11 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 			insert_tox_msgnode(index, pfriend->fromuser_toxid,
                 pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL);
 			break;
-			
+        case PNR_IM_CMDTYPE_FILEFORWARD_PUSH:
+            insert_tox_file_msgnode(index,psendmsg->fromuser_toxid, psendmsg->touser_toxid,
+                pmsg, msg_len, psendmsg->msg_buff, fullfilename, cmd, psendmsg->log_id,
+                msgid, ntohl(psendmsg->msgtype),psendmsg->sign,psendmsg->prikey);
+            break;
 		default:
 			insert_tox_msgnode(index, pfriend->fromuser_toxid,
                 pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL);
@@ -7222,6 +7239,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CREATEGROUP;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_CHECKGMAIL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKGMAIL;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -10552,6 +10573,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
+        g_imusr_array.usrnode[index].appactive_flag = PNR_APPACTIVE_STATUS_FRONT;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) online", index, 
             g_imusr_array.usrnode[index].user_toxid);
     }
@@ -10813,6 +10835,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 pnr_autoadd_localfriend(index,g_account_array.admin_user_index,&account);
             }
         }
+        g_imusr_array.usrnode[index].appactive_flag = PNR_APPACTIVE_STATUS_FRONT;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) register online", index, 
             g_imusr_array.usrnode[index].user_toxid);
     }
@@ -14068,13 +14091,13 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char from[TOX_ID_STR_LEN+1] = {0};
     char to[TOX_ID_STR_LEN+1] = {0};
     char filename[PNR_FILENAME_MAXLEN+1] = {0};
+    char realfilename[PNR_FILENAME_MAXLEN+1] = {0};
     char filepath[PNR_FILEPATH_MAXLEN+1] = {0};
     char srcpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char src_ext[PNR_FILEPATH_MAXLEN+1] = {0};
     char targetpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char dstkey[PNR_AES_CBC_KEYSIZE+1] = {0};
     char* ptmp = NULL;
-    char* ptar_filename = NULL;
     int fromid = 0,toid = 0;
     char cmd[CMD_MAXLEN+1] = {0};
     int msgid = 0;
@@ -14092,14 +14115,14 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
         return ERROR;
     }
-
+    memset(msg,0,sizeof(struct im_sendmsg_msgstruct));
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msgid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",from,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",to,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileName",filename,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileKey",dstkey,PNR_AES_CBC_KEYSIZE);
-    if(head->api_version >= PNR_API_VERSION_V5)
+    if(head->api_version >= PNR_API_VERSION_V4)
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,PNR_FILEPATH_MAXLEN);
     }
@@ -14116,13 +14139,20 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        if(head->api_version < PNR_API_VERSION_V5)
+        if(head->api_version >= PNR_API_VERSION_V4)
         {
             strcpy(msg->ext,filepath);
-            ptar_filename = strrchr(filepath,'/');
-            if(ptar_filename)
+            ptmp = strrchr(filepath,'/');
+            if(ptmp)
             {
-                ptar_filename++;
+                ptmp++;
+                memset(realfilename,0,PNR_FILENAME_MAXLEN);
+                strcpy(realfilename,ptmp);
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: bad filepath(%s)",filepath);
+                ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
             }
         }
         else
@@ -14130,15 +14160,20 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             ptmp = strrchr(filename,'/');
             if(ptmp != NULL)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_forward_deal:input filename(%s)",filename);
+                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_forward_deal:input filename(%s)",filename);
                 strcpy(msg->ext,ptmp+1);
-                memset(filename,0,PNR_FILENAME_MAXLEN);
-                strcpy(filename,msg->ext);
+                memset(realfilename,0,PNR_FILENAME_MAXLEN);
+                strcpy(realfilename,msg->ext);
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: bad filepath(%s)",filepath);
+                ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
             }
         }
-        
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"get filename(%d:%s:%s) ext(%s)",head->api_version,filename,realfilename,msg->ext);
         fromid = get_indexbytoxid(from);
-        if(fromid == 0)
+        if(fromid == 0 || ret_code != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: input params err");
             ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
@@ -14153,28 +14188,24 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             //原始文件目录
             if(strstr(msg->ext,DAEMON_PNR_USERDATA_DIR) == NULL)
             {
+                strcpy(src_ext,msg->ext);
                 snprintf(srcpath,PNR_FILEPATH_MAXLEN,"%s%s",DAEMON_PNR_USERDATA_DIR,msg->ext);
             }
             else
             {
+                strcpy(src_ext,msg->ext+strlen(DAEMON_PNR_USERDATA_DIR));
                 strcpy(srcpath,msg->ext);
+                memset(msg->ext,0,IM_MSG_MAXLEN);
+                strcpy(msg->ext,src_ext);
             }
-            strcpy(src_ext,msg->ext);
             ptmp = strchr(srcpath,',');
             if(ptmp)
             {
                 ptmp[0] = 0;
                 ptmp++;
                 strcpy(fileinfo,ptmp);
+                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fileinfo(%s)",fileinfo);
             }
-            #if 0
-            if(strstr(msg->ext,filename) == NULL)
-            {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: input params err");
-                ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
-            }
-            else
-            #endif
             if(access(srcpath,F_OK) != OK)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal get newfilepath(%s) not exsit",srcpath);
@@ -14190,17 +14221,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     if(gid>=0)
                     {
                         //本地拷贝一份文件备份
-                        if(head->api_version >= PNR_API_VERSION_V5)
-                        {
-                            if(ptar_filename)
-                            {
-                                snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,ptar_filename);
-                            }
-                        }
-                        else
-                        {
-                            snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,filename);
-                        }
+                        snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s",srcpath,targetpath);                    
                         system(cmd);
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
@@ -14219,20 +14240,13 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     pgmsg->timestamp = (int)time(NULL);
                     filesize = get_file_size(targetpath);
                     md5_hash_file(targetpath, filemd5);
-                    snprintf(pgmsg->ext2,PNR_GROUP_EXTINFO_MAXLEN,"%s:%d:%s",filename,filesize,filemd5);
+                    snprintf(pgmsg->ext2,PNR_GROUP_EXTINFO_MAXLEN,"%s:%d:%s",realfilename,filesize,filemd5);
                     if(strlen(fileinfo) > 0)
                     {
                         strcat(pgmsg->ext2,":");
                         strcat(pgmsg->ext2,fileinfo);
                     }
-                    if(head->api_version >= PNR_API_VERSION_V5)
-                    {
-                        snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,ptar_filename);
-                    }
-                    else
-                    {
-                        snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,filename);
-                    }
+                    snprintf(pgmsg->ext1,PNR_GROUP_EXTINFO_MAXLEN,"/%sg%d/%s",PNR_GROUP_DATA_PATH,gid,realfilename);
                     strcpy(pgmsg->msgpay,filename);
                     ret_code = PNR_GROUPSENDMSG_RETCODE_OK;
                     pthread_mutex_lock(&g_grouplock[gid]);
@@ -14265,67 +14279,64 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
+                    if(strcmp(from,msg->fromuser_toxid) == OK)
+                    {
+                        //如果是自己发送的文件，转发给别人,只需要更新dstkey和toid
+                        memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
+                        strcpy(msg->touser_toxid,to);
+                        memset(msg->prikey,0,sizeof(PNR_RSA_KEY_MAXLEN));
+                        strcpy(msg->prikey,dstkey);
+                    }
+                    else// if(strcmp(from,msg->touser_toxid) == OK)
+                    {
+                        //如果是自己接收的文件，则原本的dstkey变成新的srckey，然后更新dstkey为新的
+                        memset(msg->fromuser_toxid,0,TOX_ID_STR_LEN);
+                        strcpy(msg->fromuser_toxid,from);
+                        memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
+                        strcpy(msg->touser_toxid,to);
+                        memset(msg->sign,0,PNR_RSA_KEY_MAXLEN);
+                        strcpy(msg->sign,msg->prikey);
+                        memset(msg->prikey,0,sizeof(PNR_RSA_KEY_MAXLEN));
+                        strcpy(msg->prikey,dstkey);
+                    }
+                    if(strlen(fileinfo) > 0)
+                    {
+                        strcpy(msg->nonce,fileinfo);
+                    }
+                    strcpy(msg->msg_buff,filename);
+                    //数据库插入一条记录，这个本地需不需要再保存一次转发的记录，待定
+                    if(msg->msgtype == PNR_IM_MSGTYPE_IMAGE || msg->msgtype == PNR_IM_MSGTYPE_AUDIO 
+                        ||msg->msgtype == PNR_IM_MSGTYPE_MEDIA || msg->msgtype == PNR_IM_MSGTYPE_FILE)
+                    {
+                        pnr_msglog_getid(fromid, &msg->log_id);
+                        pnr_msglog_dbupdate(fromid, msg->msgtype, msg->log_id,MSG_STATUS_SENDOK,msg->fromuser_toxid,
+                            msg->touser_toxid, msg->msg_buff, msg->sign, msg->prikey, src_ext, msg->ext2);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward:user(%d) log_id(%d)",fromid,msg->log_id);
+                    }
+                    //调用推送消息
                     toid = get_indexbytoxid(to);
                     //本地对象
                     if(toid)
                     {
                         //本地拷贝一份文件备份
-                        if(head->api_version >= PNR_API_VERSION_V5)
-                        {
-                            if(ptar_filename)
-                            {
-                                snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,ptar_filename);
-                            }
-                        }
-                        else
-                        {
-                            snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,filename);
-                        }
+                        snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s%s",srcpath,DAEMON_PNR_USERDATA_DIR,targetpath);                    
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
                         system(cmd);
-                        if(strcmp(from,msg->fromuser_toxid) == OK)
-                        {
-                            //如果是自己发送的文件，转发给别人,只需要更新dstkey和toid
-                            memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
-                            strcpy(msg->touser_toxid,to);
-                            memset(msg->prikey,0,sizeof(PNR_RSA_KEY_MAXLEN));
-                            strcpy(msg->prikey,dstkey);
-                        }
-                        else// if(strcmp(from,msg->touser_toxid) == OK)
-                        {
-                            //如果是自己接收的文件，则原本的dstkey变成新的srckey，然后更新dstkey为新的
-                            memset(msg->fromuser_toxid,0,TOX_ID_STR_LEN);
-                            strcpy(msg->fromuser_toxid,from);
-                            memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
-                            strcpy(msg->touser_toxid,to);
-                            memset(msg->sign,0,PNR_RSA_KEY_MAXLEN);
-                            strcpy(msg->sign,msg->prikey);
-                            memset(msg->prikey,0,sizeof(PNR_RSA_KEY_MAXLEN));
-                            strcpy(msg->prikey,dstkey);
-                        }
-                        //数据库插入一条记录，这个本地需不需要再保存一次转发的记录，待定
-#if 1
-                        memset(msg->ext,0,PNR_FILEPATH_MAXLEN);
+                        memset(msg->ext,0,IM_MSG_MAXLEN);
                         strcpy(msg->ext,targetpath);
-
-                        if(msg->msgtype == PNR_IM_MSGTYPE_IMAGE || msg->msgtype == PNR_IM_MSGTYPE_AUDIO 
-                            ||msg->msgtype == PNR_IM_MSGTYPE_MEDIA || msg->msgtype == PNR_IM_MSGTYPE_FILE)
-                        {
-                            pnr_msglog_getid(fromid, &msg->log_id);
-                            pnr_msglog_dbupdate(fromid, msg->msgtype, msg->log_id,MSG_STATUS_SENDOK,msg->fromuser_toxid,
-                                msg->touser_toxid, msg->msg_buff, msg->sign, msg->prikey, src_ext, msg->ext2);
-                            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward:user(%d) log_id(%d)",fromid,msg->log_id);
-                        }
-#endif
-                        //调用推送消息
                         im_pushmsg_callback(toid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, TRUE, head->api_version,msg);
-                        ret_code = PNR_FILEFORWARD_RETCODE_OK;
                     }
                     else
                     {
-                        ret_code = PNR_FILEFORWARD_RETCODE_TARGETNOTONLINE;
+                        ptmp = strrchr(msg->ext,',');
+                        if(ptmp)
+                        {
+                            ptmp[0] = '\0';
+                        }
+                        im_pushmsg_callback(fromid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, FALSE, head->api_version,msg);
                     }
+                    ret_code = PNR_FILEFORWARD_RETCODE_OK;
                 }
             }
         }
@@ -14374,12 +14385,10 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             cJSON_AddItemToObject(ret_params, "ToKey", cJSON_CreateString(friend_account.user_pubkey));
             cJSON_AddItemToObject(ret_params, "ToUserName", cJSON_CreateString(friend_account.nickname));
         }
-    }
-    
+    }    
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-    
     *retmsg_len = strlen(ret_buff);
     if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
     {
@@ -15458,6 +15467,74 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "Status", cJSON_CreateNumber(cur_status));
     cJSON_AddItemToObject(ret_params, "Info", cJSON_CreateString(""));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_cmd_checkgmail_deal
+  Description: IM模块消息获取gmail
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char username[TOX_ID_STR_LEN+1] = {0};
+    int result = 0,uindex= 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Name",username,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Enable",result,0);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getgmail name(%s) enable(%d)",username,result);
+
+    //参数检查
+
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_CHECKGMAIL));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Status", cJSON_CreateNumber(1));
+    cJSON_AddItemToObject(ret_params, "Name", cJSON_CreateString("Test"));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -17740,6 +17817,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V6,TRUE,im_account_delete_deal},
     {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_enableqlcnode_deal},
     {PNR_IM_CMDTYPE_CHECKQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_checkqlcnode_deal},
+    {PNR_IM_CMDTYPE_CHECKGMAIL,PNR_API_VERSION_V6,TRUE,im_cmd_checkgmail_deal},
 };
 char * g_pnr_cmdstring[]=
 {
@@ -17818,6 +17896,7 @@ char * g_pnr_cmdstring[]=
     PNR_IMCMD_DELUSER,
     PNR_IMCMD_ENABLEQLCNODE,
     PNR_IMCMD_CHECKQLCNODE,
+    PNR_IMCMD_CHECKGMAIL,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -17906,6 +17985,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_CHECKQLCNODE) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKQLCNODE;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_CHECKGMAIL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKGMAIL;
             }
             else
             {
@@ -19466,7 +19549,6 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###renew msgid(%d)",msgid);
             }
             break;
-            
         default:
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad cmd(%d)",msg_head.im_cmdtype);
             goto OUT;

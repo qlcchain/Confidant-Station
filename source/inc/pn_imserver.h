@@ -103,6 +103,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_DELUSER,
     PNR_IM_CMDTYPE_ENABLEQLCNODE,
     PNR_IM_CMDTYPE_CHECKQLCNODE,
+    PNR_IM_CMDTYPE_CHECKGMAIL,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -314,6 +315,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_DELUSER   "DelUser"
 #define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
+#define PNR_IMCMD_CHECKGMAIL   "CheckGmail"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -847,7 +849,7 @@ struct im_user_struct
     struct per_session_data__minimal *pss;
     struct im_friends_struct friends[PNR_IMUSER_FRIENDS_MAXNUM+1];
 	struct im_sendfile_struct file[PNR_MAX_SENDFILE_NUM];
-    int groudnode[PNR_GROUP_MAXNUM+1];
+    //int groudnode[PNR_GROUP_MAXNUM+1];
 };
 #define USERINFO_MAXLEN 1024
 struct pnr_userinfo_struct

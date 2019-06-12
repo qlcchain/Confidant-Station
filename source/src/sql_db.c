@@ -2816,7 +2816,6 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
             }  
             return ERROR;
         }
-
 		snprintf(fpath, sizeof(fpath), "/user%d/s/%s", userid, fname);
     } else {
         userid = get_indexbytoxid(toid);
@@ -2828,7 +2827,6 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
             }  
             return ERROR;
         }
-
 		snprintf(fpath, sizeof(fpath), "/user%d/r/%s", userid, fname);
     }
     if(filepath)
@@ -3129,7 +3127,7 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
                 return OK;
 			}
 		} else {
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", sql);
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql(%s) err(%s)", sql,err);
 			sqlite3_free(err);
             if(sql_malloc_flag == TRUE)
             {
