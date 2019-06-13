@@ -3,8 +3,8 @@
  */
 
 /*
- * Copyright Â© 2016-2017 The TokTok team.
- * Copyright Â© 2013 Tox project.
+ * Copyright æ¼ 2016-2017 The TokTok team.
+ * Copyright æ¼ 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -88,7 +88,7 @@ char path[100] = {DAEMON_PNR_TOP_DIR};
 Tox *qlinkNode = NULL;
 char dataPathFile[200] = {0};
 extern struct im_user_array_struct g_imusr_array;
-extern int g_p2pnet_init_flag;//tox p2pÍøÂç³õÊ¼»¯Íê³É±êÊ¶
+extern int g_p2pnet_init_flag;//tox p2pç½‘ç»œåˆå§‹åŒ–å®Œæˆæ ‡è¯†
 extern struct im_user_struct g_daemon_tox;
 extern struct im_user_array_struct g_imusr_array;
 extern Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
@@ -290,7 +290,7 @@ int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad offset(%d)",offset);
         return ERROR;
     }
-    //ÏÈ×ödataÊı¾İ»º´æ
+    //å…ˆåšdataæ•°æ®ç¼“å­˜
     pthread_mutex_lock(&g_toxmsg_cache_lock[uid]);
     for(i=0;i<PERUSER_TOXMSG_CACHENUM;i++)
     {
@@ -347,7 +347,7 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
     pSub = cJSON_GetObjectItem(pJson, "more");
     if(pSub)
     {
-        //Èç¹ûÓĞmore×Ö¶Î±êÃ÷ÊÇ·ÖÆ¬Êı¾İ
+        //å¦‚æœæœ‰moreå­—æ®µæ ‡æ˜æ˜¯åˆ†ç‰‡æ•°æ®
         firend_toxmsg_segcache(friendnum,pJson,&cache_id,&uid);
         if(cache_id < 0)
         {
@@ -368,9 +368,9 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
                 return ERROR;
         	}
-            //È¥µôÔ­Ê¼µÄdata×Ö¶Î
+            //å»æ‰åŸå§‹çš„dataå­—æ®µ
         	cJSON_DeleteItemFromObject(JsonFrame, "data");
-            //Ìî³äĞÂµÄ×Ö¶Î
+            //å¡«å……æ–°çš„å­—æ®µ
         	cJSON_AddStringToObject(JsonFrame, "data", g_toxmsg_caches[uid][cache_id].msg_buff);
             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get data(%s)",g_toxmsg_caches[uid][cache_id].msg_buff);
             cJSON_Delete(pJson);
@@ -422,22 +422,22 @@ static void print_formatted_message(Tox *m, char *message, int friendnum)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : auto_accept_request
- ¹¦ÄÜÃèÊö  : ×Ô¶¯Ìí¼ÓºÃÓÑ
- ÊäÈë²ÎÊı  : Tox *m                     
+ å‡½ æ•° å  : auto_accept_request
+ åŠŸèƒ½æè¿°  : è‡ªåŠ¨æ·»åŠ å¥½å‹
+ è¾“å…¥å‚æ•°  : Tox *m                     
              const uint8_t *public_key  
              const uint8_t *data        
              size_t length              
              void *userdata             
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ7ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ7æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void auto_accept_request(Tox *m, const uint8_t *public_key, 
@@ -459,22 +459,22 @@ static void auto_accept_request(Tox *m, const uint8_t *public_key,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : friend_request_cb
- ¹¦ÄÜÃèÊö  : ´¦ÀíºÃÓÑÇëÇó
- ÊäÈë²ÎÊı  : Tox *m                     
+ å‡½ æ•° å  : friend_request_cb
+ åŠŸèƒ½æè¿°  : å¤„ç†å¥½å‹è¯·æ±‚
+ è¾“å…¥å‚æ•°  : Tox *m                     
              const uint8_t *public_key  
              const uint8_t *data        
              size_t length              
              void *userdata             
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ7ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ7æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void friend_request_cb(Tox *m, const uint8_t *public_key, 
@@ -520,7 +520,7 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "Sign", friend.sign, PNR_RSA_KEY_MAXLEN);
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterId", devinfo.user_devid, TOX_ID_STR_LEN);
         CJSON_GET_VARSTR_BYKEYWORD(params, item, itemstr, "RouterName", devinfo.user_devname, PNR_USERNAME_MAXLEN);
-        //ÕâÀïĞèÒª·´ÏòÒ»ÏÂ
+        //è¿™é‡Œéœ€è¦åå‘ä¸€ä¸‹
         if (friend.result == OK) {
             pnr_friend_dbinsert(friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
             im_nodelist_addfriend(userindex, friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
@@ -552,23 +552,23 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : print_message
- ¹¦ÄÜÃèÊö  : ½ÓÊÕºÃÓÑÏûÏ¢»Øµ÷
- ÊäÈë²ÎÊı  : Tox *m                 
+ å‡½ æ•° å  : print_message
+ åŠŸèƒ½æè¿°  : æ¥æ”¶å¥½å‹æ¶ˆæ¯å›è°ƒ
+ è¾“å…¥å‚æ•°  : Tox *m                 
              uint32_t friendnumber  
              TOX_MESSAGE_TYPE type  
              const uint8_t *string  
              size_t length          
              void *userdata         
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void print_message(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE type, 
@@ -582,23 +582,23 @@ static void print_message(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE type,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : print_message_app
- ¹¦ÄÜÃèÊö  : ´¦Àíapp·¢ËÍµÄÏûÏ¢
- ÊäÈë²ÎÊı  : Tox *m                 
+ å‡½ æ•° å  : print_message_app
+ åŠŸèƒ½æè¿°  : å¤„ç†appå‘é€çš„æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : Tox *m                 
              uint32_t friendnumber  
              TOX_MESSAGE_TYPE type  
              const uint8_t *string  
              size_t length          
              void *userdata         
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE type, 
@@ -614,22 +614,22 @@ static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE ty
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : print_status_change
- ¹¦ÄÜÃèÊö  : ºÃÓÑ×´Ì¬¸Ä±ä»Øµ÷
- ÊäÈë²ÎÊı  : Tox *m                 
+ å‡½ æ•° å  : print_status_change
+ åŠŸèƒ½æè¿°  : å¥½å‹çŠ¶æ€æ”¹å˜å›è°ƒ
+ è¾“å…¥å‚æ•°  : Tox *m                 
              uint32_t friendnumber  
              const uint8_t *string  
              size_t length          
              void *userdata         
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void print_status_change(Tox *m, uint32_t friendnumber, 
@@ -649,22 +649,22 @@ static void print_status_change(Tox *m, uint32_t friendnumber,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : on_friend_name
- ¹¦ÄÜÃèÊö  : ºÃÓÑÃû³Æ¸Ä±ä»Øµ÷
- ÊäÈë²ÎÊı  : Tox *m                 
+ å‡½ æ•° å  : on_friend_name
+ åŠŸèƒ½æè¿°  : å¥½å‹åç§°æ”¹å˜å›è°ƒ
+ è¾“å…¥å‚æ•°  : Tox *m                 
              uint32_t friendnumber  
              const uint8_t *string  
              size_t length          
              void *userdata         
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void on_friend_name(Tox *m, uint32_t friendnumber, const uint8_t *string, 
@@ -725,7 +725,7 @@ static Tox *load_data(void)
     return tox_new(NULL, NULL);
 }
 
-//ÔİÊ±Ã»ÓÃÁË
+//æš‚æ—¶æ²¡ç”¨äº†
 static int save_data(Tox *m)
 {
     FILE *data_file = fopen(data_file_name, "w");
@@ -793,7 +793,7 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 		if (!rcv[i].file)
 			break;
 
-		//±ÜÃâÏàÍ¬filenumberµ¼ÖÂĞ´Èë´íÂÒ
+		//é¿å…ç›¸åŒfilenumberå¯¼è‡´å†™å…¥é”™ä¹±
 		if (nowtime - rcv[i].lastrcvtime >= 3) {
 			get_file_name(rcv[i].file, filepath, sizeof(filepath));
 			fclose(rcv[i].file);
@@ -811,7 +811,7 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	
 	if (filename) {
 		if (*index == 0) {
-            //tox·¢ËÍÎÄ¼şÖ»ÄÜ¸ù¾İ¸½´øµÄÎÄ¼şÃüÀ´ÅĞ¶¨ÊÇÄÇÖÖÎÄ¼şÀàĞÍ
+            //toxå‘é€æ–‡ä»¶åªèƒ½æ ¹æ®é™„å¸¦çš„æ–‡ä»¶å‘½æ¥åˆ¤å®šæ˜¯é‚£ç§æ–‡ä»¶ç±»å‹
             if(strncmp(filename, "group", 5) == OK){
                 ptmp=filename+5;
                 gid =atoi(ptmp);
@@ -1112,20 +1112,20 @@ static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION s
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : tox_connection_status
- ¹¦ÄÜÃèÊö  : toxÁ¬½Ó×´Ì¬¸Ä±ä
- ÊäÈë²ÎÊı  : Tox *tox                          
+ å‡½ æ•° å  : tox_connection_status
+ åŠŸèƒ½æè¿°  : toxè¿æ¥çŠ¶æ€æ”¹å˜
+ è¾“å…¥å‚æ•°  : Tox *tox                          
              TOX_CONNECTION connection_status  
              void *user_data                   
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void tox_connection_status(Tox *tox, TOX_CONNECTION connection_status, 
@@ -1148,7 +1148,7 @@ static void tox_connection_status(Tox *tox, TOX_CONNECTION connection_status,
 		   if (g_imusr_array.usrnode[*index].friends[i].exsit_flag) {
 		       friend_id = get_indexbytoxid(g_imusr_array.usrnode[*index].friends[i].user_toxid);
 		       if (friend_id == 0) {
-		       		//±ÜÃâºÃÓÑ¹ØÏµ¶ªÊ§µ¼ÖÂÎŞ·¨½ÓÊÕÏûÏ¢
+		       		//é¿å…å¥½å‹å…³ç³»ä¸¢å¤±å¯¼è‡´æ— æ³•æ¥æ”¶æ¶ˆæ¯
 					check_and_add_friends(tox, g_imusr_array.usrnode[*index].friends[i].user_toxid, 
 						g_imusr_array.usrnode[*index].userinfo_fullurl);
 				}
@@ -1212,9 +1212,9 @@ int CreatedP2PNetwork(void)
     const char *name = "PNR_IM_SERVER";
     tox_self_set_name(m, (uint8_t *)name, strlen(name), NULL);
 
-    //ÔÚridÆğÀ´Ö®ºó´´½¨adminÓÃ»§µÄ¶şÎ¬Âë    
+    //åœ¨ridèµ·æ¥ä¹‹ååˆ›å»ºadminç”¨æˆ·çš„äºŒç»´ç     
     adminaccount_qrcode_init();
-    //Á¬½ÓÓĞºÃÓÑ¹ØÏµµÄÆäËûrid
+    //è¿æ¥æœ‰å¥½å‹å…³ç³»çš„å…¶ä»–rid
     pnr_router_node_friend_init();
     while (1) {
         do_tox_connection(m);
@@ -1243,24 +1243,24 @@ int CreatedP2PNetwork(void)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : imtox_send_file
- ¹¦ÄÜÃèÊö  : ·¢ËÍÎÄ¼ş½Ó¿Ú
- ÊäÈë²ÎÊı  : Tox *tox        
+ å‡½ æ•° å  : imtox_send_file
+ åŠŸèƒ½æè¿°  : å‘é€æ–‡ä»¶æ¥å£
+ è¾“å…¥å‚æ•°  : Tox *tox        
              int friendnum   
              char *filename  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
 			 ** >0 file Send ok
 			 ** -1 file open fail
 			 ** -2 file send fail
 			 ** -3 exceed max sender
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ28ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ28æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int imtox_send_file(Tox *tox, struct lws_cache_msg_struct *msg, int push)
@@ -1321,21 +1321,21 @@ int imtox_send_file(Tox *tox, struct lws_cache_msg_struct *msg, int push)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : imtox_send_file_to_app
- ¹¦ÄÜÃèÊö  : Ö±½Ó·¢ËÍÎÄ¼şµ½APP
- ÊäÈë²ÎÊı  : Tox *tox        
+ å‡½ æ•° å  : imtox_send_file_to_app
+ åŠŸèƒ½æè¿°  : ç›´æ¥å‘é€æ–‡ä»¶åˆ°APP
+ è¾“å…¥å‚æ•°  : Tox *tox        
              int friendnum   
              char *fromid    
              char *filepath  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ14ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ14æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath,int msgid,int filefrom)
@@ -1530,7 +1530,7 @@ static int save_data_new(Tox *m)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"save_data_new:could not close data file");
     }
     pthread_mutex_unlock(&(g_user_toxdatalock[userindex]));
-    //ÎÄ¼ş±¸·İ
+    //æ–‡ä»¶å¤‡ä»½
     tox_datafile_backup(userindex,data_filename);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) data save version %d",userindex,g_tox_datafile[userindex].data_version);
     return res;
@@ -1630,7 +1630,7 @@ int CreatedP2PNetwork_new(int user_index)
 	//DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) init_flag(%d) id(%s)",user_index,puser->init_flag,idstring);
 
 	if (puser->init_flag == FALSE) {
-#if 0//ÕâÀïÔ¤Áô½«À´ĞŞ¸ÄÍ¬²½dataµÄÂß¼­
+#if 0//è¿™é‡Œé¢„ç•™å°†æ¥ä¿®æ”¹åŒæ­¥dataçš„é€»è¾‘
 		if(puser->user_toxid[0] == 0)
 		{
 			strncpy(puser->user_toxid,idstring,TOX_ID_STR_LEN);
@@ -1808,20 +1808,20 @@ int check_and_add_friends(Tox * plinknode,char * friendid_p,char* datafile)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : add_friends_force
- ¹¦ÄÜÃèÊö  : Ç¿ÖÆÖØĞÂÌí¼ÓºÃÓÑ
- ÊäÈë²ÎÊı  : Tox *plinknode  
+ å‡½ æ•° å  : add_friends_force
+ åŠŸèƒ½æè¿°  : å¼ºåˆ¶é‡æ–°æ·»åŠ å¥½å‹
+ è¾“å…¥å‚æ•°  : Tox *plinknode  
              char *friendid  
              char *datafile  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ4ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ4æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int add_friends_force(Tox *plinknode, char *friendid, char *msg)
@@ -1922,19 +1922,19 @@ int get_friendid_bytoxid(int userid,char* friend_name)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : if_friend_available
- ¹¦ÄÜÃèÊö  : ÊÇ·ñ
- ÊäÈë²ÎÊı  : int userindex   
+ å‡½ æ•° å  : if_friend_available
+ åŠŸèƒ½æè¿°  : æ˜¯å¦
+ è¾“å…¥å‚æ•°  : int userindex   
              char *friendid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ24ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ24æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int if_friend_available(int userindex, char *friendid)
@@ -1952,23 +1952,23 @@ int if_friend_available(int userindex, char *friendid)
 	return 1;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : insert_tox_file_msgnode
- ¹¦ÄÜÃèÊö  : ²åÈëtoxÎÄ¼ş´«ÊäÏûÏ¢µ½»º´æ
- ÊäÈë²ÎÊı  : int userid      
+ å‡½ æ•° å  : insert_tox_file_msgnode
+ åŠŸèƒ½æè¿°  : æ’å…¥toxæ–‡ä»¶ä¼ è¾“æ¶ˆæ¯åˆ°ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int userid      
              char *from      
              char *to        
              char *pmsg      
              int msglen      
              char *filepath  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int insert_tox_file_msgnode(int userid, char *from, char *to,
@@ -1982,29 +1982,29 @@ int insert_tox_file_msgnode(int userid, char *from, char *to,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : insert_tox_msgnode
- ¹¦ÄÜÃèÊö  : ²åÈëÊı¾İ¿âÏûÏ¢»º´æ
- ÊäÈë²ÎÊı  : int userid  
+ å‡½ æ•° å  : insert_tox_msgnode
+ åŠŸèƒ½æè¿°  : æ’å…¥æ•°æ®åº“æ¶ˆæ¯ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int userid  
              char* from  
              char*to     
              char* pmsg  
              int msglen  
-             int limit  ÖØ´«´ÎÊı 0±íÊ¾²»ÏŞ
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+             int limit  é‡ä¼ æ¬¡æ•° 0è¡¨ç¤ºä¸é™
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int insert_tox_msgnode(int userid, char *from, char *to,
     char *pmsg, int msglen, int type, int logid, int msgid,char* skey, char* dkey)
 {
-    int toxfriend_id = 0;//toxÁ´±íÀïµÄ
+    int toxfriend_id = 0;//toxé“¾è¡¨é‡Œçš„
     char *ptox_msg = NULL;
     int ret = 0;
     char* pmsg_base64 = NULL;
@@ -2043,7 +2043,7 @@ int insert_tox_msgnode(int userid, char *from, char *to,
     pnr_base64_encode(pmsg,msg_len,pmsg_base64,&tar_msglen);
     //cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
     cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg_base64));
-    //ÕâÀïÏûÏ¢ÄÚÈİ²»ÄÜ×ö×ªÒå£¬Òª²»È»¶Ô¶ËÊÕµ½»á³ö´í
+    //è¿™é‡Œæ¶ˆæ¯å†…å®¹ä¸èƒ½åšè½¬ä¹‰ï¼Œè¦ä¸ç„¶å¯¹ç«¯æ”¶åˆ°ä¼šå‡ºé”™
     ptox_msg = cJSON_PrintUnformatted_noescape(ret_root);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)(%s)", msgid,ptox_msg);
     pnr_msgcache_dbinsert(msgid, from, to, type, 
@@ -2054,23 +2054,23 @@ int insert_tox_msgnode(int userid, char *from, char *to,
     return ret;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : insert_tox_file_msgnode_v3
- ¹¦ÄÜÃèÊö  : ²åÈëtoxÎÄ¼ş´«ÊäÏûÏ¢µ½»º´æ
- ÊäÈë²ÎÊı  : int userid      
+ å‡½ æ•° å  : insert_tox_file_msgnode_v3
+ åŠŸèƒ½æè¿°  : æ’å…¥toxæ–‡ä»¶ä¼ è¾“æ¶ˆæ¯åˆ°ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int userid      
              char *from      
              char *to        
              char *pmsg      
              int msglen      
              char *filepath  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int insert_tox_file_msgnode_v3(int userid, char *from, char *to,
@@ -2083,29 +2083,29 @@ int insert_tox_file_msgnode_v3(int userid, char *from, char *to,
         pmsg, msglen, filename, filepath, logid, PNR_MSG_CACHE_TYPE_TOXF, ftype, sign, nonce, prikey);
 }
 /*****************************************************************************
- º¯ Êı Ãû  : insert_tox_msgnode_v3
- ¹¦ÄÜÃèÊö  : ²åÈëÊı¾İ¿âÏûÏ¢»º´æ
- ÊäÈë²ÎÊı  : int userid  
+ å‡½ æ•° å  : insert_tox_msgnode_v3
+ åŠŸèƒ½æè¿°  : æ’å…¥æ•°æ®åº“æ¶ˆæ¯ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int userid  
              char* from  
              char*to     
              char* pmsg  
              int msglen  
-             int limit  ÖØ´«´ÎÊı 0±íÊ¾²»ÏŞ
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+             int limit  é‡ä¼ æ¬¡æ•° 0è¡¨ç¤ºä¸é™
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int insert_tox_msgnode_v3(int userid, char *from, char *to,
     char *pmsg, int msglen, int type, int logid, int msgid,char* sign, char* nonce, char* prikey)
 {
-    int toxfriend_id = 0;//toxÁ´±íÀïµÄ
+    int toxfriend_id = 0;//toxé“¾è¡¨é‡Œçš„
     char *ptox_msg = NULL;
     int ret = 0;
     char* pmsg_base64 = NULL;
@@ -2146,7 +2146,7 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
     pnr_base64_encode(pmsg,msg_len,pmsg_base64,&tar_msglen);
     //cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg));
     cJSON_AddItemToObject(ret_root, "data", cJSON_CreateString(pmsg_base64));
-    //ÕâÀïÏûÏ¢ÄÚÈİ²»ÄÜ×ö×ªÒå£¬Òª²»È»¶Ô¶ËÊÕµ½»á³ö´í
+    //è¿™é‡Œæ¶ˆæ¯å†…å®¹ä¸èƒ½åšè½¬ä¹‰ï¼Œè¦ä¸ç„¶å¯¹ç«¯æ”¶åˆ°ä¼šå‡ºé”™
     ptox_msg = cJSON_PrintUnformatted_noescape(ret_root);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox msg cache!msgid(%d)(%s)", msgid,ptox_msg);
     pnr_msgcache_dbinsert_v3(msgid, from, to, type, 
@@ -2158,18 +2158,18 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : tox_msg_response
- ¹¦ÄÜÃèÊö  : toxÏûÏ¢»Ø¸´
- ÊäÈë²ÎÊı  : cJSON* pJson  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : tox_msg_response
+ åŠŸèƒ½æè¿°  : toxæ¶ˆæ¯å›å¤
+ è¾“å…¥å‚æ•°  : cJSON* pJson  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ18ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ18æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int tox_msg_response(Tox *m, cJSON *pJson, int friendnum)
@@ -2203,20 +2203,20 @@ int tox_msg_response(Tox *m, cJSON *pJson, int friendnum)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : processImMsgForwardRes
- ¹¦ÄÜÃèÊö  : ´¦ÀítoxÈ·ÈÏÏûÏ¢
- ÊäÈë²ÎÊı  : Tox *m         
+ å‡½ æ•° å  : processImMsgForwardRes
+ åŠŸèƒ½æè¿°  : å¤„ç†toxç¡®è®¤æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : Tox *m         
              cJSON *pJson   
              int friendnum  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ18ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ18æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int processImMsgForwardRes(Tox *m, cJSON *pJson, int friendnum)
