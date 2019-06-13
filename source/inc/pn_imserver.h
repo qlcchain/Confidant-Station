@@ -1,6 +1,6 @@
 /*************************************************************************
 *
-*  pn im server Í·ÎÄ¼ş
+*  pn im server å¤´æ–‡ä»¶
 *
 * 
 * 
@@ -104,7 +104,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_ENABLEQLCNODE,
     PNR_IM_CMDTYPE_CHECKQLCNODE,
     PNR_IM_CMDTYPE_CHECKGMAIL,
-    //rid¶ÀÓĞµÄÏûÏ¢
+    //ridç‹¬æœ‰çš„æ¶ˆæ¯
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
     PNR_IM_CMDTYPE_SYSDERLYMSG,
@@ -202,7 +202,7 @@ enum {
     PNR_FILE_AVATAR = 4,
     PNR_FILE_GROUP = 5,
 };
-//ÎÄ¼şÀ´Ô´ÀàĞÍ
+//æ–‡ä»¶æ¥æºç±»å‹
 enum PNR_FILE_SRCFROM_ENUM
 {
     PNR_FILE_SRCFROM_MSGSEND = 1,
@@ -262,7 +262,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_PULLFRIEDN  "PullFriend"
 #define PNR_IMCMD_SYNCHDATAFILE   "SynchDataFile"
 #define PNR_IMCMD_NOT_FRIEND	"NotFriend"
-//V2°æ±¾Ìí¼ÓµÄÃüÁî
+//V2ç‰ˆæœ¬æ·»åŠ çš„å‘½ä»¤
 #define PNR_IMCMD_PREREGISTER       "PreRegister"
 #define PNR_IMCMD_REGISTER       "Register"
 #define PNR_IMCMD_LOGINIDENTIFY       "LoginIdentify"
@@ -316,7 +316,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
 #define PNR_IMCMD_CHECKGMAIL   "CheckGmail"
-//ridÌØÓĞÃüÁî
+//ridç‰¹æœ‰å‘½ä»¤
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
 #define PNR_IMCMD_SYSDERLYCMD   "SysDeRelay"
@@ -496,7 +496,7 @@ struct tox_msg_struct
     char touser_toxid[TOX_ID_STR_LEN+1];
     char msg_buff[IM_MSG_MAXLEN+1];
 };
-//libwebsocketÏûÏ¢Ìå
+//libwebsocketæ¶ˆæ¯ä½“
 struct lws_msg_struct
 {
     struct list_head list;
@@ -508,11 +508,11 @@ struct lws_msg_struct
 };
 
 enum {
-    PNR_MSG_CACHE_TYPE_LWS,     //Éè±¸Í¨¹ıLWS·¢ËÍÏûÏ¢µ½APP
-    PNR_MSG_CACHE_TYPE_TOX,     //Éè±¸Í¨¹ıTOX·¢ËÍÏûÏ¢µ½ÁíÍâµÄÉè±¸
-    PNR_MSG_CACHE_TYPE_TOXF,    //Éè±¸Í¨¹ıTOX·¢ËÍÎÄ¼şµ½ÁíÍâµÄÉè±¸
-    PNR_MSG_CACHE_TYPE_TOXA,    //Éè±¸Í¨¹ıTOX·¢ËÍÏûÏ¢µ½APP
-    PNR_MSG_CACHE_TYPE_TOXAF,   //Éè±¸Í¨¹ıTOX·¢ËÍÎÄ¼şµ½APP
+    PNR_MSG_CACHE_TYPE_LWS,     //è®¾å¤‡é€šè¿‡LWSå‘é€æ¶ˆæ¯åˆ°APP
+    PNR_MSG_CACHE_TYPE_TOX,     //è®¾å¤‡é€šè¿‡TOXå‘é€æ¶ˆæ¯åˆ°å¦å¤–çš„è®¾å¤‡
+    PNR_MSG_CACHE_TYPE_TOXF,    //è®¾å¤‡é€šè¿‡TOXå‘é€æ–‡ä»¶åˆ°å¦å¤–çš„è®¾å¤‡
+    PNR_MSG_CACHE_TYPE_TOXA,    //è®¾å¤‡é€šè¿‡TOXå‘é€æ¶ˆæ¯åˆ°APP
+    PNR_MSG_CACHE_TYPE_TOXAF,   //è®¾å¤‡é€šè¿‡TOXå‘é€æ–‡ä»¶åˆ°APP
 };
 enum{
     PNR_PUSHLOGOUT_REASON_RELOGIN = 1,
@@ -521,7 +521,7 @@ enum{
 };
 #define PNR_PUSHLOGOUT_RELOGIN_STRING  "relogin"
 #define PNR_PUSHLOGOUT_DELACCOUNT_STRING  "account delete"
-//»º´æÏûÏ¢½á¹¹Ìå
+//ç¼“å­˜æ¶ˆæ¯ç»“æ„ä½“
 struct lws_cache_msg_struct
 {
 	struct list_head list;
@@ -531,12 +531,12 @@ struct lws_cache_msg_struct
 	int msglen;
 	int timestamp;
 	int resend;
-    int type;   //ÏûÏ¢ÀàĞÍ
-    int ctype;  //cacheÀàĞÍ  LWS TOX TOXF
-    int ftype;  //ÎÄ¼şÀàĞÍ
+    int type;   //æ¶ˆæ¯ç±»å‹
+    int ctype;  //cacheç±»å‹  LWS TOX TOXF
+    int ftype;  //æ–‡ä»¶ç±»å‹
     int friendnum;
     int friendid;
-    int filestatus; //ÎÄ¼ş·¢ËÍ×´Ì¬ 0:Î´·¢ËÍ  1:ÕıÔÚ·¢ËÍ
+    int filestatus; //æ–‡ä»¶å‘é€çŠ¶æ€ 0:æœªå‘é€  1:æ­£åœ¨å‘é€
     int filesize;
     int logid;
     char fromid[TOX_ID_STR_LEN+1];
@@ -551,7 +551,7 @@ struct lws_cache_msg_struct
 	char msg[0];
 };
 
-//toxÏûÏ¢Ìå
+//toxæ¶ˆæ¯ä½“
 struct imuser_toxmsg_struct
 {
     struct list_head list;
@@ -562,13 +562,13 @@ struct imuser_toxmsg_struct
 
 struct im_friends_struct
 {
-    int online_status;//ÓÃ»§ÔÚÂ·ÓÉÉÏÔÚÏß×´Ì¬
-    int tox_onlinestatus;//toxºÃÓÑµÄ×´Ì¬
+    int online_status;//ç”¨æˆ·åœ¨è·¯ç”±ä¸Šåœ¨çº¿çŠ¶æ€
+    int tox_onlinestatus;//toxå¥½å‹çš„çŠ¶æ€
     int tox_friendnum;
     int exsit_flag;
-    int oneway;	//ÊÇ·ñµ¥ÏòºÃÓÑ
-    int sended;	//ÒÑ·¢ËÍ
-    int local;//ÊÇ·ñÊÇ±¾µØºÃÓÑ
+    int oneway;	//æ˜¯å¦å•å‘å¥½å‹
+    int sended;	//å·²å‘é€
+    int local;//æ˜¯å¦æ˜¯æœ¬åœ°å¥½å‹
     unsigned int hashid;
     pthread_mutex_t lock_sended;
     char u_hashstr[PNR_USER_HASHID_MAXLEN+1];
@@ -587,7 +587,7 @@ struct im_userdev_mapping_struct
     char user_devid[TOX_ID_STR_LEN+1];
     char user_devname[PNR_USERNAME_MAXLEN+1];
 };
-//ÓÃ»§ºÃÓÑÁĞ±í
+//ç”¨æˆ·å¥½å‹åˆ—è¡¨
 struct pnr_usermapping_struct
 {
     int user_num;
@@ -604,14 +604,14 @@ struct im_friend_msgstruct
     char sign[PNR_RSA_KEY_MAXLEN+1];
     char friend_msg[PNR_FRIEND_MSG_MAXLEN+1];
 };
-//Èº×é¹¦ÄÜÏà¹Ø½Ó¿Ú
+//ç¾¤ç»„åŠŸèƒ½ç›¸å…³æ¥å£
 #define PNR_GROUP_MANAGER_MAXNUM 5
 #define PNR_GROUP_USERKEY_MAXLEN 128
 #define PNR_GROUP_EXTINFO_MAXLEN 1024
 #define PNR_GROUP_USERMSG_MAXLEN 50000//1024
 #define PNR_GROUP_EXTINFO_MAXNUM 10
 
-//ÈºÓÃ»§½á¹¹
+//ç¾¤ç”¨æˆ·ç»“æ„
 enum GROUP_USER_TYPE_ENUM
 {
     GROUP_USER_OWNER=0,
@@ -624,14 +624,14 @@ struct group_user
     int gindex;
     int userindex;
     int type;
-    int last_msgid;//×îºóÒ»´Î¶ÁÈ¡
-    int init_msgid;//ÈëÈºµÄÊ±ºòÈºlogid
+    int last_msgid;//æœ€åä¸€æ¬¡è¯»å–
+    int init_msgid;//å…¥ç¾¤çš„æ—¶å€™ç¾¤logid
     char username[PNR_USERNAME_MAXLEN+1];
     char user_remarks[PNR_USERNAME_MAXLEN+1];
     char group_remarks[PNR_USERNAME_MAXLEN+1];
     char toxid[TOX_ID_STR_LEN+1];
-    char userkey[PNR_GROUP_USERKEY_MAXLEN+1];//ÓÃ»§ÈºÃÜÔ¿
-    char user_pubkey[PNR_GROUP_USERKEY_MAXLEN+1];//ÓÃ»§×Ô¼ºµÄ¹«Ô¿
+    char userkey[PNR_GROUP_USERKEY_MAXLEN+1];//ç”¨æˆ·ç¾¤å¯†é’¥
+    char user_pubkey[PNR_GROUP_USERKEY_MAXLEN+1];//ç”¨æˆ·è‡ªå·±çš„å…¬é’¥
 };
 
 struct group_info
@@ -649,7 +649,7 @@ struct group_info
     char group_filepath[PNR_FILEPATH_MAXLEN+1];
     struct group_user user[PNR_GROUP_USER_MAXNUM+1];
 };
-//ÑûÇëÈëÈºĞÅÏ¢
+//é‚€è¯·å…¥ç¾¤ä¿¡æ¯
 struct group_invite_info
 {
     int msg_id;
@@ -682,7 +682,7 @@ enum GROUP_OPER_ACTION_ENUM
     GROUP_OPER_ACTION_DISOLVE,
     GROUP_OPER_ACTION_GOWNERDEL,
 };
-//ÈºÓÃ»§ÏûÏ¢½á¹¹
+//ç¾¤ç”¨æˆ·æ¶ˆæ¯ç»“æ„
 struct group_user_msg
 {
     int gid;
@@ -699,8 +699,8 @@ struct group_user_msg
     char group_name[PNR_GROUP_USERKEY_MAXLEN+1];
     char msgpay[PNR_GROUP_USERMSG_MAXLEN+1];
     char attend[PNR_GROUP_EXTINFO_MAXLEN+1];
-    char ext1[PNR_GROUP_EXTINFO_MAXLEN+1];//ext1´æ´¢ÎÄ¼şÏà¶ÔÂ·¾¶
-    char ext2[PNR_GROUP_EXTINFO_MAXLEN+1];//ext2´æ´¢ÎÄ¼şĞÅÏ¢ ¸ñÊ½Îª:  fid:fsize:md5:fileinfo
+    char ext1[PNR_GROUP_EXTINFO_MAXLEN+1];//ext1å­˜å‚¨æ–‡ä»¶ç›¸å¯¹è·¯å¾„
+    char ext2[PNR_GROUP_EXTINFO_MAXLEN+1];//ext2å­˜å‚¨æ–‡ä»¶ä¿¡æ¯ æ ¼å¼ä¸º:  fid:fsize:md5:fileinfo
 };
 enum GROUP_SYSMSG_ENUM
 {
@@ -737,10 +737,10 @@ struct group_sys_msg
     int from_uid;
     int to_uid;
     int gid;
-    char group_hid[TOX_ID_STR_LEN+1];//²Ù×÷Õß
-    char from_user[TOX_ID_STR_LEN+1];//²Ù×÷Õß
-    char to_user[TOX_ID_STR_LEN+1];//±»²Ù×÷Õß
-    char msgtargetuser[TOX_ID_STR_LEN+1];//ÏûÏ¢½ÓÊÕ·½
+    char group_hid[TOX_ID_STR_LEN+1];//æ“ä½œè€…
+    char from_user[TOX_ID_STR_LEN+1];//æ“ä½œè€…
+    char to_user[TOX_ID_STR_LEN+1];//è¢«æ“ä½œè€…
+    char msgtargetuser[TOX_ID_STR_LEN+1];//æ¶ˆæ¯æ¥æ”¶æ–¹
     char msgpay[PNR_GROUP_USERMSG_MAXLEN+1];
 };
 struct group_fileinfo_struct
@@ -760,8 +760,8 @@ enum IM_MSGTYPE_ENUM
 	PNR_IM_MSGTYPE_FILE = 5,
 	PNR_IM_MSGTYPE_AVATAR = 6
 };
-#define PNR_IM_MSGTYPE_FILEALL   0xF0//°üº¬IMAGE£¬AUDIO£¬MEDIA£¬FILE
-#define PNR_IM_MSGTYPE_ALL   0xF1//°üº¬IMAGE£¬AUDIO£¬MEDIA£¬FILE TEXT
+#define PNR_IM_MSGTYPE_FILEALL   0xF0//åŒ…å«IMAGEï¼ŒAUDIOï¼ŒMEDIAï¼ŒFILE
+#define PNR_IM_MSGTYPE_ALL   0xF1//åŒ…å«IMAGEï¼ŒAUDIOï¼ŒMEDIAï¼ŒFILE TEXT
 
 struct im_sendmsg_msgstruct
 {
@@ -818,15 +818,15 @@ enum PNR_TOX_STATUS_ENUM
     PNR_TOX_STATUS_EXITED,
 };
 #define IM_MSGID_CACHENUM 10
-//Ã¿¸öimÓÃ»§µÄ½á¹¹Ìå
+//æ¯ä¸ªimç”¨æˆ·çš„ç»“æ„ä½“
 struct im_user_struct
 {
-    int init_flag;//¸ÃÊÇ·ñÒÑ¾­ÊµÀı»¯¹ı
-    int appactive_flag;//app ¼¤»î×´Ì¬
+    int init_flag;//è¯¥æ˜¯å¦å·²ç»å®ä¾‹åŒ–è¿‡
+    int appactive_flag;//app æ¿€æ´»çŠ¶æ€
     int user_index;
-    int user_onlinestatus;//ÔÚÏß×´Ì¬  USER_ONLINE_STATUS_ENUM
-    int user_online_type;   //ÓÃ»§ÔÚÏßÀàĞÍ USER_ONLINE_TYPE_ENUM
-    int friendnum;//ºÃÓÑ¸öÊı
+    int user_onlinestatus;//åœ¨çº¿çŠ¶æ€  USER_ONLINE_STATUS_ENUM
+    int user_online_type;   //ç”¨æˆ·åœ¨çº¿ç±»å‹ USER_ONLINE_TYPE_ENUM
+    int friendnum;//å¥½å‹ä¸ªæ•°
     int heartbeat_count;
     int appid;
     int notice_flag;
@@ -843,8 +843,8 @@ struct im_user_struct
     char user_nickname[PNR_USERNAME_MAXLEN+1];
     char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
     char userdata_pathurl[PNR_FILEPATH_MAXLEN];
-    char userinfo_pathurl[PNR_FILEPATH_MAXLEN];//ÓÃ»§ÕË»§ĞÅÏ¢Ïà¹ØÄ¿Â¼
-    char userinfo_fullurl[PNR_FILEPATH_MAXLEN];//ÓÃ»§dataÎÄ¼şÈ«Â·¾¶Ãû³Æ
+    char userinfo_pathurl[PNR_FILEPATH_MAXLEN];//ç”¨æˆ·è´¦æˆ·ä¿¡æ¯ç›¸å…³ç›®å½•
+    char userinfo_fullurl[PNR_FILEPATH_MAXLEN];//ç”¨æˆ·dataæ–‡ä»¶å…¨è·¯å¾„åç§°
     struct Tox* ptox_handle;
     struct per_session_data__minimal *pss;
     struct im_friends_struct friends[PNR_IMUSER_FRIENDS_MAXNUM+1];
@@ -876,7 +876,7 @@ enum PNR_ACCOUNT_STATUS_ENUM
     PNR_ACCOUNT_STATUS_INVALID = 2,
     PNR_ACCOUNT_STATUS_BUTT
 };
-//pnr ÕËºÅ½á¹¹
+//pnr è´¦å·ç»“æ„
 struct pnr_account_struct
 {
     int dbid;
@@ -1157,7 +1157,7 @@ enum PNR_REBOOT_RETURN_ENUM
     PNR_REBOOT_RETURN_BUTT,
 };
 #define WS_SENDFILE_HEADLEN    952
-#define WS_FILELIST_V1  1 //Õâ¸ö°æ±¾ĞÂÔöµÄver×Ö¶Î£¬Ìí¼ÓÁË½ÚµãÉÏÎÄ¼ş±£´æÕæÊµÃû³ÆÓëÓÃ»§¿´¼ûµÄÂß¼­Ãû³ÆÇø·Ö
+#define WS_FILELIST_V1  1 //è¿™ä¸ªç‰ˆæœ¬æ–°å¢çš„verå­—æ®µï¼Œæ·»åŠ äº†èŠ‚ç‚¹ä¸Šæ–‡ä»¶ä¿å­˜çœŸå®åç§°ä¸ç”¨æˆ·çœ‹è§çš„é€»è¾‘åç§°åŒºåˆ†
 #define WS_FILELIST_VERSION WS_FILELIST_V1
 struct im_user_msg_sendfile {
 	uint32_t magic;
@@ -1168,14 +1168,14 @@ struct im_user_msg_sendfile {
 	uint32_t fileid;
 	uint16_t crc;
 	uint8_t	segmore;
-	uint8_t	ifcontinue;	//ÊÇ·ñĞø´«
+	uint8_t	ifcontinue;	//æ˜¯å¦ç»­ä¼ 
 	char filename[UPLOAD_FILENAME_MAXLEN];
 	char fromid[TOX_ID_STR_LEN + 1];
 	char toid[TOX_ID_STR_LEN + 1];
     char srckey[PNR_RSA_KEY_MAXLEN+1];
     char dstkey[PNR_RSA_KEY_MAXLEN+1];
-    char porperty_flag;//ÊÇ·ñÊÇÈº»á»°ÊôĞÔ
-    char ver_str;//ÎÄ¼ş´«Êä°æ±¾ºÅ
+    char porperty_flag;//æ˜¯å¦æ˜¯ç¾¤ä¼šè¯å±æ€§
+    char ver_str;//æ–‡ä»¶ä¼ è¾“ç‰ˆæœ¬å·
 	char content[SEG_CONTENT_LEN];
 };
 #define PNR_REAL_FILENAME_GET(filename,uid,srcfrom,fid)\
@@ -1214,7 +1214,7 @@ struct im_user_msg_sendfile_resp {
 	uint32_t logid;
 	uint32_t segseq;
 	uint16_t crc;
-	uint16_t code;	//·µ»ØÂë
+	uint16_t code;	//è¿”å›ç 
 	char fromid[TOX_ID_STR_LEN + 1];
 	char toid[TOX_ID_STR_LEN + 1];
 };
@@ -1258,7 +1258,7 @@ enum PUSHMSG_TYPE_ENUM
 #define PNR_POST_USER_MAXNUM 100
 #define PNR_POST_USERSTR_MAXLEN  10000
 #define PNR_POST_MSGS_VER1  1
-//ÍÆËÍÏûÏ¢½á¹¹Ìå
+//æ¨é€æ¶ˆæ¯ç»“æ„ä½“
 struct newmsg_notice_params{
     int priority;
     int server_flag;
@@ -1269,7 +1269,7 @@ struct newmsg_notice_params{
     char dev[PNR_USERNAME_MAXLEN+1];
     char payload[CMD_MAXLEN+1];
 };
-//ÅúÁ¿ÍÆËÍÏûÏ¢½á¹¹Ìå
+//æ‰¹é‡æ¨é€æ¶ˆæ¯ç»“æ„ä½“
 struct newmsgs_notice_params{
     int priority;
     int server_flag;
@@ -1283,7 +1283,7 @@ struct newmsgs_notice_params{
     char payload[CMD_MAXLEN+1];
 };
 
-//´ÅÅÌÍ³¼ÆĞÅÏ¢
+//ç£ç›˜ç»Ÿè®¡ä¿¡æ¯
 struct disk_total_info{
     int mode;
     int count;
@@ -1294,10 +1294,10 @@ struct disk_total_info{
 };
 enum PNR_DISK_STATUS_ENUM
 {
-    PNR_DISK_STATUS_NONE = 0,//Î´¹ÒÔØÓ²ÅÌ
-    PNR_DISK_STATUS_NOINIT = 1,//¹ÒÔØÎ´³õÊ¼»¯
-    PNR_DISK_STATUS_RUNNING = 2,//Õı³£Ê¹ÓÃÖĞ
-    PNR_DISK_STATUS_ERROR = 3,//´ÅÅÌ¹ÊÕÏ
+    PNR_DISK_STATUS_NONE = 0,//æœªæŒ‚è½½ç¡¬ç›˜
+    PNR_DISK_STATUS_NOINIT = 1,//æŒ‚è½½æœªåˆå§‹åŒ–
+    PNR_DISK_STATUS_RUNNING = 2,//æ­£å¸¸ä½¿ç”¨ä¸­
+    PNR_DISK_STATUS_ERROR = 3,//ç£ç›˜æ•…éšœ
 };
 enum PNR_DISK_MODE_ENUM
 {
@@ -1307,7 +1307,7 @@ enum PNR_DISK_MODE_ENUM
     PNR_DISK_MODE_RAID0,
     PNR_DISK_MODE_BUTT
 };
-//´ÅÅÌÏêÏ¸ĞÅÏ¢
+//ç£ç›˜è¯¦ç»†ä¿¡æ¯
 struct dist_detail_info
 {
     int slot;
@@ -1347,12 +1347,12 @@ enum PNR_RID_NODE_CSTATUS_ENUM
     PNR_RID_NODE_CSTATUS_BUTT
 };
 
-//ppr¸ù½ÚµãÁ¬½ÓĞÅÏ¢
+//ppræ ¹èŠ‚ç‚¹è¿æ¥ä¿¡æ¯
 struct pnr_rid_node
 {
     int f_id;
-    int c_status;//Á¬½Ó×´Ì¬
-    int c_type; // Á¬½ÓÀàĞÍ
+    int c_status;//è¿æ¥çŠ¶æ€
+    int c_type; // è¿æ¥ç±»å‹
     time_t  lastact_time;
     struct Tox* ptox_handle;
     char tox_id[TOX_ID_STR_LEN+1];
