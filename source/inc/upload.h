@@ -13,7 +13,7 @@
 #include "md5.h"
 
 #define UPLOAD_FILENAME_MAXLEN	256
-#define PNR_MAX_SENDFILE_NUM	100	/* ×î´óÍ¬Ê±·¢ËÍÎÄ¼şÊı */
+#define PNR_MAX_SENDFILE_NUM	100	/* æœ€å¤§åŒæ—¶å‘é€æ–‡ä»¶æ•° */
 
 /*
  * Unlike ws, http is a stateless protocol.  This pss only exists for the
@@ -38,10 +38,10 @@ struct im_sendfile_struct
 {
 	int log_id;
 	int msgtype;
-	int filesize;	/* ÎÄ¼ş×Ü´óĞ¡ */
-	int rcvlen;	/* ÒÑ½ÓÊÕÎÄ¼ş´óĞ¡ */
-	int fd;		/* Ğ´ÈëÎÄ¼şÃèÊö·û */
-	int status;	/* ÎÄ¼şĞ´Èë×´Ì¬ */
+	int filesize;	/* æ–‡ä»¶æ€»å¤§å° */
+	int rcvlen;	/* å·²æ¥æ”¶æ–‡ä»¶å¤§å° */
+	int fd;		/* å†™å…¥æ–‡ä»¶æè¿°ç¬¦ */
+	int status;	/* æ–‡ä»¶å†™å…¥çŠ¶æ€ */
     int filetype;
 	char fromuser_toxid[TOX_ID_STR_LEN+1];
     char touser_toxid[TOX_ID_STR_LEN+1];
