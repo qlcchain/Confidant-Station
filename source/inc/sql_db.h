@@ -38,9 +38,9 @@ enum DB_VERSION_ENUM
 #define DB_PUBNET_IPSTR_KEYWORD "pubnet_ip"
 #define DB_PUBNET_PORT_KEYWORD  "pubnet_port"
 #define DB_PUBNET_SSHPORT_KEYWORD "pubnet_sshport"
-//默认设备登陆密码，qlcadmin的sha256加密
+//榛樿璁惧鐧婚檰瀵嗙爜锛宷lcadmin鐨剆ha256鍔犲瘑
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
-//默认设备名称，base64转码
+//榛樿璁惧鍚嶇О锛宐ase64杞爜
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
 #define DB_CURRENT_VERSION    DB_VERSION_V9
 struct db_string_ret
