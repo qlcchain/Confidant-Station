@@ -57,7 +57,7 @@ typedef  long long int64;
 #define LOGINTIME_PAYLOAD2 "XXXXXXXXXXXXXX" //yyyyMMddHHmmss
 #define LOGINTIME_PAYLOAD2_LEN 14 //yyyyMMddHHmmss
 #define DATAFILE_BUFF_MAXLEN    8*1024
-#define DATAFILE_BASE64_ENCODE_MAXLEN    12*1024//base64±àÂëÖ®ºó×î¶àÎªÔ­³¤¶È/3*4
+#define DATAFILE_BASE64_ENCODE_MAXLEN    12*1024//base64ç¼–ç ä¹‹åæœ€å¤šä¸ºåŸé•¿åº¦/3*4
 #define LOGINTIME_PAYLOAD2_OFFSET (LOGINTIME_PAYLOAD_LEN+1)
 #define DEAMON_PIDFILE  "/tmp/pnrouter_pid"
 #define CMD_MAXLEN 1024
@@ -65,7 +65,7 @@ typedef  long long int64;
 #define DAEMON_FIFONAME  "/tmp/pnrouter_msg.fifo"
 #define DAEMON_OPEN_FIFONAME_CMD  "cat /tmp/pnrouter_msg.fifo"
 #define LOG_PATH "/tmp/logdisk/pnrouter_debug.log"
-#define PNR_USER_PUBKEY_MAXLEN      512//ÕâÀïÊÇ256×Ö½ÚÈ»ºóÔÙbase64×ªÂëÖ®ºóµÄ³¤¶È
+#define PNR_USER_PUBKEY_MAXLEN      512//è¿™é‡Œæ˜¯256å­—èŠ‚ç„¶åå†base64è½¬ç ä¹‹åçš„é•¿åº¦
 #define PNR_FRIEND_MSG_MAXLEN      512
 #define PNR_DEBUG_FILENAME  "/tmp/pnr_debug.info"
 #define PNR_STATUS_FILENAME  "/tmp/pnr_status.info"
@@ -104,7 +104,7 @@ typedef  long long int64;
 #define PNR_REPEAT_TIME_15MIN   900//15min
 #define PNR_FRPC_CONNSTATUS_OKKEY "proxy success"
 
-//ÓÃ»§ÀàĞÍ
+//ç”¨æˆ·ç±»å‹
 enum PNR_USER_TYPE_ENUM
 {
     PNR_USER_TYPE_ADMIN = 0x01,
@@ -151,13 +151,13 @@ enum {
 #define PNR_GROUP_MAXNUM 50
 #define PNR_GROUP_USER_MAXNUM 100
 #endif
-#define PNR_IMUSER_FRIENDS_MAXNUM 200//µ¥¸öÓÃ»§×î´ó200¸öºÃÓÑ
+#define PNR_IMUSER_FRIENDS_MAXNUM 200//å•ä¸ªç”¨æˆ·æœ€å¤§200ä¸ªå¥½å‹
 #define PNR_INDEX_HASHSTR_LEN 3
 #define PNR_BKDR_HASHSTR_LEN 8
 #define PNR_HASHID_MAXNUM   (PNR_IMUSER_FRIENDS_MAXNUM*PNR_IMUSER_MAXNUM)
-#define PNR_DEFAULT_DAEMON_USERINDEX    0//Ö÷Í¨ĞÅtoxÓÃ»§
+#define PNR_DEFAULT_DAEMON_USERINDEX    0//ä¸»é€šä¿¡toxç”¨æˆ·
 #define PNR_DEFAULT_DATAVERSION  1
-#define PNR_ADMINUSER_PSN_INDEX    1 //Ä¬ÈÏ¸ø¿Í»§µÄadminÕËºÅÖ»ÓĞÒ»¸ö
+#define PNR_ADMINUSER_PSN_INDEX    1 //é»˜è®¤ç»™å®¢æˆ·çš„adminè´¦å·åªæœ‰ä¸€ä¸ª
 #define PNR_ADMINUSER_DEFAULT_IDCODE    "QLCADMIN"
 #define PNR_TEMPUSER_PSN_INDEX    0xF00001
 #define PNR_USN_USERTYPE_LEN   2
