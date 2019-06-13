@@ -21,23 +21,23 @@ enum enum_param_names {
 
 extern int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* params);
 /*****************************************************************************
- º¯ Êı Ãû  : file_upload_cb
- ¹¦ÄÜÃèÊö  : ÎÄ¼şÉÏ´«»Øµ÷
- ÊäÈë²ÎÊı  : void *data                            
+ å‡½ æ•° å  : file_upload_cb
+ åŠŸèƒ½æè¿°  : æ–‡ä»¶ä¸Šä¼ å›è°ƒ
+ è¾“å…¥å‚æ•°  : void *data                            
              const char *name                      
              const char *filename                  
              char *buf                             
              int len                               
              enum lws_spa_fileupload_states state  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ27ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ27æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static int file_upload_cb(void *data, const char *name, const char *filename,
@@ -88,22 +88,22 @@ static int file_upload_cb(void *data, const char *name, const char *filename,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : callback_upload
- ¹¦ÄÜÃèÊö  : ´¦ÀíÎÄ¼şÉÏ´«½Ó¿Ú
- ÊäÈë²ÎÊı  : struct lws *wsi                   
+ å‡½ æ•° å  : callback_upload
+ åŠŸèƒ½æè¿°  : å¤„ç†æ–‡ä»¶ä¸Šä¼ æ¥å£
+ è¾“å…¥å‚æ•°  : struct lws *wsi                   
              enum lws_callback_reasons reason  
              void *user                        
              void *in                          
              size_t len                        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ27ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ27æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int callback_upload(struct lws *wsi, enum lws_callback_reasons reason, void *user,
@@ -212,14 +212,14 @@ int callback_upload(struct lws *wsi, enum lws_callback_reasons reason, void *use
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "file md5 err(%s-%s)", msg.md5, filemd5); 
 	        ret_code = PNR_MSGSEND_RETCODE_FAILED;
 		} else {
-	        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+	        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
 	        index = get_indexbytoxid(msg.fromuser_toxid);
 	        if (index == 0) {
-	            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+	            //æ¸…é™¤å¯¹åº”è®°å½•
 	            ret_code = PNR_MSGSEND_RETCODE_FAILED;
 	            DEBUG_PRINT(DEBUG_LEVEL_INFO, "get fromuser_toxid(%s) failed", msg.fromuser_toxid);
 	        } else {
-				//ÎÄ¼ş·Åµ½ÓÃ»§×Ô¼ºµÄÄ¿Â¼
+				//æ–‡ä»¶æ”¾åˆ°ç”¨æˆ·è‡ªå·±çš„ç›®å½•
 				snprintf(fullfilename, sizeof(fullfilename), DAEMON_PNR_USERDATA_DIR "user%d/%s", 
 					index, msg.filename);
 				rename(filename, fullfilename);
@@ -229,7 +229,7 @@ int callback_upload(struct lws *wsi, enum lws_callback_reasons reason, void *use
 				
 	            ret_code = PNR_USER_ADDFRIEND_RETOK;
 	            //i = get_indexbytoxid(msg.touser_toxid);
-	            //¶ÔÓÚÄ¿±êºÃÓÑÎª±¾µØÓÃ»§
+	            //å¯¹äºç›®æ ‡å¥½å‹ä¸ºæœ¬åœ°ç”¨æˆ·
 	            //if (i != 0)
 	            //    im_pushmsg_callback(i, PNR_IM_CMDTYPE_SENDFILE, TRUE, (void *)&msg);
 	            //else
@@ -237,7 +237,7 @@ int callback_upload(struct lws *wsi, enum lws_callback_reasons reason, void *use
 	        }
 	    }
 	    
-	    //¹¹½¨ÏìÓ¦ÏûÏ¢
+	    //æ„å»ºå“åº”æ¶ˆæ¯
 		cJSON * ret_root =  cJSON_CreateObject();
 	    cJSON * ret_params =  cJSON_CreateObject();
 	    if (ret_root == NULL || ret_params == NULL) {
