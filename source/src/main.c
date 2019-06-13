@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  mainÎÄ¼ş
+ *  mainæ–‡ä»¶
  *
  * 
  * 
@@ -89,7 +89,7 @@ int im_debug_imcmd_deal(char* pcmd);
  *
  * Function name: set_default_opts
  * 
- * Instruction: ÉèÖÃÄ¬ÈÏÆô¶¯²ÎÊı
+ * Instruction: è®¾ç½®é»˜è®¤å¯åŠ¨å‚æ•°
  * 
  * INPUT:none
  * 
@@ -124,13 +124,13 @@ void print_version(void)
 }
 /**********************************************************************************
   Function:      pnini_handler
-  Description:   ¶ÁÈ¡iniÅäÖÃÎÄ¼ş»Øµ÷½Ó¿Ú
+  Description:   è¯»å–inié…ç½®æ–‡ä»¶å›è°ƒæ¥å£
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -163,13 +163,13 @@ static int pnini_handler(void* user, const char* section, const char* name,
 }
 /**********************************************************************************
   Function:      pnr_config_ini_read
-  Description:   ¶ÁÈ¡iniÅäÖÃÎÄ¼ş£¬¿ÉÄÜ²»´æÔÚ
+  Description:   è¯»å–inié…ç½®æ–‡ä»¶ï¼Œå¯èƒ½ä¸å­˜åœ¨
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -188,13 +188,13 @@ void pnr_config_ini_read(void)
 
 /**********************************************************************************
   Function:      parse_args
-  Description:   ²ÎÊı½âÎöº¯Êı
+  Description:   å‚æ•°è§£æå‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -231,13 +231,13 @@ static void parse_args(int argc, char *argv[])
 }
 /**********************************************************************************
   Function:      signal_init
-  Description:  ĞÅºÅÁ¿ÆÁ±Î
+  Description:  ä¿¡å·é‡å±è”½
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -246,31 +246,31 @@ static void parse_args(int argc, char *argv[])
 ***********************************************************************************/
 int signal_init(void)
 { 
-    //ºöÂÔÖÕ¶ËI/OĞÅºÅ£¬STOPĞÅºÅ
+    //å¿½ç•¥ç»ˆç«¯I/Oä¿¡å·ï¼ŒSTOPä¿¡å·
     signal(SIGTTOU,SIG_IGN);
     signal(SIGTTIN,SIG_IGN);
     signal(SIGTSTP,SIG_IGN);
     signal(SIGHUP,SIG_IGN);
  
-    //¸Ä±ä¹¤×÷Ä¿Â¼£¬Ê¹µÃ½ø³Ì²»ÓëÈÎºÎÎÄ¼şÏµÍ³ÁªÏµ
+    //æ”¹å˜å·¥ä½œç›®å½•ï¼Œä½¿å¾—è¿›ç¨‹ä¸ä¸ä»»ä½•æ–‡ä»¶ç³»ç»Ÿè”ç³»
     chdir("/tmp");
  
-    //½«ÎÄ¼şµ±Ê±´´½¨ÆÁ±Î×ÖÉèÖÃÎª0
+    //å°†æ–‡ä»¶å½“æ—¶åˆ›å»ºå±è”½å­—è®¾ç½®ä¸º0
     umask(0);
  
-    //ºöÂÔSIGCHLDĞÅºÅ
+    //å¿½ç•¥SIGCHLDä¿¡å·
     signal(SIGCHLD,SIG_IGN); 
     return 0;
 }
 /**********************************************************************************
   Function:      init_daemon
-  Description:  ÇĞ»»ÎªºóÌ¨½ø³Ì
+  Description:  åˆ‡æ¢ä¸ºåå°è¿›ç¨‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -282,7 +282,7 @@ int init_daemon(void)
     int pid; 
     int i; 
  
-    //ºöÂÔÖÕ¶ËI/OĞÅºÅ£¬STOPĞÅºÅ
+    //å¿½ç•¥ç»ˆç«¯I/Oä¿¡å·ï¼ŒSTOPä¿¡å·
     signal(SIGTTOU,SIG_IGN);
     signal(SIGTTIN,SIG_IGN);
     signal(SIGTSTP,SIG_IGN);
@@ -290,16 +290,16 @@ int init_daemon(void)
     
     pid = fork();
     if(pid > 0) {
-        exit(0); //½áÊø¸¸½ø³Ì£¬Ê¹µÃ×Ó½ø³Ì³ÉÎªºóÌ¨½ø³Ì
+        exit(0); //ç»“æŸçˆ¶è¿›ç¨‹ï¼Œä½¿å¾—å­è¿›ç¨‹æˆä¸ºåå°è¿›ç¨‹
     }
     else if(pid < 0) { 
         return -1;
     }
  
-    //½¨Á¢Ò»¸öĞÂµÄ½ø³Ì×é,ÔÚÕâ¸öĞÂµÄ½ø³Ì×éÖĞ,×Ó½ø³Ì³ÉÎªÕâ¸ö½ø³Ì×éµÄÊ×½ø³Ì,ÒÔÊ¹¸Ã½ø³ÌÍÑÀëËùÓĞÖÕ¶Ë
+    //å»ºç«‹ä¸€ä¸ªæ–°çš„è¿›ç¨‹ç»„,åœ¨è¿™ä¸ªæ–°çš„è¿›ç¨‹ç»„ä¸­,å­è¿›ç¨‹æˆä¸ºè¿™ä¸ªè¿›ç¨‹ç»„çš„é¦–è¿›ç¨‹,ä»¥ä½¿è¯¥è¿›ç¨‹è„±ç¦»æ‰€æœ‰ç»ˆç«¯
     setsid();
  
-    //ÔÙ´ÎĞÂ½¨Ò»¸ö×Ó½ø³Ì£¬ÍË³ö¸¸½ø³Ì£¬±£Ö¤¸Ã½ø³Ì²»ÊÇ½ø³Ì×é³¤£¬Í¬Ê±ÈÃ¸Ã½ø³ÌÎŞ·¨ÔÙ´ò¿ªÒ»¸öĞÂµÄÖÕ¶Ë
+    //å†æ¬¡æ–°å»ºä¸€ä¸ªå­è¿›ç¨‹ï¼Œé€€å‡ºçˆ¶è¿›ç¨‹ï¼Œä¿è¯è¯¥è¿›ç¨‹ä¸æ˜¯è¿›ç¨‹ç»„é•¿ï¼ŒåŒæ—¶è®©è¯¥è¿›ç¨‹æ— æ³•å†æ‰“å¼€ä¸€ä¸ªæ–°çš„ç»ˆç«¯
     pid=fork();
     if( pid > 0) {
         exit(0);
@@ -308,16 +308,16 @@ int init_daemon(void)
         return -1;
     }
  
-    //¹Ø±ÕËùÓĞ´Ó¸¸½ø³Ì¼Ì³ĞµÄ²»ÔÙĞèÒªµÄÎÄ¼şÃèÊö·û
+    //å…³é—­æ‰€æœ‰ä»çˆ¶è¿›ç¨‹ç»§æ‰¿çš„ä¸å†éœ€è¦çš„æ–‡ä»¶æè¿°ç¬¦
     for(i=0;i< NOFILE;close(i++));
  
-    //¸Ä±ä¹¤×÷Ä¿Â¼£¬Ê¹µÃ½ø³Ì²»ÓëÈÎºÎÎÄ¼şÏµÍ³ÁªÏµ
+    //æ”¹å˜å·¥ä½œç›®å½•ï¼Œä½¿å¾—è¿›ç¨‹ä¸ä¸ä»»ä½•æ–‡ä»¶ç³»ç»Ÿè”ç³»
     chdir("/tmp");
  
-    //½«ÎÄ¼şµ±Ê±´´½¨ÆÁ±Î×ÖÉèÖÃÎª0
+    //å°†æ–‡ä»¶å½“æ—¶åˆ›å»ºå±è”½å­—è®¾ç½®ä¸º0
     umask(0);
  
-    //ºöÂÔSIGCHLDĞÅºÅ
+    //å¿½ç•¥SIGCHLDä¿¡å·
     signal(SIGCHLD,SIG_IGN); 
     
     return 0;
@@ -325,13 +325,13 @@ int init_daemon(void)
 
 /**********************************************************************************
   Function:      daemon_exists
-  Description:  ¼ì²â²¢Éú³ÉpidÎÄ¼ş
+  Description:  æ£€æµ‹å¹¶ç”Ÿæˆpidæ–‡ä»¶
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -366,13 +366,13 @@ int daemon_exists(void)
 }
 /**********************************************************************************
   Function:      qlv_daemon_init
-  Description:  qlvÊØ»¤½ø³Ì³õÊ¼»¯
+  Description:  qlvå®ˆæŠ¤è¿›ç¨‹åˆå§‹åŒ–
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -386,7 +386,7 @@ int daemon_init(void)
 	char sql_cmd[SQL_CMD_LEN] = {0};
 	struct rlimit resource = {65535, 65535};
 
-    //½¨Á¢Í¨ĞÅ¹ÜµÀ
+    //å»ºç«‹é€šä¿¡ç®¡é“
     unlink(DAEMON_FIFONAME);
     if (mkfifo(DAEMON_FIFONAME, 0777) == -1)
     {
@@ -395,31 +395,31 @@ int daemon_init(void)
     }
 
 	setrlimit(RLIMIT_NOFILE, &resource);
-    //ÕâÀïÈç¹ûÊÇonespace£¬ĞèÒªÏÈÖ´ĞĞÏÂrngd£¬Òª²»È» sodium_init»áºÜÂı
+    //è¿™é‡Œå¦‚æœæ˜¯onespaceï¼Œéœ€è¦å…ˆæ‰§è¡Œä¸‹rngdï¼Œè¦ä¸ç„¶ sodium_initä¼šå¾ˆæ…¢
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
         system("echo 180 > /proc/sys/net/ipv4/netfilter/ip_conntrack_udp_timeout");
     }
 
-    //½¨Á¢ÎÄ¼şÄ¿Â¼
+    //å»ºç«‹æ–‡ä»¶ç›®å½•
     if(access(DAEMON_PNR_TOP_DIR,F_OK) != OK)
     {
         snprintf(sql_cmd,SQL_CMD_LEN,"mkdir -p %s",DAEMON_PNR_TOP_DIR);
         system(sql_cmd);
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_cmd (%s)",sql_cmd);
     }  
-    /* ºöÂÔEPIPEĞÅºÅ£¬²»È»³ÌĞò»áÒì³£ÍË³ö */ 
+    /* å¿½ç•¥EPIPEä¿¡å·ï¼Œä¸ç„¶ç¨‹åºä¼šå¼‚å¸¸é€€å‡º */ 
     signal(SIGPIPE, SIG_IGN); 
     
-    //¼ì²éÊı¾İ¿â
+    //æ£€æŸ¥æ•°æ®åº“
     if(sql_db_check() != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_db_check error %s", strerror(errno));
 		return ERROR;
     }
-    //»ñÈ¡µ±Ç°ÅäÖÃ
+    //è·å–å½“å‰é…ç½®
 
-    //im_server³õÊ¼»¯
+    //im_serveråˆå§‹åŒ–
     if (im_server_init() != OK) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_server_init failed");
 		return ERROR;
@@ -457,13 +457,13 @@ int daemon_init(void)
 
 /**********************************************************************************
   Function:      test_daemon
-  Description:  ÊØ»¤½ø³Ì£¬
+  Description:  å®ˆæŠ¤è¿›ç¨‹ï¼Œ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -477,13 +477,13 @@ static void *test_daemon(void *para)
 }
 /**********************************************************************************
   Function:      tox_daemon
-  Description:  toxÊØ»¤½ø³Ì£¬¸ºÔğ»ù´¡µÄp2pÍøÂç×é½¨£¬½ÓÊÕwinqµÄÏûÏ¢
+  Description:  toxå®ˆæŠ¤è¿›ç¨‹ï¼Œè´Ÿè´£åŸºç¡€çš„p2pç½‘ç»œç»„å»ºï¼Œæ¥æ”¶winqçš„æ¶ˆæ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -497,13 +497,13 @@ static void *tox_daemon(void *para)
 }
 /**********************************************************************************
   Function:      imserver_daemon
-  Description:  im_serverÊØ»¤½ø³Ì£¬¸ºÔğÓëappµÄÍ¨ĞÅ
+  Description:  im_serverå®ˆæŠ¤è¿›ç¨‹ï¼Œè´Ÿè´£ä¸appçš„é€šä¿¡
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -518,13 +518,13 @@ static void *imserver_daemon(void *para)
 
 /**********************************************************************************
   Function:      monstat_daemon
-  Description:  ×´Ì¬¼ì²âÊØ»¤½ø³Ì£¬¸ºÔğÏµÍ³ÕûÌå×´Ì¬¼ì²â
+  Description:  çŠ¶æ€æ£€æµ‹å®ˆæŠ¤è¿›ç¨‹ï¼Œè´Ÿè´£ç³»ç»Ÿæ•´ä½“çŠ¶æ€æ£€æµ‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -543,13 +543,13 @@ static void *monstat_daemon(void *para)
 }
 /**********************************************************************************
   Function:      heartbeat_daemon
-  Description:  ĞÄÌøÊØ»¤½ø³Ì£¬¸ºÔğÎ¬ÏµĞÄÌø
+  Description:  å¿ƒè·³å®ˆæŠ¤è¿›ç¨‹ï¼Œè´Ÿè´£ç»´ç³»å¿ƒè·³
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -568,13 +568,13 @@ static void *heartbeat_daemon(void *para)
 }
 /**********************************************************************************
   Function:      imuser_heartbeat_daemon
-  Description:  imÓÃ»§ĞÄÌøÊØ»¤½ø³Ì
+  Description:  imç”¨æˆ·å¿ƒè·³å®ˆæŠ¤è¿›ç¨‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -593,18 +593,18 @@ static void *imuser_heartbeat_daemon(void *para)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_send_msg_daemon
- ¹¦ÄÜÃèÊö  : ´¦Àí´ı·¢ËÍÏûÏ¢
- ÊäÈë²ÎÊı  : void *para  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_send_msg_daemon
+ åŠŸèƒ½æè¿°  : å¤„ç†å¾…å‘é€æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : void *para  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ16ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ16æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void *im_send_msg_daemon(void *para)
@@ -621,13 +621,13 @@ static void *im_send_msg_daemon(void *para)
 
 /**********************************************************************************
   Function:      msg_deal
-  Description:  ÉÏ±¨ÏûÏ¢´¦ÀíÈë¿Ú
+  Description:  ä¸ŠæŠ¥æ¶ˆæ¯å¤„ç†å…¥å£
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2012-03-07
@@ -664,11 +664,11 @@ void msg_deal(char * pbuf,int msg_len)
         case PNR_DEBUGCMD_PUSHNEWMSG_NOTICE:
             im_debug_pushnewnotice_deal(pbuf);
             break;
-        //¶¯Ì¬ÉèÖÃÄ³Ğ©ÏµÍ³¹¦ÄÜµÄ¿ª¹Ø
+        //åŠ¨æ€è®¾ç½®æŸäº›ç³»ç»ŸåŠŸèƒ½çš„å¼€å…³
         case PNR_DEBUGCMD_SET_FUNCENABLE:
             im_debug_setfunc_deal(pbuf);
             break;
-        //Ê¹ÄÜÄ£ÄâÓÃ»§²âÊÔ
+        //ä½¿èƒ½æ¨¡æ‹Ÿç”¨æˆ·æµ‹è¯•
         case PNR_DEBUGCMD_SET_SIMULATION:
             im_simulation_setfunc_deal(pbuf);
             break;
@@ -687,13 +687,13 @@ void msg_deal(char * pbuf,int msg_len)
 
 /**********************************************************************************
   Function:      fifo_msg_handle
-  Description:  ÏûÏ¢´¦Àí
+  Description:  æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2012-03-07
@@ -709,12 +709,12 @@ static int fifo_msg_handle(void)
     char* p_end = NULL;
 	
 	fpipe = open(DAEMON_FIFONAME, O_RDONLY);
-	//¼àÌı¹ÜµÀ
+	//ç›‘å¬ç®¡é“
 	while(1)
     {	
     	line_len = read(fpipe, line, BUF_LINE_MAX_LEN);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"fifo_msg_handle read ret(%d)",line_len);  
-        //ÏûÏ¢½á¹¹ÌåÊÇÀàËÆ "3 XXXX"
+        //æ¶ˆæ¯ç»“æ„ä½“æ˜¯ç±»ä¼¼ "3 XXXX"
 		if(line_len >= 3)
 		{
 			if(line[line_len-1] == '\n')
@@ -768,18 +768,18 @@ static int fifo_msg_handle(void)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : cron_thread
- ¹¦ÄÜÃèÊö  : ¶¨Ê±ÈÎÎñÏß³Ì
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : cron_thread
+ åŠŸèƒ½æè¿°  : å®šæ—¶ä»»åŠ¡çº¿ç¨‹
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void *cron_thread(void *para)
@@ -816,13 +816,13 @@ void *cron_thread(void *para)
 
 /**********************************************************************************
   Function:      main
-  Description:  ³ÌĞòÖ÷Èë¿Úº¯Êı£¬¸ºÔğÊäÈë²ÎÊı½âÎö£¬Æô¶¯ÈÎÎñµÈ
+  Description:  ç¨‹åºä¸»å…¥å£å‡½æ•°ï¼Œè´Ÿè´£è¾“å…¥å‚æ•°è§£æï¼Œå¯åŠ¨ä»»åŠ¡ç­‰
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -838,11 +838,11 @@ int32 main(int argc,char *argv[])
 	pthread_t tid;
 	int i = 0;
 
-	/*µ÷ÊÔ¿ª¹Ø*/
+	/*è°ƒè¯•å¼€å…³*/
     DEBUG_INIT(LOG_PATH);
     DEBUG_LEVEL(DEBUG_LEVEL_INFO);
 	parse_args(argc, argv);
-    //Â·ÓÉÆ÷ÉÏÓÃproc½Å±¾ÇĞ»»µ½ºóÌ¨
+    //è·¯ç”±å™¨ä¸Šç”¨procè„šæœ¬åˆ‡æ¢åˆ°åå°
 #ifdef OPENWRT_ARCH
     signal_init();
 #else
@@ -859,39 +859,39 @@ int32 main(int argc,char *argv[])
         exit(1);
 	}
 
-    //¶ÁÈ¡ÅäÖÃĞÅÏ¢
+    //è¯»å–é…ç½®ä¿¡æ¯
     pnr_config_ini_read();
-    /*½¨Á¢ÏûÏ¢¶ÓÁĞ*/
+    /*å»ºç«‹æ¶ˆæ¯é˜Ÿåˆ—*/
     
-    /*Æô¶¯Ö÷tox½ø³Ì£¬½¨Á¢P2PÍøÂç*/
+    /*å¯åŠ¨ä¸»toxè¿›ç¨‹ï¼Œå»ºç«‹P2Pç½‘ç»œ*/
 	if (pthread_create(&maintox_tid, NULL, tox_daemon,NULL) != OK)
 	{
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create tox_daemon failed");
         goto out;
 	}
 	
-     /*Æô¶¯monitor_stat½ø³Ì£¬¼à¿ØÏµÍ³×ÊÔ´Ê¹ÓÃÇé¿ö*/
+     /*å¯åŠ¨monitor_statè¿›ç¨‹ï¼Œç›‘æ§ç³»ç»Ÿèµ„æºä½¿ç”¨æƒ…å†µ*/
     if (pthread_create(&monstat_tid, NULL, monstat_daemon, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create monstat_daemon failed");
         goto out;
 	}   
 
-    //Æô¶¯im server½ø³Ì
+    //å¯åŠ¨im serverè¿›ç¨‹
     if (pthread_create(&imserver_tid, NULL, imserver_daemon, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create imserver_daemon failed");
         goto out;
 	}
 	
-    //Æô¶¯im heartbeat½ø³Ì
+    //å¯åŠ¨im heartbeatè¿›ç¨‹
     if (pthread_create(&imuser_heartbeat_tid, NULL, imuser_heartbeat_daemon, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create imuser_heartbeat_daemon failed");
         goto out;
 	}
 
-	//Æô¶¯ÏûÏ¢·¢ËÍ½ø³Ì
+	//å¯åŠ¨æ¶ˆæ¯å‘é€è¿›ç¨‹
 	for (i = 0; i < 2; i++) {
 		if (pthread_create(&tid, NULL, im_send_msg_daemon, &i) != 0) 
 	    {
@@ -900,7 +900,7 @@ int32 main(int argc,char *argv[])
 		}
 	}
 
-    //·şÎñÆ÷·¢ÏÖÏûÏ¢
+    //æœåŠ¡å™¨å‘ç°æ¶ˆæ¯
     if (pthread_create(&tid, NULL, server_discovery_thread, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create server discovery failed");
@@ -909,20 +909,20 @@ int32 main(int argc,char *argv[])
 
     //pnr_qrcode_create_png_bycmd("111223334455","/tmp/test1.png");
 
-	//tox·ÖÆ¬ÏûÏ¢ÇåÀí
+	//toxåˆ†ç‰‡æ¶ˆæ¯æ¸…ç†
     if (pthread_create(&tid, NULL, tox_seg_msg_flush, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create server discovery failed");
         goto out;
 	}
 
-	//¶¨Ê±ÈÎÎñ
+	//å®šæ—¶ä»»åŠ¡
 	if (pthread_create(&tid, NULL, cron_thread, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create cron failed");
         goto out;
 	}
-    //Éè±¸×¢²áÈÎÎñ
+    //è®¾å¤‡æ³¨å†Œä»»åŠ¡
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
 	    if (pthread_create(&tid, NULL,post_devinfo_upload_task, NULL) != 0) 
@@ -931,13 +931,13 @@ int32 main(int argc,char *argv[])
             goto out;
         }
     }    
-    //ÏûÏ¢ÍÆËÍÂÖÑ¯ÈÎÎñ
+    //æ¶ˆæ¯æ¨é€è½®è¯¢ä»»åŠ¡
     if (pthread_create(&tid, NULL,post_newmsgs_loop_task, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create post_newmsgs_loop_task failed");
         goto out;
     }
-    //×ÔÎÒ¼à²âÈÎÎñ
+    //è‡ªæˆ‘ç›‘æµ‹ä»»åŠ¡
     if (pthread_create(&tid, NULL,self_monitor_thread, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create self_monitor_thread failed");

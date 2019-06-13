@@ -1,7 +1,7 @@
 /************************************************************************
     > File Name: https_post.c 
     > Author: willcao 
-    > Created Time: 2018Äê08ÔÂ29ÈÕ ĞÇÆÚÈı 16Ê±42·Ö21Ãë
+    > Created Time: 2018å¹´08æœˆ29æ—¥ æ˜ŸæœŸä¸‰ 16æ—¶42åˆ†21ç§’
  ***********************************************************************/
 
 #include <fcntl.h>
@@ -23,10 +23,10 @@
 //#include "https_post.h"
 
 extern pthread_mutex_t g_postlock;
-#define HTTP_HEADERS_MAXLEN 	1024 	// Headers µÄ×î´ó³¤¶È
+#define HTTP_HEADERS_MAXLEN 	1024 	// Headers çš„æœ€å¤§é•¿åº¦
 
 /*
- * Headers °´Ğè¸ü¸Ä
+ * Headers æŒ‰éœ€æ›´æ”¹
  */
 const char *HttpsPostHeaders = 	"User-Agent: Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)\r\n"
 								"Cache-Control: no-cache\r\n"
@@ -34,11 +34,11 @@ const char *HttpsPostHeaders = 	"User-Agent: Mozilla/4.0 (compatible; MSIE 5.01;
 								"Content-type: application/json\r\n";
 
 /*
- * @Name 			- ´´½¨TCPÁ¬½Ó, ²¢½¨Á¢µ½Á¬½Ó
- * @Parame *server 	- ×Ö·û´®, ÒªÁ¬½ÓµÄ·şÎñÆ÷µØÖ·, ¿ÉÒÔÎªÓòÃû, Ò²¿ÉÒÔÎªIPµØÖ·
- * @Parame 	port 	- ¶Ë¿Ú
+ * @Name 			- åˆ›å»ºTCPè¿æ¥, å¹¶å»ºç«‹åˆ°è¿æ¥
+ * @Parame *server 	- å­—ç¬¦ä¸², è¦è¿æ¥çš„æœåŠ¡å™¨åœ°å€, å¯ä»¥ä¸ºåŸŸå, ä¹Ÿå¯ä»¥ä¸ºIPåœ°å€
+ * @Parame 	port 	- ç«¯å£
  *
- * @return 			- ·µ»Ø¶ÔÓ¦sock²Ù×÷¾ä±ú, ÓÃÓÚ¿ØÖÆºóĞøÍ¨ĞÅ
+ * @return 			- è¿”å›å¯¹åº”sockæ“ä½œå¥æŸ„, ç”¨äºæ§åˆ¶åç»­é€šä¿¡
  */
 int client_connect_tcp(char *server,int port)
 {
@@ -77,15 +77,15 @@ int client_connect_tcp(char *server,int port)
 }
 
 /*
- * @Name 			- ·â×°postÊı¾İ°üÀ¨headers
- * @parame *host 	- Ö÷»úµØÖ·, ÓòÃû
- * @parame  port 	- ¶Ë¿ÚºÅ
- * @parame 	page 	- urlÏà¶ÔÂ·¾¶
- * @parame 	len 	- Êı¾İÄÚÈİµÄ³¤¶È
- * @parame 	content - Êı¾İÄÚÈİ
- * @parame 	data 	- µÃµ½·â×°µÄÊı¾İ½á¹û
+ * @Name 			- å°è£…postæ•°æ®åŒ…æ‹¬headers
+ * @parame *host 	- ä¸»æœºåœ°å€, åŸŸå
+ * @parame  port 	- ç«¯å£å·
+ * @parame 	page 	- urlç›¸å¯¹è·¯å¾„
+ * @parame 	len 	- æ•°æ®å†…å®¹çš„é•¿åº¦
+ * @parame 	content - æ•°æ®å†…å®¹
+ * @parame 	data 	- å¾—åˆ°å°è£…çš„æ•°æ®ç»“æœ
  *
- * @return 	int 	- ·µ»Ø·â×°µÃµ½µÄÊı¾İ³¤¶È
+ * @return 	int 	- è¿”å›å°è£…å¾—åˆ°çš„æ•°æ®é•¿åº¦
  */
 int post_pack(const char *host, int port, const char *page, int len, const char *content, char *data)
 {
@@ -121,10 +121,10 @@ int post_pack(const char *host, int port, const char *page, int len, const char 
 }
 
 /*
- * @Name 		- 	³õÊ¼»¯SSL, ²¢ÇÒ°ó¶¨sockfdµ½SSL
- * 					´Ë×÷ÓÃÖ÷ÒªÄ¿µÄÊÇÍ¨¹ıSSLÀ´²Ù×÷sock
+ * @Name 		- 	åˆå§‹åŒ–SSL, å¹¶ä¸”ç»‘å®šsockfdåˆ°SSL
+ * 					æ­¤ä½œç”¨ä¸»è¦ç›®çš„æ˜¯é€šè¿‡SSLæ¥æ“ä½œsock
  * 					
- * @return 		- 	·µ»ØÒÑÍê³É³õÊ¼»¯²¢°ó¶¨¶ÔÓ¦sockfdµÄSSLÖ¸Õë
+ * @return 		- 	è¿”å›å·²å®Œæˆåˆå§‹åŒ–å¹¶ç»‘å®šå¯¹åº”sockfdçš„SSLæŒ‡é’ˆ
  */
 SSL *ssl_init(int sockfd)
 {
@@ -144,7 +144,7 @@ SSL *ssl_init(int sockfd)
 		return NULL;
 	}
 
-	/* °ÑsocketºÍSSL¹ØÁª */
+	/* æŠŠsocketå’ŒSSLå…³è” */
 	re = SSL_set_fd(ssl, sockfd);
 	if (re == 0){
 		SSL_free(ssl);
@@ -152,7 +152,7 @@ SSL *ssl_init(int sockfd)
 	}
 
     /*
-     * ¾­²éÔÄ, WIN32µÄÏµÍ³ÏÂ, ²»ÄÜºÜÓĞĞ§µÄ²úÉúËæ»úÊı, ´Ë´¦Ôö¼ÓËæ»úÊıÖÖ×Ó
+     * ç»æŸ¥é˜…, WIN32çš„ç³»ç»Ÿä¸‹, ä¸èƒ½å¾ˆæœ‰æ•ˆçš„äº§ç”Ÿéšæœºæ•°, æ­¤å¤„å¢åŠ éšæœºæ•°ç§å­
      */
 	RAND_poll();
 	while (RAND_status() == 0)
@@ -162,7 +162,7 @@ SSL *ssl_init(int sockfd)
 	}
 	
 	/*
-     * ctxÊ¹ÓÃÍê³É, ½øĞĞÊÍ·Å
+     * ctxä½¿ç”¨å®Œæˆ, è¿›è¡Œé‡Šæ”¾
      */
 	SSL_CTX_free(ctx);
 	
@@ -170,12 +170,12 @@ SSL *ssl_init(int sockfd)
 }
 
 /*
- * @Name 			- Í¨¹ıSSL½¨Á¢Á¬½Ó²¢·¢ËÍÊı¾İ
- * @Parame 	*ssl 	- SSLÖ¸Õë, ÒÑ¾­Íê³É³õÊ¼»¯²¢°ó¶¨ÁË¶ÔÓ¦sock¾ä±úµÄSSLÖ¸Õë
- * @Parame 	*data 	- ×¼±¸·¢ËÍÊı¾İµÄÖ¸ÕëµØÖ·
- * @Parame 	 size 	- ×¼±¸·¢ËÍµÄÊı¾İ³¤¶È
+ * @Name 			- é€šè¿‡SSLå»ºç«‹è¿æ¥å¹¶å‘é€æ•°æ®
+ * @Parame 	*ssl 	- SSLæŒ‡é’ˆ, å·²ç»å®Œæˆåˆå§‹åŒ–å¹¶ç»‘å®šäº†å¯¹åº”sockå¥æŸ„çš„SSLæŒ‡é’ˆ
+ * @Parame 	*data 	- å‡†å¤‡å‘é€æ•°æ®çš„æŒ‡é’ˆåœ°å€
+ * @Parame 	 size 	- å‡†å¤‡å‘é€çš„æ•°æ®é•¿åº¦
  *
- * @return 			- ·µ»Ø·¢ËÍÍê³ÉµÄÊı¾İ³¤¶È, Èç¹û·¢ËÍÊ§°Ü, ·µ»Ø -1
+ * @return 			- è¿”å›å‘é€å®Œæˆçš„æ•°æ®é•¿åº¦, å¦‚æœå‘é€å¤±è´¥, è¿”å› -1
  */
 int ssl_send(SSL *ssl, const char *data, int size)
 {
@@ -201,16 +201,16 @@ int ssl_send(SSL *ssl, const char *data, int size)
 }
 
 /*
- * @Name 			- SSL½ÓÊÕÊı¾İ, ĞèÒªÒÑ¾­½¨Á¢Á¬½Ó
- * @Parame 	*ssl 	- SSLÖ¸Õë, ÒÑ¾­Íê³É³õÊ¼»¯²¢°ó¶¨ÁË¶ÔÓ¦sock¾ä±úµÄSSLÖ¸Õë
- * @Parame  *buff 	- ½ÓÊÕÊı¾İµÄ»º³åÇø, ·Ç¿ÕÖ¸Õë
- * @Parame 	 size 	- ×¼±¸½ÓÊÕµÄÊı¾İ³¤¶È
+ * @Name 			- SSLæ¥æ”¶æ•°æ®, éœ€è¦å·²ç»å»ºç«‹è¿æ¥
+ * @Parame 	*ssl 	- SSLæŒ‡é’ˆ, å·²ç»å®Œæˆåˆå§‹åŒ–å¹¶ç»‘å®šäº†å¯¹åº”sockå¥æŸ„çš„SSLæŒ‡é’ˆ
+ * @Parame  *buff 	- æ¥æ”¶æ•°æ®çš„ç¼“å†²åŒº, éç©ºæŒ‡é’ˆ
+ * @Parame 	 size 	- å‡†å¤‡æ¥æ”¶çš„æ•°æ®é•¿åº¦
  *
- * @return 			- ·µ»Ø½ÓÊÕµ½µÄÊı¾İ³¤¶È, Èç¹û½ÓÊÕÊ§°Ü, ·µ»ØÖµ <0 
+ * @return 			- è¿”å›æ¥æ”¶åˆ°çš„æ•°æ®é•¿åº¦, å¦‚æœæ¥æ”¶å¤±è´¥, è¿”å›å€¼ <0 
  */
 int ssl_recv(SSL *ssl, char *buff, int size)
 {
-	int i = 0; 				// ¶ÁÈ¡Êı¾İÈ¡»»ĞĞÊıÁ¿, ¼´ÅĞ¶ÏheadersÊÇ·ñ½áÊø 
+	int i = 0; 				// è¯»å–æ•°æ®å–æ¢è¡Œæ•°é‡, å³åˆ¤æ–­headersæ˜¯å¦ç»“æŸ 
 	int len = 0;
 	char headers[HTTP_HEADERS_MAXLEN] = {0};
 
@@ -218,7 +218,7 @@ int ssl_recv(SSL *ssl, char *buff, int size)
 		return -1;
 	}
 
-	// HeadersÒÔ»»ĞĞ½áÊø, ´Ë´¦ÅĞ¶ÏÍ·ÊÇ·ñ´«ÊäÍê³É
+	// Headersä»¥æ¢è¡Œç»“æŸ, æ­¤å¤„åˆ¤æ–­å¤´æ˜¯å¦ä¼ è¾“å®Œæˆ
 	while((len = SSL_read(ssl, headers, 1)) == 1)
 	{
 		if(i < 4){
@@ -231,7 +231,7 @@ int ssl_recv(SSL *ssl, char *buff, int size)
 				i = 0;
 			}
 		}
-		//printf("%c", headers[0]);		// ´òÓ¡Headers
+		//printf("%c", headers[0]);		// æ‰“å°Headers
 	}
 
 	len = SSL_read(ssl, buff, size);
@@ -244,7 +244,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 	int re = 0;
 	int sockfd;
 	int data_len = 0;
-	int ssize = dsize + HTTP_HEADERS_MAXLEN; 	// Óû·¢ËÍµÄÊı¾İ°ü´óĞ¡
+	int ssize = dsize + HTTP_HEADERS_MAXLEN; 	// æ¬²å‘é€çš„æ•°æ®åŒ…å¤§å°
 
 	char *sdata = malloc(ssize+1);
 	if(sdata == NULL){
@@ -252,9 +252,9 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -1;
 	}
     memset(sdata,0,ssize+1);
-    //ÕâÀï±ØĞë¼ÓËø£¬·ñÔò»ácoerdump
+    //è¿™é‡Œå¿…é¡»åŠ é”ï¼Œå¦åˆ™ä¼šcoerdump
     pthread_mutex_lock(&g_postlock);
-	// 1¡¢½¨Á¢TCPÁ¬½Ó
+	// 1ã€å»ºç«‹TCPè¿æ¥
 	sockfd = client_connect_tcp(host, port);
 	if(sockfd < 0){
 		free(sdata);
@@ -263,7 +263,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -2;
 	}
     pthread_mutex_unlock(&g_postlock);
-	// 2¡¢SSL³õÊ¼»¯, ¹ØÁªSocketµ½SSL
+	// 2ã€SSLåˆå§‹åŒ–, å…³è”Socketåˆ°SSL
 	ssl = ssl_init(sockfd);
 	if(ssl == NULL){
 		free(sdata);
@@ -272,7 +272,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -3;
 	}
 
-	// 3¡¢×éºÏPOSTÊı¾İ
+	// 3ã€ç»„åˆPOSTæ•°æ®
 	data_len = post_pack(host, port, url, dsize, data, sdata);
     if(data_len <= 0)
     {
@@ -282,7 +282,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"https_post:post_pack failed");
 		return -4;
     }
-	// 4¡¢Í¨¹ıSSL·¢ËÍÊı¾İ
+	// 4ã€é€šè¿‡SSLå‘é€æ•°æ®
 	re = ssl_send(ssl, sdata, data_len);
 	if(re < 0){
 		free(sdata);
@@ -292,7 +292,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -5;
 	}
 
-	// 5¡¢È¡»ØÊı¾İ
+	// 5ã€å–å›æ•°æ®
 	int r_len = 0;
 	r_len = ssl_recv(ssl, buff, bsize);
 	if(r_len < 0){
@@ -303,7 +303,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -6;
 	}
 
-	// 6¡¢¹Ø±Õ»á»°, ÊÍ·ÅÄÚ´æ
+	// 6ã€å…³é—­ä¼šè¯, é‡Šæ”¾å†…å­˜
 	free(sdata);
 	close(sockfd);
 	SSL_shutdown(ssl);

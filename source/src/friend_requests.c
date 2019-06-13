@@ -95,20 +95,20 @@ static void addto_receivedlist(Friend_Requests *fr, const uint8_t *real_pk)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : addto_receivedlist_with_message
- ¹¦ÄÜÃèÊö  : °ÑpkºÍmessageÒ»Æğ·ÅÈë½ÓÊÕÁĞ±í
- ÊäÈë²ÎÊı  : Friend_Requests *fr     
+ å‡½ æ•° å  : addto_receivedlist_with_message
+ åŠŸèƒ½æè¿°  : æŠŠpkå’Œmessageä¸€èµ·æ”¾å…¥æ¥æ”¶åˆ—è¡¨
+ è¾“å…¥å‚æ•°  : Friend_Requests *fr     
              const uint8_t *real_pk  
              uint8_t *message        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ4ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ4æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void addto_receivedlist_with_message(Friend_Requests *fr, const uint8_t *real_pk, uint8_t *message)
@@ -140,20 +140,20 @@ static bool request_received(const Friend_Requests *fr, const uint8_t *real_pk)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : request_with_message_received
- ¹¦ÄÜÃèÊö  : ´øÏàÍ¬ÏûÏ¢µÄºÃÓÑÇ×ÇëÇóÊÇ·ñÒÑ¾­ÊÕµ½¹ı
- ÊäÈë²ÎÊı  : const Friend_Requests *fr  
+ å‡½ æ•° å  : request_with_message_received
+ åŠŸèƒ½æè¿°  : å¸¦ç›¸åŒæ¶ˆæ¯çš„å¥½å‹äº²è¯·æ±‚æ˜¯å¦å·²ç»æ”¶åˆ°è¿‡
+ è¾“å…¥å‚æ•°  : const Friend_Requests *fr  
              const uint8_t *real_pk     
              const uint8_t *message     
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ4ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ4æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static bool request_with_message_received(const Friend_Requests *fr, const uint8_t *real_pk, uint8_t *message)
