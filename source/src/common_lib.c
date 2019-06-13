@@ -311,9 +311,9 @@ int post_info_to_idc(char *host, char *url, char *post_fields, char *ret_buf)
 	buf.len = 0;
 	curl_easy_setopt(easy_handle,CURLOPT_WRITEFUNCTION,post_idc_func);
 
-	//ÉèÖÃhttp·¢ËÍµÄÄÚÈİÀàĞÍÎªJSON
-    //¹¹½¨HTTP±¨ÎÄÍ·  
-	//Ôö¼ÓHTTP header
+	//è®¾ç½®httpå‘é€çš„å†…å®¹ç±»å‹ä¸ºJSON
+    //æ„å»ºHTTPæŠ¥æ–‡å¤´  
+	//å¢åŠ HTTP header
 	headers = curl_slist_append(headers, "Accept:application/json");
 	headers = curl_slist_append(headers, "Content-Type:application/json");
 	headers = curl_slist_append(headers, "charset:utf-8");
@@ -345,13 +345,13 @@ exit:
 
 /**********************************************************************************
   Function:      urlencode
-  Description:  ×Ö·û´®µÄurl±àÂë
+  Description:  å­—ç¬¦ä¸²çš„urlç¼–ç 
   Calls:
   Called By:
   Input:         char* str
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -404,7 +404,7 @@ int urlencode(char* str,int strSize, char* result, const int resultSize)
     return j;
 }
 
-//½âurl±àÂëÊµÏÖ 
+//è§£urlç¼–ç å®ç° 
 unsigned char* urldecode(unsigned char* encd,unsigned char* decd) 
 { 
     int j,i; 
@@ -495,13 +495,13 @@ int strtotime(char* datetime)
 #if 0
 /**********************************************************************************
   Function:      qlv_put_params_string
-  Description:  ×Ö·û´®µÄurl±àÂë
+  Description:  å­—ç¬¦ä¸²çš„urlç¼–ç 
   Calls:
   Called By:
   Input:         char* str
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -524,13 +524,13 @@ int qlv_put_params_string(char* string,char* key,char* value,int appendflag)
 }
 /**********************************************************************************
   Function:      qlv_get_md5sign
-  Description:  ×Ö·û´®µÄurl±àÂë
+  Description:  å­—ç¬¦ä¸²çš„urlç¼–ç 
   Calls:
   Called By:
   Input:         char* str
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -549,13 +549,13 @@ int qlv_get_md5sign(char* src_string,char* out_sign)
 
 /**********************************************************************************
   Function:      get_meminfo
-  Description:  »ñÈ¡ÄÚ´æÊ¹ÓÃÇé¿ö
+  Description:  è·å–å†…å­˜ä½¿ç”¨æƒ…å†µ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -614,13 +614,13 @@ int get_meminfo(void)
 extern int g_pnrdevtype;
 /**********************************************************************************
   Function:      get_disk_capacity
-  Description:  »ñÈ¡´ÅÅÌÈİÁ¿
+  Description:  è·å–ç£ç›˜å®¹é‡
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -707,13 +707,13 @@ int get_disk_capacity(int disk_count,char* used_capacity,char* total_capacity,in
 
 /**********************************************************************************
   Function:      get_file_md5value
-  Description:  »ñÈ¡ÎÄ¼şMD5Öµ
+  Description:  è·å–æ–‡ä»¶MD5å€¼
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -758,13 +758,13 @@ int get_file_md5value(char* filename,char* md5_value)
 
 /**********************************************************************************
   Function:      get_storageinfo
-  Description:  »ñÈ¡´æ´¢Ê¹ÓÃÇé¿ö
+  Description:  è·å–å­˜å‚¨ä½¿ç”¨æƒ…å†µ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -811,7 +811,7 @@ int get_storageinfo(struct stroage_info_struct* psinfo)
     return OK;
 }
 
-// base64 ×ª»»±í, ¹²64¸ö
+// base64 è½¬æ¢è¡¨, å…±64ä¸ª
 static const char base64_alphabet[] = {
     'A', 'B', 'C', 'D', 'E', 'F', 'G',
     'H', 'I', 'J', 'K', 'L', 'M', 'N',
@@ -824,7 +824,7 @@ static const char base64_alphabet[] = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     '+', '/'};
 
-// ½âÂëÊ±Ê¹ÓÃ
+// è§£ç æ—¶ä½¿ç”¨
 static const unsigned char base64_suffix_map[256] = {
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 253, 255,
     255, 253, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -862,35 +862,35 @@ int pnr_base64_encode(const char *indata, int inlen, char *outdata, int *outlen)
         return ret = -1;
     }
     
-    int in_len = 0; // Ô´×Ö·û´®³¤¶È, Èç¹ûin_len²»ÊÇ3µÄ±¶Êı, ÄÇÃ´ĞèÒª²¹³É3µÄ±¶Êı
-    int pad_num = 0; // ĞèÒª²¹ÆëµÄ×Ö·û¸öÊı, ÕâÑùÖ»ÓĞ2, 1, 0(0µÄ»°²»ĞèÒªÆ´½Ó, )
+    int in_len = 0; // æºå­—ç¬¦ä¸²é•¿åº¦, å¦‚æœin_lenä¸æ˜¯3çš„å€æ•°, é‚£ä¹ˆéœ€è¦è¡¥æˆ3çš„å€æ•°
+    int pad_num = 0; // éœ€è¦è¡¥é½çš„å­—ç¬¦ä¸ªæ•°, è¿™æ ·åªæœ‰2, 1, 0(0çš„è¯ä¸éœ€è¦æ‹¼æ¥, )
     if (inlen % 3 != 0) {
         pad_num = 3 - inlen % 3;
     }
-    in_len = inlen + pad_num; // Æ´½ÓºóµÄ³¤¶È, Êµ¼Ê±àÂëĞèÒªµÄ³¤¶È(3µÄ±¶Êı)
+    in_len = inlen + pad_num; // æ‹¼æ¥åçš„é•¿åº¦, å®é™…ç¼–ç éœ€è¦çš„é•¿åº¦(3çš„å€æ•°)
     
-    int out_len = in_len * 8 / 6; // ±àÂëºóµÄ³¤¶È
+    int out_len = in_len * 8 / 6; // ç¼–ç åçš„é•¿åº¦
     
-    char *p = outdata; // ¶¨ÒåÖ¸ÕëÖ¸Ïò´«³ödataµÄÊ×µØÖ·
+    char *p = outdata; // å®šä¹‰æŒ‡é’ˆæŒ‡å‘ä¼ å‡ºdataçš„é¦–åœ°å€
     
-    //±àÂë, ³¤¶ÈÎªµ÷ÕûºóµÄ³¤¶È, 3×Ö½ÚÒ»×é
+    //ç¼–ç , é•¿åº¦ä¸ºè°ƒæ•´åçš„é•¿åº¦, 3å­—èŠ‚ä¸€ç»„
     for (int i = 0; i < in_len; i+=3) {
-        int value = ((*indata >> 2) & 0x3F); // ½«indataµÚÒ»¸ö×Ö·ûÏòÓÒÒÆ¶¯2bit(¶ªÆú2bit)
-        char c = base64_alphabet[value]; // ¶ÔÓ¦base64×ª»»±íµÄ×Ö·û
-        *p = c; // ½«¶ÔÓ¦×Ö·û(±àÂëºó×Ö·û)¸³Öµ¸øoutdataµÚÒ»×Ö½Ú
+        int value = ((*indata >> 2) & 0x3F); // å°†indataç¬¬ä¸€ä¸ªå­—ç¬¦å‘å³ç§»åŠ¨2bit(ä¸¢å¼ƒ2bit)
+        char c = base64_alphabet[value]; // å¯¹åº”base64è½¬æ¢è¡¨çš„å­—ç¬¦
+        *p = c; // å°†å¯¹åº”å­—ç¬¦(ç¼–ç åå­—ç¬¦)èµ‹å€¼ç»™outdataç¬¬ä¸€å­—èŠ‚
         
-        //´¦Àí×îºóÒ»×é(×îºó3×Ö½Ú)µÄÊı¾İ
+        //å¤„ç†æœ€åä¸€ç»„(æœ€å3å­—èŠ‚)çš„æ•°æ®
         if (i == inlen + pad_num - 3 && pad_num != 0) {
             if(pad_num == 1) {
                 *(p + 1) = base64_alphabet[(int)(cmove_bits(*indata, 6, 2) + cmove_bits(*(indata + 1), 0, 4))];
                 *(p + 2) = base64_alphabet[(int)cmove_bits(*(indata + 1), 4, 2)];
                 *(p + 3) = '=';
-            } else if (pad_num == 2) { // ±àÂëºóµÄÊı¾İÒª²¹Á½¸ö '='
+            } else if (pad_num == 2) { // ç¼–ç åçš„æ•°æ®è¦è¡¥ä¸¤ä¸ª '='
                 *(p + 1) = base64_alphabet[(int)cmove_bits(*indata, 6, 2)];
                 *(p + 2) = '=';
                 *(p + 3) = '=';
             }
-        } else { // ´¦ÀíÕı³£µÄ3×Ö½ÚµÄÊı¾İ
+        } else { // å¤„ç†æ­£å¸¸çš„3å­—èŠ‚çš„æ•°æ®
             *(p + 1) = base64_alphabet[cmove_bits(*indata, 6, 2) + cmove_bits(*(indata + 1), 0, 4)];
             *(p + 2) = base64_alphabet[cmove_bits(*(indata + 1), 4, 2) + cmove_bits(*(indata + 2), 0, 6)];
             *(p + 3) = base64_alphabet[*(indata + 2) & 0x3f];
@@ -914,7 +914,7 @@ int pnr_base64_decode(const char *indata, int inlen, char *outdata, int *outlen)
     if (indata == NULL || inlen <= 0 || outdata == NULL || outlen == NULL) {
         return ret = -1;
     }
-    if (inlen % 4 != 0) { // ĞèÒª½âÂëµÄÊı¾İ²»ÊÇ4×Ö½Ú±¶Êı
+    if (inlen % 4 != 0) { // éœ€è¦è§£ç çš„æ•°æ®ä¸æ˜¯4å­—èŠ‚å€æ•°
         inlen --;
         if(inlen % 4 != 0)
         {
@@ -927,12 +927,12 @@ int pnr_base64_decode(const char *indata, int inlen, char *outdata, int *outlen)
     int g = 3;
     
     while (indata[x] != 0) {
-        // ĞèÒª½âÂëµÄÊı¾İ¶ÔÓ¦µÄASCIIÖµ¶ÔÓ¦base64_suffix_mapµÄÖµ
+        // éœ€è¦è§£ç çš„æ•°æ®å¯¹åº”çš„ASCIIå€¼å¯¹åº”base64_suffix_mapçš„å€¼
         c = base64_suffix_map[indata[x++]];
-        if (c == 255) return -1;// ¶ÔÓ¦µÄÖµ²»ÔÚ×ªÂë±íÖĞ
-        if (c == 253) continue;// ¶ÔÓ¦µÄÖµÊÇ»»ĞĞ»òÕß»Ø³µ
-        if (c == 254) { c = 0; g--; }// ¶ÔÓ¦µÄÖµÊÇ'='
-        t = (t<<6) | c; // ½«ÆäÒÀ´Î·ÅÈëÒ»¸öintĞÍÖĞÕ¼3×Ö½Ú
+        if (c == 255) return -1;// å¯¹åº”çš„å€¼ä¸åœ¨è½¬ç è¡¨ä¸­
+        if (c == 253) continue;// å¯¹åº”çš„å€¼æ˜¯æ¢è¡Œæˆ–è€…å›è½¦
+        if (c == 254) { c = 0; g--; }// å¯¹åº”çš„å€¼æ˜¯'='
+        t = (t<<6) | c; // å°†å…¶ä¾æ¬¡æ”¾å…¥ä¸€ä¸ªintå‹ä¸­å 3å­—èŠ‚
         if (++y == 4) {
             outdata[i++] = (unsigned char)((t>>16)&0xff);
             if (g > 1) outdata[i++] = (unsigned char)((t>>8)&0xff);
@@ -947,13 +947,13 @@ int pnr_base64_decode(const char *indata, int inlen, char *outdata, int *outlen)
 }
 /**********************************************************************************
   Function:      get_localip_byname
-  Description:  ¸ù¾İdevname»ñÈ¡ipµØÖ·
+  Description:  æ ¹æ®devnameè·å–ipåœ°å€
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1010,13 +1010,13 @@ int get_localip_byname(char* devname,char* local_ip)
 }
 /**********************************************************************************
   Function:      get_hwaddr_byname
-  Description:  ¸ù¾İdevname»ñÈ¡macµØÖ·
+  Description:  æ ¹æ®devnameè·å–macåœ°å€
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1089,13 +1089,13 @@ char g_dev1_hwaddr[MACSTR_MAX_LEN] = {0};
 char g_dev1_hwaddr_full[MACSTR_MAX_LEN] = {0};
 /**********************************************************************************
   Function:      pnr_create_usersn
-  Description:  Éú³ÉĞÂµÄuser sn
+  Description:  ç”Ÿæˆæ–°çš„user sn
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1112,7 +1112,7 @@ int pnr_create_usersn(int user_type,int user_index,char* p_usn)
     if(g_dev_hwaddr[0] == '\0')
     {
         get_hwaddr_byname(DEV_ETH0_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
-        //ÕâÀïÊÇĞéÄâ»ú²âÊÔÓÃ
+        //è¿™é‡Œæ˜¯è™šæ‹Ÿæœºæµ‹è¯•ç”¨
         if(g_dev_hwaddr[0] == '\0')
         {
             get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
@@ -1448,13 +1448,13 @@ static int writeUTF8(const QRcode *qrcode, const char *outfile, int use_ansi, in
 
 /**********************************************************************************
   Function:      pnr_qrcode_create_png
-  Description:  Éú³É¶ÔÓ¦¶şÎ¬ÂëÎÄ¼ş
+  Description:  ç”Ÿæˆå¯¹åº”äºŒç»´ç æ–‡ä»¶
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1482,13 +1482,13 @@ int pnr_qrcode_create_png(char* src_string,char* dst_filename)
 }
 /**********************************************************************************
   Function:      pnr_qrcode_create_utf8
-  Description:  Éú³É¶ÔÓ¦¶şÎ¬ÂëÎÄ¼ş
+  Description:  ç”Ÿæˆå¯¹åº”äºŒç»´ç æ–‡ä»¶
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1517,13 +1517,13 @@ int pnr_qrcode_create_utf8(char* src_string,char* dst_filename)
 
 /**********************************************************************************
   Function:      pnr_qrcode_create_png_bycmd
-  Description:  Í¨¹ıÃüÁîĞĞÉú³É¶ÔÓ¦¶şÎ¬ÂëÎÄ¼ş
+  Description:  é€šè¿‡å‘½ä»¤è¡Œç”Ÿæˆå¯¹åº”äºŒç»´ç æ–‡ä»¶
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1545,18 +1545,18 @@ int pnr_qrcode_create_png_bycmd(char* src_string,char* dst_filename)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : get_file_name
- ¹¦ÄÜÃèÊö  : ¸ù¾İFILEÖ¸Õë»ñÈ¡ÎÄ¼şÃû
- ÊäÈë²ÎÊı  : FILE *pf  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : get_file_name
+ åŠŸèƒ½æè¿°  : æ ¹æ®FILEæŒ‡é’ˆè·å–æ–‡ä»¶å
+ è¾“å…¥å‚æ•°  : FILE *pf  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int get_file_name(FILE *pf, char *path, int len)
@@ -1578,18 +1578,18 @@ int get_file_name(FILE *pf, char *path, int len)
 	return -1;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : get_file_name
- ¹¦ÄÜÃèÊö  : ¸ù¾İFILEÃû³Æ»ñÈ¡ÎÄ¼ş³¤¶È
- ÊäÈë²ÎÊı  : FILE *pf  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : get_file_name
+ åŠŸèƒ½æè¿°  : æ ¹æ®FILEåç§°è·å–æ–‡ä»¶é•¿åº¦
+ è¾“å…¥å‚æ•°  : FILE *pf  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int get_file_size(char* filename) 
@@ -1602,20 +1602,20 @@ int get_file_size(char* filename)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : get_file_content
- ¹¦ÄÜÃèÊö  : »ñÈ¡ÎÄ¼şÄÚÈİ
- ÊäÈë²ÎÊı  : char *path  
+ å‡½ æ•° å  : get_file_content
+ åŠŸèƒ½æè¿°  : è·å–æ–‡ä»¶å†…å®¹
+ è¾“å…¥å‚æ•°  : char *path  
              char *buf   
              int len     
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int get_file_content(char *path, char *buf, int len)
@@ -1634,20 +1634,20 @@ int get_file_content(char *path, char *buf, int len)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : get_popen_content
- ¹¦ÄÜÃèÊö  : »ñÈ¡ÃüÁîĞĞ½á¹û
- ÊäÈë²ÎÊı  : char *cmd  
+ å‡½ æ•° å  : get_popen_content
+ åŠŸèƒ½æè¿°  : è·å–å‘½ä»¤è¡Œç»“æœ
+ è¾“å…¥å‚æ•°  : char *cmd  
              char *buf  
              int len    
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int get_popen_content(char *cmd, char *buf, int len)
@@ -1666,18 +1666,18 @@ int get_popen_content(char *cmd, char *buf, int len)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_itoa
- ¹¦ÄÜÃèÊö  : Êı×Ö×ª×Ö·û´®
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_itoa
+ åŠŸèƒ½æè¿°  : æ•°å­—è½¬å­—ç¬¦ä¸²
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void pnr_itoa (int n,char* pstr) 
@@ -1711,7 +1711,7 @@ int dev_hwaddr_init(void)
         {
             get_hwaddr_byname(DEV_ETH1_KEYNAME,g_dev1_hwaddr_full,g_dev1_hwaddr);
         }
-        //ÕâÀïÊÇĞéÄâ»ú²âÊÔÓÃ
+        //è¿™é‡Œæ˜¯è™šæ‹Ÿæœºæµ‹è¯•ç”¨
         if(g_dev_hwaddr[0] == '\0')
         {
             get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
@@ -1757,7 +1757,7 @@ int pnr_uidhash_get(int u_index,int f_num,char* tox_id,unsigned int* hashnum,cha
         (u_index&0xFF),(f_num&0xFF),*hashnum);
     return OK;
 }
-/*½«´óĞ´×ÖÄ¸×ª»»³ÉĞ¡Ğ´×ÖÄ¸*/  
+/*å°†å¤§å†™å­—æ¯è½¬æ¢æˆå°å†™å­—æ¯*/  
 int pnr_tolower(int c)  
 {  
     if (c >= 'A' && c <= 'Z')  
@@ -1770,7 +1770,7 @@ int pnr_tolower(int c)
     }  
 }  
 
-//½«Ê®Áù½øÖÆµÄ×Ö·û´®×ª»»³ÉÕûÊı  
+//å°†åå…­è¿›åˆ¶çš„å­—ç¬¦ä¸²è½¬æ¢æˆæ•´æ•°  
 int pnr_htoi(char* s)  
 {  
     int i = 0;  
@@ -1797,18 +1797,18 @@ int pnr_htoi(char* s)
     return n;  
 }  
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_sign_check
- ¹¦ÄÜÃèÊö  : Ç©ÃûÑéÖ¤
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_sign_check
+ åŠŸèƒ½æè¿°  : ç­¾åéªŒè¯
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_sign_check(char* sign,int sign_len,char* pubkey,int base64encode_flag)
@@ -1842,18 +1842,18 @@ int pnr_sign_check(char* sign,int sign_len,char* pubkey,int base64encode_flag)
     return ERROR;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_check_process_byname
- ¹¦ÄÜÃèÊö  : ¸ù¾İ½ø³ÌÃû³Æ¼ì²â½ø³ÌÊÇ·ñÔÚ
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_check_process_byname
+ åŠŸèƒ½æè¿°  : æ ¹æ®è¿›ç¨‹åç§°æ£€æµ‹è¿›ç¨‹æ˜¯å¦åœ¨
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_check_process_byname(char* pname,int* pid)
@@ -1891,18 +1891,18 @@ int pnr_check_process_byname(char* pname,int* pid)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_check_frp_connstatus
- ¹¦ÄÜÃèÊö  : ¼ì²âfrpÁ¬½ÓÊÇ·ñÕı³£
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_check_frp_connstatus
+ åŠŸèƒ½æè¿°  : æ£€æµ‹frpè¿æ¥æ˜¯å¦æ­£å¸¸
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_check_frp_connstatus(void)
@@ -1932,18 +1932,18 @@ int pnr_check_frp_connstatus(void)
     return FALSE;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_stristr
- ¹¦ÄÜÃèÊö  : ²»care´óĞ¡Ğ´µÄ×Ö·û´®²éÕÒ
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_stristr
+ åŠŸèƒ½æè¿°  : ä¸careå¤§å°å†™çš„å­—ç¬¦ä¸²æŸ¥æ‰¾
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 char* pnr_stristr (const char * str1,const char * str2)
@@ -1982,18 +1982,18 @@ char* pnr_stristr (const char * str1,const char * str2)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_check_timestamp
- ¹¦ÄÜÃèÊö  : Ê±Ğ§ĞÔÑéÖ¤
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_check_timestamp
+ åŠŸèƒ½æè¿°  : æ—¶æ•ˆæ€§éªŒè¯
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_check_timestamp(long timestamp)
@@ -2002,18 +2002,18 @@ int pnr_check_timestamp(long timestamp)
 }
 int qlc_node_status = FALSE;
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_get_qlcnode_status
- ¹¦ÄÜÃèÊö  : qlc node½Úµã×´Ì¬»ñÈ¡
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_get_qlcnode_status
+ åŠŸèƒ½æè¿°  : qlc nodeèŠ‚ç‚¹çŠ¶æ€è·å–
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_get_qlcnode_status(int* status)
@@ -2022,18 +2022,18 @@ int pnr_get_qlcnode_status(int* status)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_set_qlcnode_enable
- ¹¦ÄÜÃèÊö  : qlc node½ÚµãÊ¹ÄÜ¿ª¹Ø
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_set_qlcnode_enable
+ åŠŸèƒ½æè¿°  : qlc nodeèŠ‚ç‚¹ä½¿èƒ½å¼€å…³
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_set_qlcnode_enable(int enable)
