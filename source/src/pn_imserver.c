@@ -1,6 +1,6 @@
 /*************************************************************************
  *
- *  im serverÎÄ¼ş
+ *  im serveræ–‡ä»¶
  *
  * 
  * 
@@ -148,7 +148,7 @@ static const struct lws_http_mount mount =
 };
 
 //added by willcao
-int g_p2pnet_init_flag = FALSE;//tox p2pÍøÂç³õÊ¼»¯Íê³É±êÊ¶
+int g_p2pnet_init_flag = FALSE;//tox p2pç½‘ç»œåˆå§‹åŒ–å®Œæˆæ ‡è¯†
 char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1] = {0};
 char g_dev_nickname[PNR_USERNAME_MAXLEN+1] = {0};
 struct im_user_struct g_daemon_tox;
@@ -157,29 +157,29 @@ Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 int g_noticepost_enable = TRUE;
 int g_msglist_debugswitch = FALSE;
 //int g_tmp_instance_index = 0;
-//toxdataĞÅÏ¢Êı×é
+//toxdataä¿¡æ¯æ•°ç»„
 struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
 struct pnr_account_array_struct g_account_array;
 struct pnr_rid_node g_rnode[PNR_IMUSER_MAXNUM+1];
 
-//ÓÃ»§Ëø
+//ç”¨æˆ·é”
 pthread_mutex_t g_pnruser_lock[PNR_IMUSER_MAXNUM+1];
-//ÓÃ»§toxÊı¾İÎÄ¼şËø
+//ç”¨æˆ·toxæ•°æ®æ–‡ä»¶é”
 pthread_mutex_t g_user_toxdatalock[PNR_IMUSER_MAXNUM+1];
-//ÓÃ»§ÏûÏ¢idËø
+//ç”¨æˆ·æ¶ˆæ¯idé”
 pthread_mutex_t g_user_msgidlock[PNR_IMUSER_MAXNUM+1];
-//ÓÃ»§ºÃÓÑÁĞ±íËø
+//ç”¨æˆ·å¥½å‹åˆ—è¡¨é”
 pthread_mutex_t g_user_friendlock[PNR_IMUSER_MAXNUM+1];
 
-//lwsÏûÏ¢¶ÓÁĞ£¬Ã¿¸öÓÃ»§¶ÔÓ¦Ò»¸öÏûÏ¢ÁĞ±í
+//lwsæ¶ˆæ¯é˜Ÿåˆ—ï¼Œæ¯ä¸ªç”¨æˆ·å¯¹åº”ä¸€ä¸ªæ¶ˆæ¯åˆ—è¡¨
 struct lws_msg_struct g_lws_msglist[PNR_IMUSER_MAXNUM+1];
 pthread_mutex_t lws_msglock[PNR_IMUSER_MAXNUM+1];
 
-//lws»º´æÏûÏ¢¶ÓÁĞ£¬µÃµ½È·ÈÏºó´Ó¶ÓÁĞÖĞÉ¾³ıÏûÏ¢£¬·ñÔòÖØ·¢
+//lwsç¼“å­˜æ¶ˆæ¯é˜Ÿåˆ—ï¼Œå¾—åˆ°ç¡®è®¤åä»é˜Ÿåˆ—ä¸­åˆ é™¤æ¶ˆæ¯ï¼Œå¦åˆ™é‡å‘
 struct lws_cache_msg_struct g_lws_cache_msglist[PNR_IMUSER_MAXNUM+1];
 pthread_mutex_t lws_cache_msglock[PNR_IMUSER_MAXNUM+1];
 
-//toxÏûÏ¢¶ÓÁĞ£¬Ò²ÊÇÃ¿¸öÓÃ»§¶ÔÓ¦Ò»¸öÏûÏ¢ÁĞ±í
+//toxæ¶ˆæ¯é˜Ÿåˆ—ï¼Œä¹Ÿæ˜¯æ¯ä¸ªç”¨æˆ·å¯¹åº”ä¸€ä¸ªæ¶ˆæ¯åˆ—è¡¨
 struct imuser_toxmsg_struct g_tox_msglist[PNR_IMUSER_MAXNUM+1];
 pthread_mutex_t tox_msglock[PNR_IMUSER_MAXNUM+1];
 
@@ -194,7 +194,7 @@ char *g_qrcode_head[] = {
 	"type_0,", "type_1,", "type_2,", "type_3,",NULL
 };
 
-//Èº×éÏà¹Ø½á¹¹
+//ç¾¤ç»„ç›¸å…³ç»“æ„
 struct group_info g_grouplist[PNR_GROUP_MAXNUM+1];
 pthread_mutex_t g_grouplock[PNR_GROUP_MAXNUM+1];
 pthread_mutex_t g_grouptoplock = PTHREAD_MUTEX_INITIALIZER;
@@ -213,13 +213,13 @@ int CreatedP2PNetwork_new(int user_index);
 void im_send_file_by_tox(Tox* tox, struct lws_cache_msg_struct *msg, int push);
 /**********************************************************************************
   Function:      pnr_get_genralfriend_byindex
-  Description:   ¸ù¾İÓÃ»§id²éÕÒÓÃ»§µÄºÃÓÑÖĞ·Ç±¾µØºÃÓÑ
+  Description:   æ ¹æ®ç”¨æˆ·idæŸ¥æ‰¾ç”¨æˆ·çš„å¥½å‹ä¸­éæœ¬åœ°å¥½å‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -254,13 +254,13 @@ int pnr_get_genralfriend_byindex(int index,struct pnr_usermapping_struct* pulist
 
 /**********************************************************************************
   Function:      pnr_groupinfo_init
-  Description:   ÈºgroupĞÅÏ¢³õÊ¼»¯
+  Description:   ç¾¤groupä¿¡æ¯åˆå§‹åŒ–
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -293,7 +293,7 @@ int pnr_groupinfo_init(void)
             system(sql_cmd);   
         }
     }
-    //³õÊ¼»¯Èº×éÁĞ±í
+    //åˆå§‹åŒ–ç¾¤ç»„åˆ—è¡¨
     //grouplist_tbl(id,hash,owner,ownerid,verify,manager,gname,createtime);
     memset(&g_grouplist,0,(PNR_GROUP_MAXNUM+1)*sizeof(struct group_info));
     snprintf(sql_cmd, SQL_CMD_LEN, "select id,hash,owner,ownerid,verify,manager,gname from grouplist_tbl order by id;");
@@ -301,7 +301,7 @@ int pnr_groupinfo_init(void)
     if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
                &nColumn, &errmsg) == SQLITE_OK)
     {
-        offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+        offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
         for(i = 0; i < nRow ; i++ )
         {
             gid = atoi(dbResult[offset]);
@@ -322,7 +322,7 @@ int pnr_groupinfo_init(void)
                 g_grouplist[gid].verify = atoi(dbResult[offset+4]);
                 if(dbResult[offset+5] != NULL)
                 {
-                    //ÔİÊ±Ã»ÓĞmanager
+                    //æš‚æ—¶æ²¡æœ‰manager
                 }
                 if(dbResult[offset+6] != NULL)
                 {
@@ -344,7 +344,7 @@ int pnr_groupinfo_init(void)
             if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
                            &nColumn, &errmsg) == SQLITE_OK)
             {
-                offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+                offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
                 for(i = 0; i < nRow ; i++ )
                 {
                     uid = atoi(dbResult[offset+1]);
@@ -390,18 +390,18 @@ int pnr_groupinfo_init(void)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_gettoxid_byhashid
- ¹¦ÄÜÃèÊö  : ¸ù¾İhashid×ª»¯toxid
- ÊäÈë²ÎÊı  : char *path  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_gettoxid_byhashid
+ åŠŸèƒ½æè¿°  : æ ¹æ®hashidè½¬åŒ–toxid
+ è¾“å…¥å‚æ•°  : char *path  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_gettoxid_byhashid(char* hash_id,char* tox_id)
@@ -449,18 +449,18 @@ int pnr_gettoxid_byhashid(char* hash_id,char* tox_id)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_checkrepeat_bymsgid
- ¹¦ÄÜÃèÊö  : ¸ù¾İmsgid¼ì²â¸ÃÏûÏ¢ÊÇ·ñÊÇÖØ¸´ÏûÏ¢
- ÊäÈë²ÎÊı  : index,msgid  
- Êä³ö²ÎÊı  : repeat_flag
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_checkrepeat_bymsgid
+ åŠŸèƒ½æè¿°  : æ ¹æ®msgidæ£€æµ‹è¯¥æ¶ˆæ¯æ˜¯å¦æ˜¯é‡å¤æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : index,msgid  
+ è¾“å‡ºå‚æ•°  : repeat_flag
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_checkrepeat_bymsgid(int index,long msgid,int* repeat_flag)
@@ -496,7 +496,7 @@ int pnr_checkrepeat_bymsgid(int index,long msgid,int* repeat_flag)
             }
         }
     }
-    //°ÑĞÂµÄ»º´æidÈë¶ÓÁĞ
+    //æŠŠæ–°çš„ç¼“å­˜idå…¥é˜Ÿåˆ—
     last_cacheid = ((last_cacheid+1)% IM_MSGID_CACHENUM);
     g_imusr_array.usrnode[index].cache_msgid[last_cacheid] = msgid;
     g_imusr_array.usrnode[index].lastmsgid_index = last_cacheid;
@@ -504,18 +504,18 @@ int pnr_checkrepeat_bymsgid(int index,long msgid,int* repeat_flag)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_check_update_devinfo_bytoxid
- ¹¦ÄÜÃèÊö  : ¼ì²é²¢¸üĞÂÓÃ»§ËùÊôdevĞÅÏ¢
- ÊäÈë²ÎÊı  : char *path  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_check_update_devinfo_bytoxid
+ åŠŸèƒ½æè¿°  : æ£€æŸ¥å¹¶æ›´æ–°ç”¨æˆ·æ‰€å±devä¿¡æ¯
+ è¾“å…¥å‚æ•°  : char *path  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* dev_name)
@@ -536,7 +536,7 @@ int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* 
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_check_update_devinfo_bytoxid:indxe(%d) f_user(%s) devid(%s) devname(%s)",
         index,ftox_id,dev_id,dev_name);
 
-    //¸üĞÂÏµÍ³ÄÚ´æÖĞµÄ
+    //æ›´æ–°ç³»ç»Ÿå†…å­˜ä¸­çš„
     f_id = get_friendid_bytoxid(index,ftox_id);
     if(f_id >= 0)
     {
@@ -561,18 +561,18 @@ int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* 
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_addfriend_devinfo_bytoxid
- ¹¦ÄÜÃèÊö  : Ìí¼ÓºÃÓÑµÄÉè±¸ĞÅÏ¢
- ÊäÈë²ÎÊı  : char *path  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_addfriend_devinfo_bytoxid
+ åŠŸèƒ½æè¿°  : æ·»åŠ å¥½å‹çš„è®¾å¤‡ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : char *path  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_addfriend_devinfo_bytoxid(int index,char* ftox_id)
@@ -593,7 +593,7 @@ int pnr_addfriend_devinfo_bytoxid(int index,char* ftox_id)
         return ERROR;
     }
 
-    //¸üĞÂÏµÍ³ÄÚ´æÖĞµÄ
+    //æ›´æ–°ç³»ç»Ÿå†…å­˜ä¸­çš„
     f_id = get_friendid_bytoxid(index,ftox_id);
     if(f_id >= 0)
     {
@@ -615,18 +615,18 @@ int pnr_addfriend_devinfo_bytoxid(int index,char* ftox_id)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_autoadd_localfriend
- ¹¦ÄÜÃèÊö  : ×Ô¶¯Ìí¼Ó±¾µØºÃÓÑ
- ÊäÈë²ÎÊı  : char *path  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_autoadd_localfriend
+ åŠŸèƒ½æè¿°  : è‡ªåŠ¨æ·»åŠ æœ¬åœ°å¥½å‹
+ è¾“å…¥å‚æ•°  : char *path  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_autoadd_localfriend(int index,int f_index,struct pnr_account_struct* p_srcaccount)
@@ -670,18 +670,18 @@ int pnr_autoadd_localfriend(int index,int f_index,struct pnr_account_struct* p_s
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_file_size
- ¹¦ÄÜÃèÊö  : »ñÈ¡ÎÄ¼ş´óĞ¡
- ÊäÈë²ÎÊı  : char *path  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_get_file_size
+ åŠŸèƒ½æè¿°  : è·å–æ–‡ä»¶å¤§å°
+ è¾“å…¥å‚æ•°  : char *path  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_file_size(char *path)
@@ -703,18 +703,18 @@ int im_get_file_size(char *path)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : __minimal_destroy_message
- ¹¦ÄÜÃèÊö  : Ïú»ÙÏûÏ¢
- ÊäÈë²ÎÊı  : void *_msg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : __minimal_destroy_message
+ åŠŸèƒ½æè¿°  : é”€æ¯æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : void *_msg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static void __minimal_destroy_message(void *_msg)
@@ -726,22 +726,22 @@ static void __minimal_destroy_message(void *_msg)
 	msg->len = 0;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : callback_minimal
- ¹¦ÄÜÃèÊö  : ½ÓÊÕÏûÏ¢Èë¿Ú
- ÊäÈë²ÎÊı  : struct lws *wsi                   
+ å‡½ æ•° å  : callback_minimal
+ åŠŸèƒ½æè¿°  : æ¥æ”¶æ¶ˆæ¯å…¥å£
+ è¾“å…¥å‚æ•°  : struct lws *wsi                   
              enum lws_callback_reasons reason  
              void *user                        
              void *in                          
              size_t len                        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ28ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ28æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static int callback_minimal(struct lws *wsi, enum lws_callback_reasons reason,
@@ -915,22 +915,22 @@ static int callback_minimal(struct lws *wsi, enum lws_callback_reasons reason,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : callback_pnr_bin
- ¹¦ÄÜÃèÊö  : ´¦Àí¶ş½øÖÆÏûÏ¢
- ÊäÈë²ÎÊı  : struct lws *wsi                   
+ å‡½ æ•° å  : callback_pnr_bin
+ åŠŸèƒ½æè¿°  : å¤„ç†äºŒè¿›åˆ¶æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : struct lws *wsi                   
              enum lws_callback_reasons reason  
              void *user                        
              void *in                          
              size_t len                        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : static
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : static
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ8ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ8æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 static int callback_pnr_bin(struct lws *wsi, enum lws_callback_reasons reason,
@@ -1071,13 +1071,13 @@ static int callback_pnr_bin(struct lws *wsi, enum lws_callback_reasons reason,
 
 /**********************************************************************************
   Function:      get_rnodeidbytoxid
-  Description:  ¸ù¾İtoxid»ñÈ¡¸ù½Úµãid
+  Description:  æ ¹æ®toxidè·å–æ ¹èŠ‚ç‚¹id
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        0:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1102,13 +1102,13 @@ int get_rnodefidbytoxid(char* p_toxid)
 }
 /**********************************************************************************
   Function:      get_indexbytoxid
-  Description:  ¸ù¾İtoxid»ñÈ¡ÊµÀıid
+  Description:  æ ¹æ®toxidè·å–å®ä¾‹id
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        0:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1133,13 +1133,13 @@ int get_indexbytoxid(char* p_toxid)
 }
 /**********************************************************************************
   Function:      get_gidbygrouphid
-  Description:  ¸ù¾İgroup hashid»ñÈ¡Èºid
+  Description:  æ ¹æ®group hashidè·å–ç¾¤id
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        -1:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        -1:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1164,13 +1164,13 @@ int get_gidbygrouphid(char* p_ghashid)
 }
 /**********************************************************************************
   Function:      get_guserbytoxid
-  Description:  ¸ù¾İtoxid»ñÈ¡¸ÃÓÃ»§ÔÚÌØ¶¨ÈºÀïµÄÓÃ»§
+  Description:  æ ¹æ®toxidè·å–è¯¥ç”¨æˆ·åœ¨ç‰¹å®šç¾¤é‡Œçš„ç”¨æˆ·
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        -1:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        -1:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1195,13 +1195,13 @@ struct group_user* get_guserbytoxid(int gid,char* userid)
 }
 /**********************************************************************************
   Function:      get_guserbyuindex
-  Description:  ¸ù¾İuindex»ñÈ¡¸ÃÓÃ»§ÔÚÌØ¶¨ÈºÀïµÄÓÃ»§
+  Description:  æ ¹æ®uindexè·å–è¯¥ç”¨æˆ·åœ¨ç‰¹å®šç¾¤é‡Œçš„ç”¨æˆ·
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        -1:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        -1:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1226,13 +1226,13 @@ struct group_user* get_guserbyuindex(int gid,int uindex)
 }
 /**********************************************************************************
   Function:      pnr_account_gettype_byusn
-  Description:  ¸ù¾İusn»ñÈ¡ÕË»§ÀàĞÍ
+  Description:  æ ¹æ®usnè·å–è´¦æˆ·ç±»å‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:Ã»ÕÒµ½
-                 num:ÊµÀıid
+  Return:        0:æ²¡æ‰¾åˆ°
+                 num:å®ä¾‹id
   Others:
 
   History: 1. Date:2018-07-30
@@ -1253,13 +1253,13 @@ int pnr_account_gettype_byusn(char* p_usn,int* p_usertype)
 
 /**********************************************************************************
   Function:      insert_lws_msgnode
-  Description:   ²åÈëÒ»¸ölwsÏûÏ¢½Úµã
+  Description:   æ’å…¥ä¸€ä¸ªlwsæ¶ˆæ¯èŠ‚ç‚¹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1308,20 +1308,20 @@ int insert_lws_msgnode(int id,char* puser,char* pmsg,int msg_len)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : insert_lws_msgnode_ring
- ¹¦ÄÜÃèÊö  : Ìí¼Ó´ı·¢ËÍÏûÏ¢µ½»·ĞÎ¶ÓÁĞÖĞ
- ÊäÈë²ÎÊı  : int id       
+ å‡½ æ•° å  : insert_lws_msgnode_ring
+ åŠŸèƒ½æè¿°  : æ·»åŠ å¾…å‘é€æ¶ˆæ¯åˆ°ç¯å½¢é˜Ÿåˆ—ä¸­
+ è¾“å…¥å‚æ•°  : int id       
              char* pmsg   
              int msg_len  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ26ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ26æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int insert_lws_msgnode_ring(int id, char *pmsg, int msg_len)
@@ -1376,13 +1376,13 @@ int insert_lws_msgnode_ring(int id, char *pmsg, int msg_len)
 
 /**********************************************************************************
   Function:      lws_send_onemsg
-  Description:   ·¢ËÍÒ»¸ölwsÏûÏ¢¶ÓÁĞÖĞµÄÏûÏ¢
+  Description:   å‘é€ä¸€ä¸ªlwsæ¶ˆæ¯é˜Ÿåˆ—ä¸­çš„æ¶ˆæ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -1436,7 +1436,7 @@ int lws_send_onemsg(int id,struct lws *wsi,int* break_flag)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"return(%d)",msglen);
     }
 
-    //free(pnode->msg_payload);//Õâ¸ölwsÖĞÊÍ·ÅÁË
+    //free(pnode->msg_payload);//è¿™ä¸ªlwsä¸­é‡Šæ”¾äº†
     free(pnode);
     *break_flag = TRUE;
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"id(%d) send ok",id);
@@ -1444,19 +1444,19 @@ int lws_send_onemsg(int id,struct lws *wsi,int* break_flag)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_friend_info
- ¹¦ÄÜÃèÊö  : »ñÈ¡ºÃÓÑ±¾µØidÒÔ¼°tox id
- ÊäÈë²ÎÊı  : int *friendid   
+ å‡½ æ•° å  : im_get_friend_info
+ åŠŸèƒ½æè¿°  : è·å–å¥½å‹æœ¬åœ°idä»¥åŠtox id
+ è¾“å…¥å‚æ•°  : int *friendid   
              int *friendnum  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_friend_info(int userid, char *to, int *friendid, int *friendnum)
@@ -1471,20 +1471,20 @@ int im_get_friend_info(int userid, char *to, int *friendid, int *friendnum)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_update_friend_nickname
- ¹¦ÄÜÃèÊö  : ¸üĞÂºÃÓÑêÇ³Æ
- ÊäÈë²ÎÊı  : char* user_toxid  
+ å‡½ æ•° å  : im_update_friend_nickname
+ åŠŸèƒ½æè¿°  : æ›´æ–°å¥½å‹æ˜µç§°
+ è¾“å…¥å‚æ•°  : char* user_toxid  
              char *friend_toxid
              char* nickname
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_update_friend_nickname(char* user_toxid, char *friend_toxid, char* nickname)
@@ -1501,7 +1501,7 @@ int im_update_friend_nickname(char* user_toxid, char *friend_toxid, char* nickna
     }
     for(fid  = 0;fid  < PNR_IMUSER_FRIENDS_MAXNUM; fid++)
     {
-        //±éÀúÕÒµ½¶ÔÓ¦µÄºÃÓÑ
+        //éå†æ‰¾åˆ°å¯¹åº”çš„å¥½å‹
         if((g_imusr_array.usrnode[uid].friends[fid].exsit_flag == TRUE)
             &&(strcasecmp(g_imusr_array.usrnode[uid].friends[fid].user_toxid,friend_toxid) == OK))
         {
@@ -1515,18 +1515,18 @@ int im_update_friend_nickname(char* user_toxid, char *friend_toxid, char* nickna
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_msg_if_limited
- ¹¦ÄÜÃèÊö  : ÅĞ¶ÏÏûÏ¢ÊÇ·ñÏŞÖÆÖØ´«´ÎÊı
- ÊäÈë²ÎÊı  : int type  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_msg_if_limited
+ åŠŸèƒ½æè¿°  : åˆ¤æ–­æ¶ˆæ¯æ˜¯å¦é™åˆ¶é‡ä¼ æ¬¡æ•°
+ è¾“å…¥å‚æ•°  : int type  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_msg_if_limited(int type)
@@ -1543,18 +1543,18 @@ int im_msg_if_limited(int type)
 }
 char g_tox_sendmsg_cache[1500] = {0};
 /*****************************************************************************
- º¯ Êı Ãû  : im_send_msg_deal
- ¹¦ÄÜÃèÊö  : ´¦Àí´ı·¢ËÍÏûÏ¢
- ÊäÈë²ÎÊı  : ÎŞ
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_send_msg_deal
+ åŠŸèƒ½æè¿°  : å¤„ç†å¾…å‘é€æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : æ— 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ16ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ16æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void im_send_msg_deal(int direction)
@@ -1570,7 +1570,7 @@ void im_send_msg_deal(int direction)
     int node_msgno = 0;
     int start_time = 0;
     int end_time = 0;
-    //µÈ´ıÏµÍ³µÄp2pÍøÂç½¨Á¢³É¹¦
+    //ç­‰å¾…ç³»ç»Ÿçš„p2pç½‘ç»œå»ºç«‹æˆåŠŸ
     if(g_p2pnet_init_flag == FALSE)
     {
         return;
@@ -1715,9 +1715,9 @@ void im_send_msg_deal(int direction)
                     			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
                     					break;
                     				}
-                                    //È¥µôÔ­Ê¼µÄdata×Ö¶Î
+                                    //å»æ‰åŸå§‹çš„dataå­—æ®µ
                     				cJSON_DeleteItemFromObject(JsonFrame, "data");
-                                    //Ìî³äĞÂµÄ×Ö¶Î
+                                    //å¡«å……æ–°çš„å­—æ®µ
                                     strncpy(g_tox_sendmsg_cache, tox_msg->msg+tox_msg->offset, MAX_SEND_DATA_SIZE);
                                 	cJSON_AddNumberToObject(JsonFrame, "offset", tox_msg->offset);
                                     tox_msg->offset += MAX_SEND_DATA_SIZE;
@@ -1774,7 +1774,7 @@ void im_send_msg_deal(int direction)
                         ret = im_get_friend_info(msg->userid, msg->toid, &msg->friendid, &msg->friendnum);
                         if (ret) {
 							DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get friendnum err(%d--%s)", msg->userid, msg->toid);
-                            //ÕâÀï¼Ó²»ÉÏ£¬¾Í²»ÒªÖØÊÔÁË
+                            //è¿™é‡ŒåŠ ä¸ä¸Šï¼Œå°±ä¸è¦é‡è¯•äº†
                             pnr_msgcache_dbdelete_nolock(msg);
                             continue;
 						}
@@ -1852,27 +1852,27 @@ void im_send_msg_deal(int direction)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_nodelist_addfriend
- ¹¦ÄÜÃèÊö  : Ìí¼ÓºÃÓÑ½Úµã
- ÊäÈë²ÎÊı  : int index        
+ å‡½ æ•° å  : im_nodelist_addfriend
+ åŠŸèƒ½æè¿°  : æ·»åŠ å¥½å‹èŠ‚ç‚¹
+ è¾“å…¥å‚æ•°  : int index        
              char* from_user  
              char* to_user    
              char* nickname   
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ10ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ10æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey)
 {
     int i = 0,j = 0,none_index = 0,f_id = 0;
-    //¼ì²éÊÇ·ñ·Ç·¨
+    //æ£€æŸ¥æ˜¯å¦éæ³•
     if(from_user == NULL || to_user == NULL || nickname == NULL || userkey == NULL)
     {
         return ERROR;
@@ -1921,7 +1921,7 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
 	g_imusr_array.usrnode[i].friends[none_index].oneway = 0;
     pnr_uidhash_get(i,none_index+1,g_imusr_array.usrnode[i].friends[none_index].user_toxid,
         &g_imusr_array.usrnode[i].friends[none_index].hashid,g_imusr_array.usrnode[i].friends[none_index].u_hashstr);
-    //ÕâÀï¿Ï¶¨ÊÇÔÚÏßµÄ
+    //è¿™é‡Œè‚¯å®šæ˜¯åœ¨çº¿çš„
     g_imusr_array.usrnode[i].friends[none_index].online_status = USER_ONLINE_STATUS_ONLINE;
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_toxid,to_user,TOX_ID_STR_LEN);
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_nickname,nickname,TOX_ID_STR_LEN);
@@ -1936,26 +1936,26 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_nodelist_delfriend
- ¹¦ÄÜÃèÊö  : É¾³ıºÃÓÑ½Úµã
- ÊäÈë²ÎÊı  : int index        
+ å‡½ æ•° å  : im_nodelist_delfriend
+ åŠŸèƒ½æè¿°  : åˆ é™¤å¥½å‹èŠ‚ç‚¹
+ è¾“å…¥å‚æ•°  : int index        
              char* from_user  
              char* to_user    
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ10ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ10æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
 {
     int i = 0,j = 0,exsit_flag = 0;
-    //¼ì²éÊÇ·ñ·Ç·¨
+    //æ£€æŸ¥æ˜¯å¦éæ³•
     if(from_user == NULL || to_user == NULL)
     {
         return ERROR;
@@ -1997,13 +1997,13 @@ int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
 
 /**********************************************************************************
   Function:      im_pushmsg_callback
-  Description:  im push ÏûÏ¢»Øµ÷´¦Àí
+  Description:  im push æ¶ˆæ¯å›è°ƒå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -2042,7 +2042,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         return ERROR;
     }
 	
-    //¹¹½¨ÏûÏ¢
+    //æ„å»ºæ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if (ret_root == NULL || ret_params == NULL)
@@ -2085,7 +2085,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             }
             cJSON_AddItemToObject(ret_params, "RouterId",cJSON_CreateString(g_daemon_tox.user_toxid));
             cJSON_AddItemToObject(ret_params, "RouterName",cJSON_CreateString(g_dev_nickname));
-            //ÕâÀïĞèÒª·´ÏòÒ»ÏÂ
+            //è¿™é‡Œéœ€è¦åå‘ä¸€ä¸‹
             if(pfriend->result == OK && local_flag == TRUE)
             {
                 pnr_friend_dbinsert(pfriend->touser_toxid,pfriend->fromuser_toxid,pfriend->nickname,pfriend->user_pubkey);
@@ -2110,7 +2110,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             
         case PNR_IM_CMDTYPE_PUSHMSG:
             psendmsg = (struct im_sendmsg_msgstruct*)params;
-            //Ä¿±ê¶ÔÏóÊÇ±¾µØµÄÊ±ºò£¬ĞŞ¸ÄÎªÏÈ¼ÇÂ¼log£¬È»ºóÍÆËÍÊı¾İ¿âid£¬
+            //ç›®æ ‡å¯¹è±¡æ˜¯æœ¬åœ°çš„æ—¶å€™ï¼Œä¿®æ”¹ä¸ºå…ˆè®°å½•logï¼Œç„¶åæ¨é€æ•°æ®åº“idï¼Œ
             if(local_flag == TRUE)
             {
                 pnr_msglog_getid(index, &msgid);
@@ -2150,7 +2150,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 {
                     cJSON_AddItemToObject(ret_params, "PubKey",cJSON_CreateString(friend_pubkey)); 
                 }
-#if 0 //ÔİÊ±²»ÓÃhashid
+#if 0 //æš‚æ—¶ä¸ç”¨hashid
                 if(local_flag == TRUE)
                 {
                     int f_id = 0;
@@ -2180,7 +2180,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_DELMSGPUSH));
             cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser_toxid));
             cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser_toxid));  
-            //ÕâÀïĞèÒª°Ñ×îÖÕÍÆËÍ¸øÓÃ»§µÄmsgid×ª»»³ÉÊı¾İ¿âÀïÃæµÄid
+            //è¿™é‡Œéœ€è¦æŠŠæœ€ç»ˆæ¨é€ç»™ç”¨æˆ·çš„msgidè½¬æ¢æˆæ•°æ®åº“é‡Œé¢çš„id
             if(local_flag == TRUE)
             {
                 pnr_msglog_dbget_dbid_bylogid(index,psendmsg->log_id,psendmsg->fromuser_toxid,psendmsg->touser_toxid,&msgid);
@@ -2227,7 +2227,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 PNR_REAL_FILEPATH_GET(filepath,findex,PNR_FILE_SRCFROM_MSGSEND,htonl(psendfile->fileid),0,psendfile->filename);
                 if(local_flag == TRUE)
                 {
-                    //Ä¿µÄÎÄ¼ş
+                    //ç›®çš„æ–‡ä»¶
                     PNR_REAL_FILEPATH_GET(dpath,index,PNR_FILE_SRCFROM_MSGRECV,htonl(psendfile->fileid),0,psendfile->filename);
                     snprintf(cmdbuf, sizeof(cmdbuf), "cp %s%s %s%s", WS_SERVER_INDEX_FILEPATH,filepath,WS_SERVER_INDEX_FILEPATH,dpath);
                     system(cmdbuf);
@@ -2256,7 +2256,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "FileMD5", cJSON_CreateString(md5));
             cJSON_AddItemToObject(ret_params, "SrcKey", cJSON_CreateString(psendfile->srckey));
             cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(psendfile->dstkey));
-            //Ä¿±ê¶ÔÏóÊÇ±¾µØµÄÊ±ºò£¬ĞŞ¸ÄÎªÏÈ¼ÇÂ¼log£¬È»ºóÍÆËÍÊı¾İ¿âid£¬
+            //ç›®æ ‡å¯¹è±¡æ˜¯æœ¬åœ°çš„æ—¶å€™ï¼Œä¿®æ”¹ä¸ºå…ˆè®°å½•logï¼Œç„¶åæ¨é€æ•°æ®åº“idï¼Œ
             if(local_flag == TRUE)
             {
                 pnr_msglog_getid(index, &msgid);
@@ -2302,10 +2302,10 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 strcat(psendmsg->ext,psendmsg->nonce);
                 cJSON_AddItemToObject(ret_params, "FileInfo", cJSON_CreateString(psendmsg->nonce));
             }
-            //Ä¿±ê¶ÔÏóÊÇ±¾µØµÄÊ±ºò£¬ĞŞ¸ÄÎªÏÈ¼ÇÂ¼log£¬È»ºóÍÆËÍÊı¾İ¿âid£¬
+            //ç›®æ ‡å¯¹è±¡æ˜¯æœ¬åœ°çš„æ—¶å€™ï¼Œä¿®æ”¹ä¸ºå…ˆè®°å½•logï¼Œç„¶åæ¨é€æ•°æ®åº“idï¼Œ
             if(local_flag == TRUE)
             {
-                //×ª·¢µÄÊ±ºò£¬logid²»ÄÜÒª
+                //è½¬å‘çš„æ—¶å€™ï¼Œlogidä¸èƒ½è¦
                 pnr_msglog_getid(index, &msgid);
                 pnr_msglog_dbinsert_specifyid(index,psendmsg->msgtype,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                     psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->prikey,psendmsg->ext,psendmsg->ext2);
@@ -2334,7 +2334,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "FileMD5", cJSON_CreateString(md5));
             cJSON_AddItemToObject(ret_params, "SrcKey", cJSON_CreateString(ptoxsendfile->srckey));
             cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(ptoxsendfile->dstkey));
-             //Ä¿±ê¶ÔÏóÊÇ±¾µØµÄÊ±ºò£¬ĞŞ¸ÄÎªÏÈ¼ÇÂ¼log£¬È»ºóÍÆËÍÊı¾İ¿âid£¬
+             //ç›®æ ‡å¯¹è±¡æ˜¯æœ¬åœ°çš„æ—¶å€™ï¼Œä¿®æ”¹ä¸ºå…ˆè®°å½•logï¼Œç„¶åæ¨é€æ•°æ®åº“idï¼Œ
             if(local_flag == TRUE)
             {
                 pnr_msglog_getid(index, &msgid);
@@ -2447,7 +2447,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             if(pgroupmsg->type == PNR_IM_MSGTYPE_IMAGE || pgroupmsg->type == PNR_IM_MSGTYPE_AUDIO
                 || pgroupmsg->type == PNR_IM_MSGTYPE_MEDIA || pgroupmsg->type == PNR_IM_MSGTYPE_FILE)
             {
-                //Ìí¼ÓÎÄ¼şĞÅÏ¢
+                //æ·»åŠ æ–‡ä»¶ä¿¡æ¯
                 cJSON_AddItemToObject(ret_params, "Msg",cJSON_CreateString(""));
                 cJSON_AddItemToObject(ret_params, "FileName",cJSON_CreateString(pgroupmsg->msgpay));
                 cJSON_AddItemToObject(ret_params, "FilePath",cJSON_CreateString(pgroupmsg->ext1));
@@ -2455,7 +2455,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 {
                     cJSON_AddItemToObject(ret_params, "FileKey",cJSON_CreateString(pgroupmsg->file_key));
                 }
-                //ext2 ´æ´¢ÎÄ¼şÏà¶ÔÏà¹ØÊôĞÔ
+                //ext2 å­˜å‚¨æ–‡ä»¶ç›¸å¯¹ç›¸å…³å±æ€§
                 memset(&tmp_finfo,0,sizeof(tmp_finfo));
                 if(im_group_fileinfo_analyze(pgroupmsg->ext2,&tmp_finfo) == OK)
                 {
@@ -2538,7 +2538,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     if (local_flag == TRUE) {
         if ((cmd == PNR_IM_CMDTYPE_PUSHFILE || cmd == PNR_IM_CMDTYPE_PUSHFILE_TOX) 
             && (apiversion < PNR_API_VERSION_V5))
-            //ĞÂµÄ°æ±¾±¾µØµÄ¾Í²»ÔÚÕâÀï¿½±´ÁË
+            //æ–°çš„ç‰ˆæœ¬æœ¬åœ°çš„å°±ä¸åœ¨è¿™é‡Œæ‹·è´äº†
         {
 			char *fname = NULL;
 			if (cmd == PNR_IM_CMDTYPE_PUSHFILE) {
@@ -2548,7 +2548,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 			}
 			snprintf(filepath, sizeof(filepath), "%sr/%s", 
 				g_imusr_array.usrnode[index].userdata_pathurl, fname);
-            //È¥µô¸½¼ÓĞÅÏ¢
+            //å»æ‰é™„åŠ ä¿¡æ¯
             ptmp = strchr(fullfilename,PNR_FILEINFO_ATTACH_FLAG);
             if(ptmp != NULL)
             {
@@ -2562,7 +2562,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         }
         
 		cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber(msgid));
-		//ÕâÀïÏûÏ¢ÄÚÈİ²»ÄÜ×ö×ªÒå£¬Òª²»È»¶Ô¶ËÊÕµ½»á³ö´í
+		//è¿™é‡Œæ¶ˆæ¯å†…å®¹ä¸èƒ½åšè½¬ä¹‰ï¼Œè¦ä¸ç„¶å¯¹ç«¯æ”¶åˆ°ä¼šå‡ºé”™
 	    pmsg = cJSON_PrintUnformatted_noescape(ret_root);
 	    cJSON_Delete(ret_root);
 	    msg_len = strlen(pmsg);
@@ -2643,7 +2643,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
      } 
      else 
      {
-		//ÕâÀïÏûÏ¢ÄÚÈİ²»ÄÜ×ö×ªÒå£¬Òª²»È»¶Ô¶ËÊÕµ½»á³ö´í
+		//è¿™é‡Œæ¶ˆæ¯å†…å®¹ä¸èƒ½åšè½¬ä¹‰ï¼Œè¦ä¸ç„¶å¯¹ç«¯æ”¶åˆ°ä¼šå‡ºé”™
         pmsg = cJSON_PrintUnformatted_noescape(ret_root);
 	    cJSON_Delete(ret_root);
 	    msg_len = strlen(pmsg);
@@ -2707,20 +2707,20 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_tox_pushmsg_callback
- ¹¦ÄÜÃèÊö  : tox×ª·¢ÏûÏ¢
- ÊäÈë²ÎÊı  : int index     
+ å‡½ æ•° å  : im_tox_pushmsg_callback
+ åŠŸèƒ½æè¿°  : toxè½¬å‘æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : int index     
              int cmd       
              void *params  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
@@ -2777,7 +2777,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
         cJSON_AddItemToObject(ret_params, "UserKey", cJSON_CreateString(pfriend->user_pubkey));
         cJSON_AddItemToObject(ret_params, "RouterId",cJSON_CreateString(g_daemon_tox.user_toxid));
         cJSON_AddItemToObject(ret_params, "RouterName",cJSON_CreateString(g_dev_nickname));
-        //ÕâÀïĞèÒª·´ÏòÒ»ÏÂ
+        //è¿™é‡Œéœ€è¦åå‘ä¸€ä¸‹
         if (pfriend->result == OK) {
             pnr_friend_dbinsert(pfriend->touser_toxid,pfriend->fromuser_toxid,pfriend->nickname,pfriend->user_pubkey);
             im_nodelist_addfriend(index,pfriend->touser_toxid,pfriend->fromuser_toxid,pfriend->nickname,pfriend->user_pubkey);
@@ -2805,7 +2805,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
         }
         else if(apiversion >= PNR_API_VERSION_V3)
         {
-#if 0 //ÔİÊ±²»ÓÃhashid
+#if 0 //æš‚æ—¶ä¸ç”¨hashid
             cJSON_AddItemToObject(ret_params, "From", cJSON_CreateString(psendmsg->from_uid));
             cJSON_AddItemToObject(ret_params, "To", cJSON_CreateString(psendmsg->to_uid));  
 #else
@@ -2905,7 +2905,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
     pnr_msgcache_getid(index, &msgid);
     cJSON_AddItemToObject(ret_root, "params", ret_params);
 	
-	//ÕâÀïÏûÏ¢ÄÚÈİ²»ÄÜ×ö×ªÒå£¬Òª²»È»¶Ô¶ËÊÕµ½»á³ö´í
+	//è¿™é‡Œæ¶ˆæ¯å†…å®¹ä¸èƒ½åšè½¬ä¹‰ï¼Œè¦ä¸ç„¶å¯¹ç«¯æ”¶åˆ°ä¼šå‡ºé”™
     pmsg = cJSON_PrintUnformatted_noescape(ret_root);
     cJSON_Delete(ret_root);
     msg_len = strlen(pmsg);
@@ -2970,13 +2970,13 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
 }
 /**********************************************************************************
   Function:      imstance_daemon
-  Description:  im tox ÊµÀı½ø³Ì
+  Description:  im tox å®ä¾‹è¿›ç¨‹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -2993,13 +2993,13 @@ void *imstance_daemon(void *para)
 
 /**********************************************************************************
   Function:      im_userlogin_deal
-  Description: IMÄ£¿éLOGINÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—LOGINæ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3023,7 +3023,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserDataVersion",data_version,TOX_ID_STR_LEN);
@@ -3034,7 +3034,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_USER_LOGIN_NO_SERVER;
         need_synch = FALSE;
     }
-    //¼ì²âÊÇ·ñÊÇ±¾µØÂ·ÓÉÊÚÈ¨ÓÃ»§
+    //æ£€æµ‹æ˜¯å¦æ˜¯æœ¬åœ°è·¯ç”±æˆæƒç”¨æˆ·
     else if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"routid(%s) user input(%s)",
@@ -3042,10 +3042,10 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_USER_LOGIN_NO_SERVER;
         need_synch = FALSE;
     }
-    //ĞÂÓÃ»§µÄ´¦Àí
+    //æ–°ç”¨æˆ·çš„å¤„ç†
     else if(strlen(user_id) == 0)
     {
-        //Èç¹ûµ±Ç°»¹ÓĞ¿É·ÖÅäĞÂÓÃ»§
+        //å¦‚æœå½“å‰è¿˜æœ‰å¯åˆ†é…æ–°ç”¨æˆ·
         if(g_imusr_array.cur_user_num < g_imusr_array.max_user_num)
         {
             for(index=1;index<=g_imusr_array.max_user_num;index++)
@@ -3057,7 +3057,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             if(index <= g_imusr_array.max_user_num)
             {
-                //Æô¶¯im server½ø³Ì
+                //å¯åŠ¨im serverè¿›ç¨‹
                 //g_tmp_instance_index = index;
                 if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
                 {
@@ -3099,10 +3099,10 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
             need_synch = FALSE;
         }
     }
-    //ÀÏÓÃ»§µÄ´¦Àí
+    //è€ç”¨æˆ·çš„å¤„ç†
     else if(strlen(user_id) == TOX_ID_STR_LEN)
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         for(index=1;index<=g_imusr_array.max_user_num;index++)
         {
             if(strcmp(user_id,g_imusr_array.usrnode[index].user_toxid) == OK)
@@ -3111,7 +3111,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 break;
             }
         }
-        //¿ÉÄÜÊÇÆäËûÂ·ÓÉÆ÷ÉÏÊµÀı¹ı,ËùÒÔÔÙÖØĞÂÉú³ÉÒ»¸ö
+        //å¯èƒ½æ˜¯å…¶ä»–è·¯ç”±å™¨ä¸Šå®ä¾‹è¿‡,æ‰€ä»¥å†é‡æ–°ç”Ÿæˆä¸€ä¸ª
         if(index > g_imusr_array.max_user_num)
         {
             for(index=1;index<=g_imusr_array.max_user_num;index++)
@@ -3124,7 +3124,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if(index <= g_imusr_array.max_user_num)
             {
                 strcpy(g_imusr_array.usrnode[index].user_toxid,user_id);
-                //Æô¶¯im server½ø³Ì
+                //å¯åŠ¨im serverè¿›ç¨‹
                 //g_tmp_instance_index = index;
                 if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
                 {
@@ -3210,14 +3210,14 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         need_synch = FALSE;
     }
 
-    //³É¹¦µÇÂ½
+    //æˆåŠŸç™»é™†
     if(ret_code == PNR_USER_LOGIN_OK)
     {
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         g_imusr_array.usrnode[index].heartbeat_count= 0;
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3254,13 +3254,13 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_userdestory_deal
-  Description: IMÄ£¿éDestoryÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—Destoryæ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3282,7 +3282,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
 
@@ -3291,14 +3291,14 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"g_p2pnet_init_flag no ok");
         ret_code = PNR_USER_DESTORY_OTHER_ERR;
     }
-    //¼ì²âÊÇ·ñÊÇ±¾µØÂ·ÓÉÊÚÈ¨ÓÃ»§
+    //æ£€æµ‹æ˜¯å¦æ˜¯æœ¬åœ°è·¯ç”±æˆæƒç”¨æˆ·
     else if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"routid(%s) user input(%s)",
             g_daemon_tox.user_toxid,router_id);
         ret_code = PNR_USER_DESTORY_BAD_ROUTERID;
     }
-    //useid ´¦Àí
+    //useid å¤„ç†
     else if(strlen(user_id) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",router_id);
@@ -3306,7 +3306,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         for(index=1;index<=g_imusr_array.max_user_num;index++)
         {
             if(strcmp(user_id,g_imusr_array.usrnode[index].user_toxid) == OK)
@@ -3322,7 +3322,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 *plws_index = index;
             }
             pthread_cancel(g_imusr_array.usrnode[index].tox_tid);
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_USER_DESTORY_OK;
         }
         else
@@ -3332,7 +3332,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3368,13 +3368,13 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_addfriend_req_deal
-  Description: IMÄ£¿éÌí¼ÓºÃÓÑÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—æ·»åŠ å¥½å‹æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3405,14 +3405,14 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     head->forward = TRUE;
     
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",msg->nickname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",msg->user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->friend_msg,PNR_FRIEND_MSG_MAXLEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
         || strlen(msg->touser_toxid) != TOX_ID_STR_LEN
         || strlen(msg->user_pubkey) < DEFAULT_DES_KEYLEN)
@@ -3429,11 +3429,11 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -3468,7 +3468,7 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3514,13 +3514,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_addfriend_deal_deal
-  Description: IMÄ£¿éÌí¼ÓºÃÓÑ´¦Àí½á¹û½âÎö´¦Àí
+  Description: IMæ¨¡å—æ·»åŠ å¥½å‹å¤„ç†ç»“æœè§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3551,7 +3551,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     head->forward = TRUE;
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",msg->nickname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
@@ -3564,7 +3564,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",msg->sign,PNR_RSA_KEY_MAXLEN);
     }
 
-    //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+    //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
     for(index=1;index<=g_imusr_array.max_user_num;index++)
     {
         if(strcmp(msg->fromuser_toxid,g_imusr_array.usrnode[index].user_toxid) == OK)
@@ -3573,7 +3573,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
             break;
         }
     }
-    //·Ç±¾µØÊµÀıÏûÏ¢
+    //éæœ¬åœ°å®ä¾‹æ¶ˆæ¯
     if((index > g_imusr_array.max_user_num)
         ||((msg->result == OK) &&((strlen(friend_pubkey) < DEFAULT_DES_KEYLEN ) || (strlen(msg->user_pubkey) < DEFAULT_DES_KEYLEN))))
     {
@@ -3587,7 +3587,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = index;
         }
-        //Èç¹ûÌí¼Ó³É¹¦£¬ÏÈÌí¼Ó±¾µØÊı¾İ¿â
+        //å¦‚æœæ·»åŠ æˆåŠŸï¼Œå…ˆæ·»åŠ æœ¬åœ°æ•°æ®åº“
         if(msg->result == OK)
         {
             pnr_friend_dbinsert(msg->fromuser_toxid,msg->touser_toxid,msg->friend_nickname,friend_pubkey);
@@ -3613,7 +3613,7 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
  
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3660,13 +3660,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_delfriend_cmd_deal
-  Description: IMÄ£¿éÉ¾³ıºÃÓÑÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—åˆ é™¤å¥½å‹æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3696,11 +3696,11 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     head->forward = TRUE;
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
         || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
     {
@@ -3710,11 +3710,11 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -3757,7 +3757,7 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3804,13 +3804,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_sendmsg_cmd_deal
-  Description: IMÄ£¿é·¢ËÍÏûÏ¢ÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—å‘é€æ¶ˆæ¯å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3839,7 +3839,7 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",msg->touser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
@@ -3847,7 +3847,7 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",msg->msg_dstkey,PNR_RSA_KEY_MAXLEN);
     msg->msgtype = PNR_IM_MSGTYPE_TEXT;
 
-	//useid ´¦Àí
+	//useid å¤„ç†
     if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
         || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
     {
@@ -3868,11 +3868,11 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -3914,7 +3914,7 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
 OUT:
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	ret_root = cJSON_CreateObject();
     ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -3962,13 +3962,13 @@ ERR:
 }
 /**********************************************************************************
   Function:      im_sendmsg_cmd_deal_v3
-  Description: IMÄ£¿é·¢ËÍÏûÏ¢ÃüÁîV3°æ±¾½âÎö´¦Àí
+  Description: IMæ¨¡å—å‘é€æ¶ˆæ¯å‘½ä»¤V3ç‰ˆæœ¬è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -3997,8 +3997,8 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
-    //ÔİÊ±Í³Ò»ÓÃtoxid
+    //è§£æå‚æ•°
+    //æš‚æ—¶ç»Ÿä¸€ç”¨toxid
 #if 0    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",msg->from_uid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",msg->to_uid,TOX_ID_STR_LEN);
@@ -4012,8 +4012,8 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",msg->prikey,PNR_RSA_KEY_MAXLEN);
     msg->msgtype = PNR_IM_MSGTYPE_TEXT;
 
-#if 0//ÔİÊ±²»ÓÃ
-	//useid ´¦Àí
+#if 0//æš‚æ—¶ä¸ç”¨
+	//useid å¤„ç†
 	if(pnr_gettoxid_byhashid(msg->from_uid,msg->fromuser_toxid) != OK 
         || pnr_gettoxid_byhashid(msg->to_uid,msg->touser_toxid) != OK)
     {
@@ -4043,11 +4043,11 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -4093,7 +4093,7 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
 OUT:
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	ret_root = cJSON_CreateObject();
     ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -4153,13 +4153,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_delmsg_cmd_deal
-  Description: IMÄ£¿é³·»ØÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—æ’¤å›æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -4189,7 +4189,7 @@ int im_delmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msg->log_id,TOX_ID_STR_LEN);
@@ -4204,11 +4204,11 @@ int im_delmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -4248,7 +4248,7 @@ int im_delmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
 OUT:
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	ret_root =  cJSON_CreateObject();
     ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -4295,13 +4295,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_onlinestatus_check_deal
-  Description: IMÄ£¿é²éÑ¯ºÃÓÑÔÚÏß×´Ì¬ÏûÏ¢´¦Àí
+  Description: IMæ¨¡å—æŸ¥è¯¢å¥½å‹åœ¨çº¿çŠ¶æ€æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -4325,11 +4325,11 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     memset(&msg,0,sizeof(msg));
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"TargetUserId",msg.touser_toxid,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN
         || strlen(msg.touser_toxid) != TOX_ID_STR_LEN)
     {
@@ -4341,11 +4341,11 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         ret_code = PNR_MSGSEND_RETCODE_OK;
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg.touser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             online_status = USER_ONLINE_STATUS_OFFLINE;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",msg.fromuser_toxid);
         }
@@ -4359,7 +4359,7 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -4396,13 +4396,13 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_heartbeat_cmd_deal
-  Description: IMÄ£¿éĞÄÌøÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—å¿ƒè·³å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -4425,10 +4425,10 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     memset(&msg,0,sizeof(msg));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Active",active,TOX_ID_STR_LEN);
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",
@@ -4438,13 +4438,13 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         ret_code = PNR_MSGSEND_RETCODE_OK;
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg.fromuser_toxid);
         if(index == 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",msg.fromuser_toxid);
         }
-        else//ĞÄÌø¼ÆÊıÇåÁã
+        else//å¿ƒè·³è®¡æ•°æ¸…é›¶
         {            
             if(*plws_index == 0)
             {
@@ -4468,7 +4468,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -4504,13 +4504,13 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_pullmsg_cmd_deal
-  Description: IMÄ£¿éÀ­È¡ÁÄÌìĞÅÏ¢ÏûÏ¢´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–èŠå¤©ä¿¡æ¯æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -4549,7 +4549,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(pmsg,0,sizeof(struct im_sendmsg_msgstruct));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",pmsg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",pmsg->touser_toxid,TOX_ID_STR_LEN);
@@ -4557,7 +4557,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",pmsg->log_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgNum",msgnum,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(msgnum <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msgnum(%s)",msgnum);
@@ -4570,7 +4570,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(pmsg->fromuser_toxid);
         if(index == 0)
         {
@@ -4587,7 +4587,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON *ret_root = cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -4674,7 +4674,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(sqlite3_get_table(g_msglogdb_handle[index], sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {				
                 memset(ptmp_msg,0,sizeof(struct im_sendmsg_msgstruct));
@@ -4690,7 +4690,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 ptmp_msg->ext2 = atoi(dbResult[offset++]);
 				snprintf(ptmp_msg->msg_srckey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
 				snprintf(ptmp_msg->msg_dstkey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
-                //Ìø¹ıidÖµ
+                //è·³è¿‡idå€¼
 				offset ++;
                 pJsonsub = cJSON_CreateObject();
                 if(pJsonsub == NULL)
@@ -4778,13 +4778,13 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_pullmsg_cmd_deal_v3
-  Description: IMÄ£¿éÀ­È¡ÁÄÌìĞÅÏ¢ÏûÏ¢´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–èŠå¤©ä¿¡æ¯æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -4829,9 +4829,9 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(pmsg,0,sizeof(struct im_sendmsg_msgstruct));
-#if 0//ÔİÊ±²»ÓÃ
+#if 0//æš‚æ—¶ä¸ç”¨
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.from_uid,PNR_USER_HASHID_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg.to_uid,PNR_USER_HASHID_MAXLEN);
 #else
@@ -4842,13 +4842,13 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",pmsg->log_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgNum",msgnum,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(msgnum <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msgnum(%s)",msgnum);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
-#if 0 //ÔİÊ±²»ÓÃ
+#if 0 //æš‚æ—¶ä¸ç”¨
     else if((pnr_gettoxid_byhashid(msg.from_uid,msg.fromuser_toxid) != OK)
         ||(pnr_gettoxid_byhashid(msg.to_uid,msg.touser_toxid) != OK))
     {
@@ -4863,7 +4863,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(pmsg->fromuser_toxid);
         if(index == 0)
         {
@@ -4880,7 +4880,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON *ret_root = cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -4905,7 +4905,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)(head->api_version)));
 	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 	cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLMSG));
-#if 0//ÔİÊ±²»ÓÃ
+#if 0//æš‚æ—¶ä¸ç”¨
     cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(msg.from_uid));
     cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(msg.to_uid));
 #else
@@ -4948,7 +4948,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         if(sqlite3_get_table(g_msglogdb_handle[index], sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {				
                 memset(ptmp_msg,0,sizeof(struct im_sendmsg_msgstruct));
@@ -4965,7 +4965,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                 snprintf(ptmp_msg->sign,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
                 snprintf(ptmp_msg->nonce,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
                 snprintf(ptmp_msg->prikey,PNR_RSA_KEY_MAXLEN,"%s",dbResult[offset++]);
-                //Ìø¹ıidÖµ
+                //è·³è¿‡idå€¼
 				offset ++;
                 pJsonsub = cJSON_CreateObject();
                 if(pJsonsub == NULL)
@@ -5075,13 +5075,13 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_pullfriend_cmd_deal
-  Description: IMÄ£¿éÀ­È¡ºÃÓÑĞÅÏ¢ÏûÏ¢´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–å¥½å‹ä¿¡æ¯æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -5102,10 +5102,10 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(user_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
@@ -5113,7 +5113,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(user_toxid);
         if(index == 0)
         {
@@ -5130,7 +5130,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -5207,13 +5207,13 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_pullfriend_cmd_deal_v3
-  Description: IMÄ£¿éÀ­È¡ºÃÓÑĞÅÏ¢ÏûÏ¢´¦ÀíV3°æ±¾
+  Description: IMæ¨¡å—æ‹‰å–å¥½å‹ä¿¡æ¯æ¶ˆæ¯å¤„ç†V3ç‰ˆæœ¬
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -5234,10 +5234,10 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(user_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
@@ -5245,7 +5245,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(user_toxid);
         if(index == 0)
         {
@@ -5262,7 +5262,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -5305,7 +5305,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
                     return ERROR;
                 }
            		cJSON_AddItemToArray(pJsonArry,pJsonsub); 
-#if 0//ÔİÊ±²»ÓÃ
+#if 0//æš‚æ—¶ä¸ç”¨
         		cJSON_AddStringToObject(pJsonsub,"Index", g_imusr_array.usrnode[index].friends[i].u_hashstr);
 #endif
                 cJSON_AddStringToObject(pJsonsub,"Name", g_imusr_array.usrnode[index].friends[i].user_nickname);
@@ -5343,13 +5343,13 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_sysch_datafile_deal
-  Description: IMÄ£¿édataÎÄ¼şÍ¬²½ÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—dataæ–‡ä»¶åŒæ­¥æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -5374,7 +5374,7 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"NeedSynch",synch_flag,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserDataVersion",data_version,TOX_ID_STR_LEN);
@@ -5389,7 +5389,7 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         snprintf(dst_file,PNR_FILEPATH_MAXLEN,"%s/user%d/%s",DAEMON_PNR_USERDATA_DIR,index,PNR_DATAFILE_DEFNAME);
         switch(synch_flag)
         {
-            //ÓÃ»§²àÉÏ´«dataÎÄ¼ş
+            //ç”¨æˆ·ä¾§ä¸Šä¼ dataæ–‡ä»¶
             case PNR_IM_SYSCHDATAFILE_UPLOAD:
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DataPay",base64_buf,DATAFILE_BASE64_ENCODE_MAXLEN);
                 bufflen = strlen(base64_buf) - 1;
@@ -5402,9 +5402,9 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     ret_code = PNR_MSGSEND_RETCODE_OK;
                 }
-                //ÕâÀï¿¼ÂÇĞè²»ĞèÒªÖØÆôtoxÊµÀı
+                //è¿™é‡Œè€ƒè™‘éœ€ä¸éœ€è¦é‡å¯toxå®ä¾‹
                 break;
-            //ÓÃ»§´ÓÂ·ÓÉÆ÷ÉÏÏÂÔØdataÎÄ¼ş
+            //ç”¨æˆ·ä»è·¯ç”±å™¨ä¸Šä¸‹è½½dataæ–‡ä»¶
             case PNR_IM_SYSCHDATAFILE_DOWNLOAD:
                 if(pnr_datafile_base64encode(dst_file,base64_buf,&bufflen) != OK)
                 {
@@ -5423,7 +5423,7 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -5466,22 +5466,22 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_pull_file_list_deal
- ¹¦ÄÜÃèÊö  : À­È¡ÎÄ¼şÁĞ±í
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_pull_file_list_deal
+ åŠŸèƒ½æè¿°  : æ‹‰å–æ–‡ä»¶åˆ—è¡¨
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ9ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ9æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -5545,7 +5545,7 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	if (filetype) {
 		snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and msgtype=%d", filetype);
 	} else {
-	    //ÕâÀïĞèÒªÏÔÊ¾ËùÓĞÏûÏ¢´«ÊäµÄÎÄ¼şÀàĞÍ(msgtypeÎª5)ÒÔ¼°×Ô¼ºÉÏ´«µÄÍ¼Æ¬£¬ÊÓÆµ£¬ÎÄ¼ş
+	    //è¿™é‡Œéœ€è¦æ˜¾ç¤ºæ‰€æœ‰æ¶ˆæ¯ä¼ è¾“çš„æ–‡ä»¶ç±»å‹(msgtypeä¸º5)ä»¥åŠè‡ªå·±ä¸Šä¼ çš„å›¾ç‰‡ï¼Œè§†é¢‘ï¼Œæ–‡ä»¶
 #if 0
         snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and msgtype in(%d,%d,%d)",PNR_IM_MSGTYPE_IMAGE, PNR_IM_MSGTYPE_MEDIA, PNR_IM_MSGTYPE_FILE);
 #else
@@ -5807,22 +5807,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_upload_file_req_deal
- ¹¦ÄÜÃèÊö  : ÉÏ´«ÎÄ¼şÇëÇó
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_upload_file_req_deal
+ åŠŸèƒ½æè¿°  : ä¸Šä¼ æ–‡ä»¶è¯·æ±‚
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_upload_file_req_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -5913,22 +5913,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_upload_file_deal
- ¹¦ÄÜÃèÊö  : tox·½Ê½ÏÂµ÷ÓÃ¸Ã½Ó¿ÚÉÏ±¨ÉÏ´«µÄÎÄ¼şµÄĞÅÏ¢
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_upload_file_deal
+ åŠŸèƒ½æè¿°  : toxæ–¹å¼ä¸‹è°ƒç”¨è¯¥æ¥å£ä¸ŠæŠ¥ä¸Šä¼ çš„æ–‡ä»¶çš„ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_upload_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6023,22 +6023,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_delete_file_deal
- ¹¦ÄÜÃèÊö  : É¾³ıÎÄ¼ş
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_delete_file_deal
+ åŠŸèƒ½æè¿°  : åˆ é™¤æ–‡ä»¶
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_delete_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6148,22 +6148,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_disk_info_deal
- ¹¦ÄÜÃèÊö  : »ñÈ¡´ÅÅÌĞÅÏ¢
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_get_disk_info_deal
+ åŠŸèƒ½æè¿°  : è·å–ç£ç›˜ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_disk_info_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6278,22 +6278,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_disk_totalinfo_deal
- ¹¦ÄÜÃèÊö  : »ñÈ¡´ÅÅÌÍ³¼ÆĞÅÏ¢
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_get_disk_totalinfo_deal
+ åŠŸèƒ½æè¿°  : è·å–ç£ç›˜ç»Ÿè®¡ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6342,7 +6342,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
     	char *tmp_json_buff = NULL;
         cJSON *tmp_item = NULL;
         int slot = 0;
-        //Ê×ÏÈ»ñÈ¡µ±Ç°´ÅÅÌÅäÖÃÄ£Ê½ºÍÊıÁ¿
+        //é¦–å…ˆè·å–å½“å‰ç£ç›˜é…ç½®æ¨¡å¼å’Œæ•°é‡
         ret = get_file_content("/tmp/disk.err", buf, sizeof(buf));
         if (ret) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get disk.err failed");
@@ -6388,7 +6388,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_get_disk_totalinfo_deal:get count(%d)",totalinfo.count);
         if(totalinfo.count > 0)
         {
-            //»ñÈ¡ÊµÊ±ÎÂ¶ÈĞÅÏ¢
+            //è·å–å®æ—¶æ¸©åº¦ä¿¡æ¯
             memset(buf, 0, sizeof(buf));
         	buf[0] = '{';
         	ret = get_popen_content("/opt/bin/hdsmart.sh", &buf[1], sizeof(buf) - 2);
@@ -6477,7 +6477,7 @@ int im_get_disk_totalinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
                     detailinfo[slot].status = PNR_DISK_STATUS_RUNNING;
                 }
             }
-            //»ñÈ¡´ÅÅÌĞÅÏ¢
+            //è·å–ç£ç›˜ä¿¡æ¯
             memset(buf, 0, sizeof(buf));
         	ret = get_file_content("/tmp/disk.info", buf, sizeof(buf));
         	if (ret) {
@@ -6638,22 +6638,22 @@ OUT:
 	return OK;	
 }
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_disk_detailinfo_deal
- ¹¦ÄÜÃèÊö  : »ñÈ¡´ÅÅÌÏêÏ¸ĞÅÏ¢
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_get_disk_detailinfo_deal
+ åŠŸèƒ½æè¿°  : è·å–ç£ç›˜è¯¦ç»†ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6708,7 +6708,7 @@ int im_get_disk_detailinfo_deal(cJSON *params, char *retmsg, int *retmsg_len,
         	char *tmp_json_buff = NULL;
             cJSON *tmp_item = NULL;
             int tmp_slot = 0;
-            //»ñÈ¡´ÅÅÌĞÅÏ¢
+            //è·å–ç£ç›˜ä¿¡æ¯
             memset(buf, 0, sizeof(buf));
         	ret = get_file_content("/tmp/disk.info", buf, sizeof(buf));
         	if (ret) {
@@ -6839,22 +6839,22 @@ OUT:
 	return OK;	
 }
 /*****************************************************************************
- º¯ Êı Ãû  : im_format_disk_deal
- ¹¦ÄÜÃèÊö  : ¸ñÊ½»¯´ÅÅÌ
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_format_disk_deal
+ åŠŸèƒ½æè¿°  : æ ¼å¼åŒ–ç£ç›˜
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -6979,22 +6979,22 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_reboot_deal
- ¹¦ÄÜÃèÊö  : Éè±¸ÖØÆô
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_reboot_deal
+ åŠŸèƒ½æè¿°  : è®¾å¤‡é‡å¯
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ23ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ23æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -7010,11 +7010,11 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     if(head->api_version < PNR_API_VERSION_V6)
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",fromid,TOX_ID_STR_LEN);
-        //²ÎÊı¼ì²é
+        //å‚æ•°æ£€æŸ¥
         if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
@@ -7031,7 +7031,7 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
     }
     if(ret_code == OK)
     {
-        //ÕâÊ±ºòÒ²²»ÔÊĞíformat²Ù×÷
+        //è¿™æ—¶å€™ä¹Ÿä¸å…è®¸formatæ“ä½œ
         pthread_mutex_lock(&g_formating_lock);
     	g_formating = 1;
     	pthread_mutex_unlock(&g_formating_lock);
@@ -7040,7 +7040,7 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"###node will reboot###");
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -7084,13 +7084,13 @@ int im_reboot_deal(cJSON *params, char *retmsg, int *retmsg_len,
 }
 /**********************************************************************************
   Function:      im_replaymsg_deal
-  Description: IMÄ£¿éreplayÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—replayæ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -7127,7 +7127,7 @@ int im_replaymsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         case PNR_IM_CMDTYPE_PUSHFILE_TOX:
         case PNR_IM_CMDTYPE_GROUPMSGPUSH:
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Retcode",ret,0);
-#if 0//ÏÖÔÚ²»ÔÚÕâÀï×÷ÏûÏ¢ÍÆËÍ
+#if 0//ç°åœ¨ä¸åœ¨è¿™é‡Œä½œæ¶ˆæ¯æ¨é€
             if(g_imusr_array.usrnode[index].appactive_flag == PNR_APPACTIVE_STATUS_BACKEND)
             {
                 post_newmsg_notice(g_daemon_tox.user_toxid,toid,PNR_POSTMSG_PAYLOAD,TRUE); 
@@ -7159,13 +7159,13 @@ int im_replaymsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_msghead_parses
-  Description: IMÄ£¿éÏûÏ¢Í·²¿½âÎö´¦Àí
+  Description: IMæ¨¡å—æ¶ˆæ¯å¤´éƒ¨è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -7186,7 +7186,7 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
     CJSON_GET_VARSTR_BYKEYWORD(root,tmp_item,tmp_json_buff,"appid",phead->appid,APPID_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(root,tmp_item,tmp_json_buff,"apiversion",phead->api_version,0);
 
-    //Â·ÓÉ·¢ËÍ¹ıÀ´µÄÏûÏ¢²»½âÎömsgid
+    //è·¯ç”±å‘é€è¿‡æ¥çš„æ¶ˆæ¯ä¸è§£æmsgid
     if (!phead->no_parse_msgid) {
         CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"msgid",phead->msgid,0);
     }
@@ -7628,18 +7628,18 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_sendfile_get_free_node
- ¹¦ÄÜÃèÊö  : »ñÈ¡Î´Ê¹ÓÃµÄsendfile½á¹¹ÌåË÷Òı
- ÊäÈë²ÎÊı  : ÎŞ
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_sendfile_get_free_node
+ åŠŸèƒ½æè¿°  : è·å–æœªä½¿ç”¨çš„sendfileç»“æ„ä½“ç´¢å¼•
+ è¾“å…¥å‚æ•°  : æ— 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ28ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ28æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_sendfile_get_free_node(int userindex)
@@ -7655,18 +7655,18 @@ int im_sendfile_get_free_node(int userindex)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_sendfile_get_node_byfd
- ¹¦ÄÜÃèÊö  : ¸ù¾İÎÄ¼şfd»ñÈ¡sendfile½á¹¹Ìåindex
- ÊäÈë²ÎÊı  : int sock  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_sendfile_get_node_byfd
+ åŠŸèƒ½æè¿°  : æ ¹æ®æ–‡ä»¶fdè·å–sendfileç»“æ„ä½“index
+ è¾“å…¥å‚æ•°  : int sock  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ28ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ28æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_sendfile_get_node_byfd(int fd, int userindex)
@@ -7682,21 +7682,21 @@ int im_sendfile_get_node_byfd(int fd, int userindex)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_sendfile_cmd_deal
- ¹¦ÄÜÃèÊö  : ·¢ËÍÎÄ¼şÏûÏ¢´¦Àí
- ÊäÈë²ÎÊı  : cJSON * params   
+ å‡½ æ•° å  : im_sendfile_cmd_deal
+ åŠŸèƒ½æè¿°  : å‘é€æ–‡ä»¶æ¶ˆæ¯å¤„ç†
+ è¾“å…¥å‚æ•°  : cJSON * params   
              char* retmsg     
              int* retmsg_len  
              int* plws_index  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ27ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ27æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_sendfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
@@ -7724,7 +7724,7 @@ int im_sendfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     head->forward = TRUE;
 
-	//½âÎö²ÎÊı
+	//è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FromId", msg->fromuser_toxid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "ToId", msg->touser_toxid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileName", msg->filename, UPLOAD_FILENAME_MAXLEN);
@@ -7836,21 +7836,21 @@ ERR:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_rcv_file_deal
- ¹¦ÄÜÃèÊö  : ½ÓÊÕÎÄ¼ş
- ÊäÈë²ÎÊı  : char *pmsg      
+ å‡½ æ•° å  : im_rcv_file_deal
+ åŠŸèƒ½æè¿°  : æ¥æ”¶æ–‡ä»¶
+ è¾“å…¥å‚æ•°  : char *pmsg      
              int msg_len     
              int plws_index  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê9ÔÂ27ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
-ÒÑ¾­Ã»ÓÃµ½ÁË
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´9æœˆ27æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
+å·²ç»æ²¡ç”¨åˆ°äº†
 *****************************************************************************/
 int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len, 
 	int *ret_flag, int plws_index, int fileindex)
@@ -7879,7 +7879,7 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "rcv file(%s) complete", file->fullfilename);
 		//printf("rcv file(%s) complete\n", file->fullfilename);
 		
-		//¹¹½¨ÏìÓ¦ÏûÏ¢
+		//æ„å»ºå“åº”æ¶ˆæ¯
 		cJSON *ret_root = cJSON_CreateObject();
 	    cJSON *ret_params = cJSON_CreateObject();
 	    if (ret_root == NULL || ret_params == NULL) {
@@ -7928,10 +7928,10 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 	    strcpy(retmsg, ret_buff);
 	    free(ret_buff);
 
-		//tox·¢ËÍµ½¶Ô¶Ë
+		//toxå‘é€åˆ°å¯¹ç«¯
 		if (ret_code == PNR_MSGSEND_RETCODE_OK) {
 			index = get_indexbytoxid(file->touser_toxid);
-	        //¶ÔÓÚÄ¿±êºÃÓÑÎª±¾µØÓÃ»§
+	        //å¯¹äºç›®æ ‡å¥½å‹ä¸ºæœ¬åœ°ç”¨æˆ·
 	        if (index != 0)
 	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,TRUE,PNR_API_VERSION_V5,(void *)file);
 	        else
@@ -7949,20 +7949,20 @@ ERR:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_pullfile_cmd_deal
- ¹¦ÄÜÃèÊö  : À­È¡ÎÄ¼ş
- ÊäÈë²ÎÊı  : cJSON * params      
+ å‡½ æ•° å  : im_pullfile_cmd_deal
+ åŠŸèƒ½æè¿°  : æ‹‰å–æ–‡ä»¶
+ è¾“å…¥å‚æ•°  : cJSON * params      
              int msg_len     
              int plws_index  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ03ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ03æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
@@ -7985,7 +7985,7 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
 
     memset(&file_info,0,sizeof(file_info));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FromId", file_info.fromuser_toxid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "ToId", file_info.touser_toxid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileName", file_info.filename, UPLOAD_FILENAME_MAXLEN);
@@ -8049,7 +8049,7 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "get fileowner(%d) err", fileowner);
         goto err;
     }
-    //ÔÚV5°æ±¾Ö®ºóÎÄ¼şÔÚ½ÚµãÉÏ±£´æµÄÎÄ¼şÃûÓÅ»¯ÁË
+    //åœ¨V5ç‰ˆæœ¬ä¹‹åæ–‡ä»¶åœ¨èŠ‚ç‚¹ä¸Šä¿å­˜çš„æ–‡ä»¶åä¼˜åŒ–äº†
     if(head->api_version >= PNR_API_VERSION_V5)
     {
         memset(file_info.fullfilename,0,PNR_FILEPATH_MAXLEN);
@@ -8076,7 +8076,7 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 file_info.fromuser_toxid, file_info.touser_toxid);
             ret_code = PNR_FILESEND_RETCODE_FAILED;
         } 
-        //ĞÂ°æ±¾µÄÏÂÔØ×Ô¼ºÉÏ´«µÄÎÄ¼ş£¬»á³öÏÖtoºÍformÏàÍ¬µÄÇé¿ö
+        //æ–°ç‰ˆæœ¬çš„ä¸‹è½½è‡ªå·±ä¸Šä¼ çš„æ–‡ä»¶ï¼Œä¼šå‡ºç°toå’Œformç›¸åŒçš„æƒ…å†µ
         /*else if (strcmp(file_info.fromuser_toxid, file_info.touser_toxid) == OK) {
            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "userid repeat(%s->%s)",
                 file_info.fromuser_toxid, file_info.touser_toxid); 
@@ -8125,7 +8125,7 @@ err:
         return ERROR;
     }
 
-	//·¢ËÍÎÄ¼ş
+	//å‘é€æ–‡ä»¶
     if (ret_code == PNR_FILESEND_RETCODE_OK) {
 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "send file(%s) to app(%d)", file_info.fullfilename, head->friendnum);
     	imtox_send_file_to_app(qlinkNode, head->friendnum, file_info.fromuser_toxid, file_info.fullfilename,file_info.log_id,filefrom);
@@ -8140,13 +8140,13 @@ err:
 
 /**********************************************************************************
   Function:      im_create_normaluser_cmd_deal
-  Description: IMÄ£¿é´´½¨ÆÕÍ¨ÓÃ»§ÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—åˆ›å»ºæ™®é€šç”¨æˆ·å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8172,13 +8172,13 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     memset(&account,0,sizeof(account));
     memset(&admin_account,0,sizeof(admin_account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"AdminUserId",admin_account.toxid,TOX_ID_STR_LEN);    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Mnemonic",account.mnemonic,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"IdentifyCode",account.identifycode,PNR_IDCODE_MAXLEN);
 
-    //ridºÍuid ¼ì²é
+    //ridå’Œuid æ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_CREATE_NORMALUSER_RETCODE_BADRID;
@@ -8197,7 +8197,7 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            //´´½¨Ò»¸öĞÂµÄÎ´¼¤»îÕË»§
+            //åˆ›å»ºä¸€ä¸ªæ–°çš„æœªæ¿€æ´»è´¦æˆ·
             g_account_array.normal_user_num++;
             g_account_array.total_user_num++;
             if(g_account_array.total_user_num >= g_imusr_array.max_user_num )
@@ -8215,7 +8215,7 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8260,13 +8260,13 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_userlogin_v2_deal
-  Description: IMÄ£¿éÓÃ»§µÇÂ½ÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—ç”¨æˆ·ç™»é™†å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8293,13 +8293,13 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"LoginKey",account.loginkey,PNR_LOGINKEY_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"DataFileVersion",data_version,PNR_IDCODE_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_LOGIN_RETCODE_BAD_RID;
@@ -8311,7 +8311,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //¸ù¾İtoxid»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+        //æ ¹æ®toxidè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
         memset(&src_account,0,sizeof(src_account));
         strcpy(src_account.toxid,account.toxid);
         pnr_account_dbget_byuserid(&src_account);
@@ -8324,7 +8324,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             ret_code = PNR_LOGIN_RETCODE_NEED_IDENTIFY;
         }
-        //±È½Ïsn
+        //æ¯”è¾ƒsn
         else if(strncasecmp(account.user_sn,src_account.user_sn,PNR_USN_MAXLEN) != OK)
         {
             ret_code = PNR_LOGIN_RETCODE_BAD_UID;
@@ -8337,7 +8337,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+            //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
             index = get_indexbytoxid(account.toxid);
             if(index)
             {
@@ -8366,7 +8366,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             *plws_index = index;
                             ret_code = PNR_LOGIN_RETCODE_OK;
                             DEBUG_PRINT(DEBUG_LEVEL_INFO,"renew user(%s)",g_imusr_array.usrnode[index].user_toxid);
-                            //Èç¹ûÊÇĞÂÓÃ»§¼¤»î¶ÔÓ¦Êı¾İ¿â¾ä±ú
+                            //å¦‚æœæ˜¯æ–°ç”¨æˆ·æ¿€æ´»å¯¹åº”æ•°æ®åº“å¥æŸ„
                             if(g_msglogdb_handle[index] == NULL)
                             {
                                  if (sql_msglogdb_init(index) != OK) 
@@ -8397,10 +8397,10 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //³É¹¦µÇÂ½
+    //æˆåŠŸç™»é™†
     if(ret_code == PNR_USER_LOGIN_OK)
     {
-        //¼ì²âÊÇ·ñÒÑ¾­ÓĞÓÃ»§µÇÂ½ÁË£¬Èç¹ûÊÇ£¬ĞèÒªÏòÖ®Ç°ÓÃ»§ÍÆËÍÏûÏ¢
+        //æ£€æµ‹æ˜¯å¦å·²ç»æœ‰ç”¨æˆ·ç™»é™†äº†ï¼Œå¦‚æœæ˜¯ï¼Œéœ€è¦å‘ä¹‹å‰ç”¨æˆ·æ¨é€æ¶ˆæ¯
         if(g_imusr_array.usrnode[index].user_onlinestatus == USER_ONLINE_STATUS_ONLINE)
         {
             pnr_relogin_push(index,head->iftox,head->friendnum,head->pss);    
@@ -8410,7 +8410,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) online", index, 
             g_imusr_array.usrnode[index].user_toxid);
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8428,7 +8428,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
 #else
-    //ÔİÊ±²»ÓÃ
+    //æš‚æ—¶ä¸ç”¨
     //cJSON_AddItemToObject(ret_params, "Index", cJSON_CreateString(g_imusr_array.usrnode[index].u_hashstr));
 #endif
     cJSON_AddItemToObject(ret_params, "Routerid", cJSON_CreateString(router_id));
@@ -8461,13 +8461,13 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_login_identify_deal
-  Description: IMÄ£¿éÓÃ»§µÇÂ½ÑéÖ¤ÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—ç”¨æˆ·ç™»é™†éªŒè¯å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8494,7 +8494,7 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",account.toxid,TOX_ID_STR_LEN);
@@ -8503,18 +8503,18 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",account.nickname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"DataFileVersion",datafile_version,PNR_IDCODE_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DataFilePay",datafile_paybuf,DATAFILE_BASE64_ENCODE_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_LOGINIDENTIFY_RETCODE_BAD_RID;
     }
     else
     {
-        //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+        //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
         memset(&src_account,0,sizeof(src_account));
         strcpy(src_account.user_sn,account.user_sn);
         pnr_account_get_byusn(&src_account);
-        //Ö»ÓĞÎ´¼¤»îµÄÕË»§²ÅÖ§³ÖÍ¬²½Êı¾İ
+        //åªæœ‰æœªæ¿€æ´»çš„è´¦æˆ·æ‰æ”¯æŒåŒæ­¥æ•°æ®
         if(src_account.active == TRUE)
         {
             ret_code = PNR_LOGINIDENTIFY_RETCODE_USER_ACTIVE;
@@ -8536,7 +8536,7 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             else
             {
-               //Æô¶¯im server½ø³Ì
+               //å¯åŠ¨im serverè¿›ç¨‹
                if (pthread_create(&g_imusr_array.usrnode[src_account.index].tox_tid, NULL, imstance_daemon, &src_account.index) != 0) 
                {
                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"create tox_instance failed");
@@ -8575,7 +8575,7 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8612,13 +8612,13 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_logout_deal
-  Description: IMÄ£¿éÓÃ»§µÇ³ö½âÎö´¦Àí
+  Description: IMæ¨¡å—ç”¨æˆ·ç™»å‡ºè§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8641,11 +8641,11 @@ int im_logout_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",account.toxid,TOX_ID_STR_LEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_LOGOUT_RETCODE_BADRID;
@@ -8667,7 +8667,7 @@ int im_logout_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
             
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8702,13 +8702,13 @@ int im_logout_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_routerlogin_deal
-  Description: ¹ÜÀíÓÃ»§µÇÂ½Â·ÓÉÏûÏ¢´¦Àí
+  Description: ç®¡ç†ç”¨æˆ·ç™»é™†è·¯ç”±æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8729,10 +8729,10 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Mac",mac_string,MACSTR_MAX_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"LoginKey",loginkey,PNR_LOGINKEY_MAXLEN);    
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(g_p2pnet_init_flag == FALSE)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal:g_p2pnet_init_flag not ready");
@@ -8763,7 +8763,7 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_ROUTERLOGIN_RETCODE_OK;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8808,13 +8808,13 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_reset_routerkey_deal
-  Description: ÖØÖÃÉè±¸¹ÜÀíÃÜÂë
+  Description: é‡ç½®è®¾å¤‡ç®¡ç†å¯†ç 
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8836,11 +8836,11 @@ int im_reset_routerkey_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"OldKey",old_key,PNR_LOGINKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NewKey",new_key,PNR_LOGINKEY_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strcmp(router_id,g_daemon_tox.user_toxid) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_reset_routerkey_deal bad rid:input(%s) but real(%s)",
@@ -8866,7 +8866,7 @@ int im_reset_routerkey_deal(cJSON * params,char* retmsg,int* retmsg_len,
         strcpy(g_devadmin_loginkey,new_key);
         ret_code = PNR_RESETLOGINKEY_RETCODE_OK;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -8899,13 +8899,13 @@ int im_reset_routerkey_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_reset_useridcode_deal
-  Description: ÖØÖÃµ¥¸öÓÃ»§µÄ¼¤»îÂë
+  Description: é‡ç½®å•ä¸ªç”¨æˆ·çš„æ¿€æ´»ç 
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -8928,12 +8928,12 @@ int im_reset_useridcode_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"OldCode",old_idcode,PNR_IDCODE_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NewCode",new_idcode,PNR_IDCODE_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strcmp(router_id,g_daemon_tox.user_toxid) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_reset_routerkey_deal bad rid:input(%s) but real(%s)",
@@ -8973,7 +8973,7 @@ int im_reset_useridcode_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
  
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9008,13 +9008,13 @@ int im_reset_useridcode_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_changeremarks_deal
-  Description: IMÄ£¿éÓÃ»§ĞŞ¸ÄºÃÓÑ±¸×¢
+  Description: IMæ¨¡å—ç”¨æˆ·ä¿®æ”¹å¥½å‹å¤‡æ³¨
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9037,11 +9037,11 @@ int im_changeremarks_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",friend_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Remarks",user_remarks,PNR_USERNAME_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strlen(user_toxid) != TOX_ID_STR_LEN || strlen(friend_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_changeremarks_deal:bad uid(%s) friend_id(%s)",user_toxid,friend_toxid);
@@ -9075,7 +9075,7 @@ int im_changeremarks_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9111,13 +9111,13 @@ int im_changeremarks_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_user_preregister_deal
-  Description: IMÄ£¿éPreRegisterÏûÏ¢½âÎö´¦Àí,ÏÖÔÚÃ»ÓĞÊ¹ÓÃ
+  Description: IMæ¨¡å—PreRegisteræ¶ˆæ¯è§£æå¤„ç†,ç°åœ¨æ²¡æœ‰ä½¿ç”¨
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9138,19 +9138,19 @@ int im_user_preregister_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,TOX_ID_STR_LEN);
 
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_LOGIN_RETCODE_BAD_RID;
     }
     else
     {
-        //ÁÙÊ±ÓÃ»§
+        //ä¸´æ—¶ç”¨æˆ·
         if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
         {
             if(g_imusr_array.cur_user_num < g_imusr_array.max_user_num)
@@ -9164,7 +9164,7 @@ int im_user_preregister_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-          //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+          //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             pnr_account_get_byusn(&account);
             if(account.type < PNR_USER_TYPE_ADMIN || account.type >= PNR_USER_TYPE_BUTT)
             {
@@ -9182,7 +9182,7 @@ int im_user_preregister_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9218,13 +9218,13 @@ int im_user_preregister_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_user_register_deal
-  Description: IMÄ£¿éRegisterÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—Registeræ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9249,7 +9249,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,TOX_ID_STR_LEN);
@@ -9257,14 +9257,14 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"LoginKey",account.loginkey,PNR_LOGINKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",account.nickname,PNR_USERNAME_MAXLEN);
 
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_REGISTER_RETCODE_BADRID;
     }
     else
     {
-        //ÁÙÊ±ÓÃ»§
+        //ä¸´æ—¶ç”¨æˆ·
         if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
         {
             temp_user_flag = TRUE;
@@ -9279,7 +9279,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             memset(&src_account,0,sizeof(src_account));
             strcpy(src_account.user_sn,account.user_sn);
-            //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+            //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             pnr_account_get_byusn(&src_account);
             if(src_account.type < PNR_USER_TYPE_ADMIN || src_account.type >= PNR_USER_TYPE_BUTT)
             {
@@ -9290,8 +9290,8 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 ret_code = PNR_REGISTER_RETCODE_USED;
             }
-#if 0//ÔİÊ±ÆÁ±Î
-            //±È¶ÔÊÚÈ¨Âë
+#if 0//æš‚æ—¶å±è”½
+            //æ¯”å¯¹æˆæƒç 
             else if(strcmp(src_account.identifycode,account.identifycode) != OK)
             {
                 ret_code = PNR_REGISTER_RETCODE_BAD_IDCODE;
@@ -9302,7 +9302,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         if(ret_code == PNR_REGISTER_RETCODE_OK)
         {
-           //Èç¹ûµ±Ç°»¹ÓĞ¿É·ÖÅäĞÂÓÃ»§
+           //å¦‚æœå½“å‰è¿˜æœ‰å¯åˆ†é…æ–°ç”¨æˆ·
            if(g_imusr_array.cur_user_num < g_imusr_array.max_user_num)
            {
                for(index=1;index<=g_imusr_array.max_user_num;index++)
@@ -9314,7 +9314,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                }
                if(index <= g_imusr_array.max_user_num)
                {
-                   //Æô¶¯im server½ø³Ì
+                   //å¯åŠ¨im serverè¿›ç¨‹
                    if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
                    {
                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"create tox_instance failed");
@@ -9353,7 +9353,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                            strcpy(g_imusr_array.usrnode[index].user_nickname,account.nickname);
                            strcpy(g_imusr_array.usrnode[index].user_pubkey,account.user_pubkey);
                            g_imusr_array.cur_user_num++;
-                           //ĞÂÓÃ»§×¢²á¼¤»î¶ÔÓ¦Êı¾İ¿â¾ä±ú
+                           //æ–°ç”¨æˆ·æ³¨å†Œæ¿€æ´»å¯¹åº”æ•°æ®åº“å¥æŸ„
                            if(g_msglogdb_handle[index] == NULL)
                            {
                        			if (sql_msglogdb_init(index) != OK) 
@@ -9387,7 +9387,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
            }
         }        
     }
-    //³É¹¦×¢²á
+    //æˆåŠŸæ³¨å†Œ
     if(ret_code == PNR_USER_LOGIN_OK)
     {
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
@@ -9396,7 +9396,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
             g_imusr_array.usrnode[index].user_toxid);
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9416,7 +9416,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "UserSn", cJSON_CreateString(account.user_sn));
     if(ret_code == PNR_REGISTER_RETCODE_OK)
     {
-        //ÔİÊ±²»ÓÃ
+        //æš‚æ—¶ä¸ç”¨
       /*if(head->api_version == PNR_API_VERSION_V3)
         {
             pnr_uidhash_get(index,0,g_imusr_array.usrnode[index].user_toxid,
@@ -9450,13 +9450,13 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_user_recovery_deal
-  Description: IMÄ£¿éPreRegisterÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—PreRegisteræ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9479,7 +9479,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     memset(&src_account,0,sizeof(src_account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
@@ -9489,7 +9489,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Pubkey",src_account.user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     }
 
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_RECOVERY_RETCODE_BAD_RID;
@@ -9501,15 +9501,15 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_account_dbget_byuserkey(&src_account);
             if(src_account.active == FALSE)
             {
-                //¸ÃÓÃ»§Î´×¢²á¼¤»î¹ı 
-                //ÁÙÊ±ÓÃ»§Ö±½Ó·µ»Ø
+                //è¯¥ç”¨æˆ·æœªæ³¨å†Œæ¿€æ´»è¿‡ 
+                //ä¸´æ—¶ç”¨æˆ·ç›´æ¥è¿”å›
                 if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
                 {
                     ret_code = PNR_RECOVERY_RETCODE_TEMP_USER;
                 }
                 else
                 {
-                    //²é¿´µ±Ç°¶şÎ¬ÂëÕË»§ÊÇ·ñÒÑ¾­±»Õ¼ÓÃ
+                    //æŸ¥çœ‹å½“å‰äºŒç»´ç è´¦æˆ·æ˜¯å¦å·²ç»è¢«å ç”¨
                     pnr_account_get_byusn(&account);
                     if(account.active == FALSE)
                     {
@@ -9521,7 +9521,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     }
                 }
             }
-            else//¸ÃÓÃ»§pubkeyÒÑ¾­×¢²á¹ı
+            else//è¯¥ç”¨æˆ·pubkeyå·²ç»æ³¨å†Œè¿‡
             {
                 ret_code = PNR_RECOVERY_RETCODE_USER_ACTIVED;
                 if(strcmp(account.user_sn,src_account.user_sn) != OK)
@@ -9546,9 +9546,9 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+            //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             pnr_account_get_byusn(&account);
-            //·ÇÁÙÊ±ÕË»§Ö»ÓĞÒÑ¼¤»îµÄÕË»§²Å¿ÉÒÔÕÒ»Ø
+            //éä¸´æ—¶è´¦æˆ·åªæœ‰å·²æ¿€æ´»çš„è´¦æˆ·æ‰å¯ä»¥æ‰¾å›
             if(account.type < PNR_USER_TYPE_ADMIN || account.type >= PNR_USER_TYPE_BUTT)
             {
                 ret_code = PNR_RECOVERY_RETCODE_OTHERS_ERROR;
@@ -9564,7 +9564,7 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9606,13 +9606,13 @@ int im_user_recovery_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_user_recoveryidentify_deal
-  Description: IMÄ£¿éRecovery IdentifyÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—Recovery Identifyæ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9638,7 +9638,7 @@ int im_user_recoveryidentify_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);
@@ -9646,25 +9646,25 @@ int im_user_recoveryidentify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"LoginKey",account.loginkey,PNR_LOGINKEY_MAXLEN);
 
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_RECOVERYIDENTIFY_RETCODE_BADRID;
     }
     else
     {
-        //ÁÙÊ±ÓÃ»§,²»Ö§³ÖÕÒ»Ø
+        //ä¸´æ—¶ç”¨æˆ·,ä¸æ”¯æŒæ‰¾å›
         if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
         {
             ret_code = PNR_RECOVERYIDENTIFY_RETCODE_NO_ACTIVE;
         }
         else
         {
-            //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+            //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             memset(&src_account,0,sizeof(src_account));
             strcpy(src_account.user_sn,account.user_sn);
             pnr_account_get_byusn(&src_account);
-            //·ÇÁÙÊ±ÕË»§Ö»ÓĞÒÑ¼¤»îµÄÕË»§²Å¿ÉÒÔÕÒ»Ø
+            //éä¸´æ—¶è´¦æˆ·åªæœ‰å·²æ¿€æ´»çš„è´¦æˆ·æ‰å¯ä»¥æ‰¾å›
             if(src_account.type < PNR_USER_TYPE_ADMIN || src_account.type >= PNR_USER_TYPE_BUTT)
             {
                 ret_code = PNR_RECOVERYIDENTIFY_RETCODE_NO_ACTIVE;
@@ -9688,7 +9688,7 @@ int im_user_recoveryidentify_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9786,13 +9786,13 @@ int pnr_readmsg_predeal(int index,char* tmp_msg,char* msg)
 }
 /**********************************************************************************
   Function:      im_readmsg_cmd_deal
-  Description: IMÄ£¿éÒÑÔÄÍ¨ÖªÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—å·²é˜…é€šçŸ¥æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9822,13 +9822,13 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     head->forward = TRUE;
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ReadMsgs",tmp_msgbuff,IM_MSG_MAXLEN);
     msg->msgtype = PNR_IM_MSGTYPE_SYSTEM;
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
         || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
     {
@@ -9849,11 +9849,11 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(msg->fromuser_toxid);
         if(index == 0)
         {
-            //Çå³ı¶ÔÓ¦¼ÇÂ¼
+            //æ¸…é™¤å¯¹åº”è®°å½•
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
@@ -9883,7 +9883,7 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON *ret_root = cJSON_CreateObject();
     cJSON *ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -9928,13 +9928,13 @@ ERR:
 }
 /**********************************************************************************
   Function:      im_userinfoupdate_cmd_deal
-  Description: IMÄ£¿é¸öÈËĞÅÏ¢ĞŞ¸ÄÍ¨ÖªÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—ä¸ªäººä¿¡æ¯ä¿®æ”¹é€šçŸ¥æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -9965,12 +9965,12 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     head->forward = TRUE;
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(msg,0,sizeof(struct im_friend_msgstruct));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",msg->friend_nickname,PNR_USERNAME_MAXLEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",msg->fromuser_toxid);
@@ -9978,7 +9978,7 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //¸ù¾İtoxid»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+        //æ ¹æ®toxidè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
         memset(&account,0,sizeof(account));
         strcpy(account.toxid,msg->fromuser_toxid);
         pnr_account_dbget_byuserid(&account);
@@ -9990,7 +9990,7 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            //Èç¹ûêÇ³ÆÓĞĞŞ¸Ä
+            //å¦‚æœæ˜µç§°æœ‰ä¿®æ”¹
             if(strcmp(msg->friend_nickname,account.nickname) != 0)
             {
                 memset(account.nickname,0,PNR_USERNAME_MAXLEN);
@@ -10001,9 +10001,9 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             if(changeflag == TRUE)
             {
-                //¸üĞÂ×Ô¼ºµÄÊı¾İ¿â
+                //æ›´æ–°è‡ªå·±çš„æ•°æ®åº“
                 pnr_account_dbupdate_bytoxid(&account);
-                //±éÀú×Ô¼ºµÄºÃÓÑ,ÍÆËÍ
+                //éå†è‡ªå·±çš„å¥½å‹,æ¨é€
                 for(fr_id = 0; fr_id < PNR_IMUSER_FRIENDS_MAXNUM;fr_id++)
                 {
                     if(g_imusr_array.usrnode[index].friends[fr_id].exsit_flag == TRUE)
@@ -10020,7 +10020,7 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         {
                             if(fr_index)
                             {
-                                //Èç¹ûÊÇ±¾µØµÄ£¬Ö±½ÓĞŞ¸Ä¼´¿É
+                                //å¦‚æœæ˜¯æœ¬åœ°çš„ï¼Œç›´æ¥ä¿®æ”¹å³å¯
                                 im_update_friend_nickname(msg->touser_toxid,msg->fromuser_toxid,msg->friend_nickname);
                                 im_pushmsg_callback(fr_index,PNR_IM_CMDTYPE_USERINFOPUSH,TRUE,head->api_version,(void *)msg);
                             }
@@ -10035,7 +10035,7 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON *ret_root = cJSON_CreateObject();
     cJSON *ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -10081,13 +10081,13 @@ ERR:
 
 /**********************************************************************************
   Function:      im_pulluserlist_cmd_deal
-  Description: IMÄ£¿éÀ­È¡µ±Ç°ÓÃ»§ÁĞ±í
+  Description: IMæ¨¡å—æ‹‰å–å½“å‰ç”¨æˆ·åˆ—è¡¨
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -10120,11 +10120,11 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserType",need_type,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserNum",need_num,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserStartSN",start_usn,PNR_USN_MAXLEN);
-    //use_type¼ì²é
+    //use_typeæ£€æŸ¥
     if((need_type != 0) && ((need_type < PNR_USER_TYPE_ADMIN )||( need_type >= PNR_USER_TYPE_BUTT)))
     {
         ret_code = PNR_PULLACCOUNTLIST_RETCODE_BAD_USERTYPE;
@@ -10137,7 +10137,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_MSGSEND_RETCODE_OK;
     }   
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON *ret_root = cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -10220,11 +10220,11 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         cJSON_AddStringToObject(pJsonsub,"UserId","");
         cJSON_AddNumberToObject(pJsonsub,"LastLoginTime",0); 
         cJSON_AddStringToObject(pJsonsub,"Qrcode",g_account_array.temp_user_qrcode);
-        //Ìí¼ÓÊµ¼ÊÓÃ»§
+        //æ·»åŠ å®é™…ç”¨æˆ·
         if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {               
                 memset(&tmp_account,0,sizeof(tmp_account));
@@ -10249,7 +10249,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     strncpy(tmp_account.nickname,dbResult[offset+8],PNR_USERNAME_MAXLEN);
                     strncpy(tmp_account.loginkey,dbResult[offset+9],PNR_LOGINKEY_MAXLEN);
                     strncpy(tmp_account.toxid,dbResult[offset+10],TOX_ID_STR_LEN);
-                    //infoºÍextinfo Ìø¹ı
+                    //infoå’Œextinfo è·³è¿‡
                     strncpy(tmp_account.user_pubkey,dbResult[offset+13],PNR_USER_PUBKEY_MAXLEN);
                 }
                 else
@@ -10319,22 +10319,22 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_get_relationship_status_cmd_deal
- ¹¦ÄÜÃèÊö  : ²éÑ¯ºÃÓÑ¹ØÏµ×´Ì¬
- ÊäÈë²ÎÊı  : cJSON *params                      
+ å‡½ æ•° å  : im_get_relationship_status_cmd_deal
+ åŠŸèƒ½æè¿°  : æŸ¥è¯¢å¥½å‹å…³ç³»çŠ¶æ€
+ è¾“å…¥å‚æ•°  : cJSON *params                      
              char *retmsg                       
              int *retmsg_len                    
              int *plws_index                    
              struct imcmd_msghead_struct *head  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ3ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ3æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_get_relationship_status_cmd_deal(cJSON *params, char *retmsg, int *retmsg_len,
@@ -10400,13 +10400,13 @@ ERR:
 }
 /**********************************************************************************
   Function:      im_userlogin_v4_deal
-  Description: IMÄ£¿éÓÃ»§µÇÂ½ÃüÁî½âÎö´¦Àí
+  Description: IMæ¨¡å—ç”¨æˆ·ç™»é™†å‘½ä»¤è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -10434,14 +10434,14 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,PNR_USN_MAXLEN);    
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"DataFileVersion",data_version,PNR_IDCODE_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",sign,PNR_AES_CBC_KEYSIZE);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",account.nickname,PNR_USERNAME_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_LOGIN_RETCODE_BAD_RID;
@@ -10458,7 +10458,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //¸ù¾İtoxid»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+        //æ ¹æ®toxidè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
         memset(&src_account,0,sizeof(src_account));
         strcpy(src_account.toxid,account.toxid);
         pnr_account_dbget_byuserid(&src_account);
@@ -10471,26 +10471,26 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             ret_code = PNR_LOGIN_RETCODE_NEED_IDENTIFY;
         }
-        //±È½Ïsn
+        //æ¯”è¾ƒsn
         else if(strncasecmp(account.user_sn,src_account.user_sn,PNR_USN_MAXLEN) != OK)
         {
             ret_code = PNR_LOGIN_RETCODE_BAD_UID;
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v4_deal:input usn(%s) real usn(%s)",account.user_sn,src_account.user_sn);
         }
-#if 0 //ĞÂ°æ±¾²»ÓÃloginkeyÑéÖ¤¸ÄÎªpubkey
+#if 0 //æ–°ç‰ˆæœ¬ä¸ç”¨loginkeyéªŒè¯æ”¹ä¸ºpubkey
         else if(strncasecmp(account.loginkey,src_account.loginkey,PNR_LOGINKEY_MAXLEN) != OK)
         {
             ret_code = PNR_LOGIN_RETCODE_BAD_LOGINKEY;
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v2_deal:input loginkey(%s) real loginkey(%s)",account.loginkey,src_account.loginkey);
         }
 #else
-        //pubkeyÑéÖ¤
+        //pubkeyéªŒè¯
         else if(head->debug_flag != TRUE && pnr_sign_check(sign,strlen(sign),src_account.user_pubkey,TRUE) != OK)
         {
             ret_code = PNR_LOGIN_RETCODE_BAD_LOGINKEY;
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v4_deal:input sign(%s) usrkey(%s) check failed",sign,src_account.user_pubkey);
         }
-        //¼ì²é²¢¸üĞÂnickname
+        //æ£€æŸ¥å¹¶æ›´æ–°nickname
         else if((strlen(account.nickname) > 0) && (strncasecmp(account.nickname,src_account.nickname,PNR_USERNAME_MAXLEN) != OK))
         {
             if(pnr_account_dbupdate_dbinfo_bytoxid(&account) != OK)
@@ -10501,7 +10501,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
 #endif        
         else
         {
-            //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+            //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
             index = get_indexbytoxid(account.toxid);
             if(index)
             {
@@ -10531,7 +10531,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             *plws_index = index;
                             ret_code = PNR_LOGIN_RETCODE_OK;
                             DEBUG_PRINT(DEBUG_LEVEL_INFO,"renew user(%s)",g_imusr_array.usrnode[index].user_toxid);
-                            //Èç¹ûÊÇĞÂÓÃ»§¼¤»î¶ÔÓ¦Êı¾İ¿â¾ä±ú
+                            //å¦‚æœæ˜¯æ–°ç”¨æˆ·æ¿€æ´»å¯¹åº”æ•°æ®åº“å¥æŸ„
                             if(g_msglogdb_handle[index] == NULL)
                             {
                                  if (sql_msglogdb_init(index) != OK) 
@@ -10563,10 +10563,10 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //³É¹¦µÇÂ½
+    //æˆåŠŸç™»é™†
     if(ret_code == PNR_USER_LOGIN_OK)
     {
-        //¼ì²âÊÇ·ñÒÑ¾­ÓĞÓÃ»§µÇÂ½ÁË£¬Èç¹ûÊÇ£¬ĞèÒªÏòÖ®Ç°ÓÃ»§ÍÆËÍÏûÏ¢
+        //æ£€æµ‹æ˜¯å¦å·²ç»æœ‰ç”¨æˆ·ç™»é™†äº†ï¼Œå¦‚æœæ˜¯ï¼Œéœ€è¦å‘ä¹‹å‰ç”¨æˆ·æ¨é€æ¶ˆæ¯
         if(g_imusr_array.usrnode[index].user_onlinestatus == USER_ONLINE_STATUS_ONLINE)
         {
             pnr_relogin_push(index,head->iftox,head->friendnum,head->pss);    
@@ -10577,7 +10577,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) online", index, 
             g_imusr_array.usrnode[index].user_toxid);
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -10627,13 +10627,13 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_user_register_v4_deal
-  Description: IMÄ£¿éRegisterÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—Registeræ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -10659,14 +10659,14 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserSn",account.user_sn,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",account.nickname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",sign,PNR_AES_CBC_KEYSIZE);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Pubkey",account.user_pubkey,PNR_USER_PUBKEY_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_REGISTER_RETCODE_BADRID;
@@ -10683,7 +10683,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //ÁÙÊ±ÓÃ»§
+        //ä¸´æ—¶ç”¨æˆ·
         if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
         {
             temp_user_flag = TRUE;
@@ -10698,7 +10698,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             memset(&src_account,0,sizeof(src_account));
             strcpy(src_account.user_sn,account.user_sn);
-            //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+            //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             pnr_account_get_byusn(&src_account);
             if(src_account.type < PNR_USER_TYPE_ADMIN || src_account.type >= PNR_USER_TYPE_BUTT)
             {
@@ -10709,8 +10709,8 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 ret_code = PNR_REGISTER_RETCODE_USED;
             }
-#if 0//ÔİÊ±ÆÁ±Î
-            //±È¶ÔÊÚÈ¨Âë
+#if 0//æš‚æ—¶å±è”½
+            //æ¯”å¯¹æˆæƒç 
             else if(strcmp(src_account.identifycode,account.identifycode) != OK)
             {
                 ret_code = PNR_REGISTER_RETCODE_BAD_IDCODE;
@@ -10721,7 +10721,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         if(ret_code == PNR_REGISTER_RETCODE_OK)
         {
-           //Èç¹ûµ±Ç°»¹ÓĞ¿É·ÖÅäĞÂÓÃ»§
+           //å¦‚æœå½“å‰è¿˜æœ‰å¯åˆ†é…æ–°ç”¨æˆ·
            if(g_imusr_array.cur_user_num < g_imusr_array.max_user_num)
            {
                for(index=1;index<=g_imusr_array.max_user_num;index++)
@@ -10731,11 +10731,11 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                        break;
                    }
                }
-               //ÑéÖ¤pubkey
+               //éªŒè¯pubkey
                if(index <= g_imusr_array.max_user_num)
                {
                    pthread_mutex_lock(&g_pnruser_lock[index]);
-                   //Æô¶¯im server½ø³Ì
+                   //å¯åŠ¨im serverè¿›ç¨‹
                    if (pthread_create(&g_imusr_array.usrnode[index].tox_tid, NULL, imstance_daemon, &index) != 0) 
                    {
                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"create tox_instance failed");
@@ -10772,12 +10772,12 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                            {
                                pnr_account_dbupdate(&account);
                            }
-                           //×¢²á¼¤»îµÄÊ±ºò¼ÇÂ¼Ò»ÏÂ
+                           //æ³¨å†Œæ¿€æ´»çš„æ—¶å€™è®°å½•ä¸€ä¸‹
                            //pnr_logcache_dbinsert(PNR_IM_CMDTYPE_REGISTER,account.toxid,account.toxid,PNR_CMDTYPE_MSG_REGISTER##account.nickname,PNR_CMDTYPE_EXT_SUCCESS);
                            strcpy(g_imusr_array.usrnode[index].user_nickname,account.nickname);
                            strcpy(g_imusr_array.usrnode[index].user_pubkey,account.user_pubkey);
                            g_imusr_array.cur_user_num++;
-                           //ĞÂÓÃ»§×¢²á¼¤»î¶ÔÓ¦Êı¾İ¿â¾ä±ú
+                           //æ–°ç”¨æˆ·æ³¨å†Œæ¿€æ´»å¯¹åº”æ•°æ®åº“å¥æŸ„
                            if(g_msglogdb_handle[index] == NULL)
                            {
                        			if (sql_msglogdb_init(index) != OK) 
@@ -10812,12 +10812,12 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
            }
         }        
     }
-    //³É¹¦×¢²á
+    //æˆåŠŸæ³¨å†Œ
     if(ret_code == PNR_USER_LOGIN_OK)
     {
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
-        //×Ô¶¯Ìí¼ÓadminÓÃ»§ÎªºÃÓÑ
+        //è‡ªåŠ¨æ·»åŠ adminç”¨æˆ·ä¸ºå¥½å‹
         if(strcmp(account.user_sn,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].user_sn) != OK)
         {
             if(g_account_array.admin_user_index == 0)
@@ -10840,7 +10840,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
             g_imusr_array.usrnode[index].user_toxid);
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -10861,7 +10861,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "UserSn", cJSON_CreateString(account.user_sn));
     if(ret_code == PNR_REGISTER_RETCODE_OK)
     {
-        //ÔİÊ±²»ÓÃ
+        //æš‚æ—¶ä¸ç”¨
       /*if(head->api_version == PNR_API_VERSION_V3)
         {
             pnr_uidhash_get(index,0,g_imusr_array.usrnode[index].user_toxid,
@@ -10891,13 +10891,13 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_pullfriend_cmd_deal_v4
-  Description: IMÄ£¿éÀ­È¡ºÃÓÑĞÅÏ¢ÏûÏ¢´¦ÀíV4°æ±¾
+  Description: IMæ¨¡å—æ‹‰å–å¥½å‹ä¿¡æ¯æ¶ˆæ¯å¤„ç†V4ç‰ˆæœ¬
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -10918,10 +10918,10 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
-    //useid ´¦Àí
+    //useid å¤„ç†
     if(strlen(user_toxid) != TOX_ID_STR_LEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
@@ -10929,7 +10929,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //²éÑ¯ÊÇ·ñÒÑ¾­´æÔÚµÄÊµÀı
+        //æŸ¥è¯¢æ˜¯å¦å·²ç»å­˜åœ¨çš„å®ä¾‹
         index = get_indexbytoxid(user_toxid);
         if(index == 0)
         {
@@ -10946,7 +10946,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     if(ret_root == NULL)
     {
@@ -10987,7 +10987,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
                     return ERROR;
                 }
            		cJSON_AddItemToArray(pJsonArry,pJsonsub); 
-#if 0//ÔİÊ±²»ÓÃ
+#if 0//æš‚æ—¶ä¸ç”¨
         		cJSON_AddStringToObject(pJsonsub,"Index", g_imusr_array.usrnode[index].friends[i].u_hashstr);
 #endif
                 cJSON_AddStringToObject(pJsonsub,"Name", g_imusr_array.usrnode[index].friends[i].user_nickname);
@@ -11054,13 +11054,13 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_reset_routername_deal
-  Description: ÖØÖÃÉè±¸êÇ³Æ
+  Description: é‡ç½®è®¾å¤‡æ˜µç§°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11083,18 +11083,18 @@ int im_reset_routername_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Name",new_name,PNR_USERNAME_MAXLEN);
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strcmp(router_id,g_daemon_tox.user_toxid) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_reset_routername_deal bad rid:input(%s) but real(%s)",
             router_id,g_daemon_tox.user_toxid);
         ret_code = PNR_RESETDEVNAME_RETCODE_BADRID;
     }
-    //ÕâÀï¿ÉÄÜ»¹Ã»ÓĞ³õÊ¼»¯adminÓÃ»§
+    //è¿™é‡Œå¯èƒ½è¿˜æ²¡æœ‰åˆå§‹åŒ–adminç”¨æˆ·
 #if 0
     else if((g_account_array.account[PNR_ADMINUSER_PSN_INDEX].active == TRUE) 
             &&(strcmp(user_id,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK))
@@ -11117,7 +11117,7 @@ int im_reset_routername_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_userdev_mapping_dbupdate_bydevid(g_daemon_tox.user_toxid,new_name);
             memset(g_dev_nickname,0,PNR_USERNAME_MAXLEN);
             strcpy(g_dev_nickname,new_name);
-            //±éÀú¸üĞÂ±¾µØºÃÓÑ¹ØÏµ»º´æÖĞËùÓĞ±¾µØÓÃ»§µÄÉè±¸Ãû³Æ
+            //éå†æ›´æ–°æœ¬åœ°å¥½å‹å…³ç³»ç¼“å­˜ä¸­æ‰€æœ‰æœ¬åœ°ç”¨æˆ·çš„è®¾å¤‡åç§°
             for(i = 0; i< PNR_IMUSER_MAXNUM;i++)
             {
                 if(g_imusr_array.usrnode[i].init_flag == TRUE)
@@ -11132,11 +11132,11 @@ int im_reset_routername_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     }
                 }
             }
-            //±éÀú·¢ËÍÍ¨ÖªÆäËûÂ·ÓÉÆ÷ÉÏÏà¹ØÓÃ»§
+            //éå†å‘é€é€šçŸ¥å…¶ä»–è·¯ç”±å™¨ä¸Šç›¸å…³ç”¨æˆ·
         }
         ret_code = PNR_RESETLOGINKEY_RETCODE_OK;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -11169,13 +11169,13 @@ int im_reset_routername_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_usermap_analyze
-  Description: ÈºÓÃ»§ºÍÈºÓÃ»§ÃÜÔ¿Ó³Éä½âÎö
+  Description: ç¾¤ç”¨æˆ·å’Œç¾¤ç”¨æˆ·å¯†é’¥æ˜ å°„è§£æ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11281,13 +11281,13 @@ int im_group_usermap_analyze(char* fidlist,char* fkeylist,struct gpuser_maplist*
 }
 /**********************************************************************************
   Function:      im_group_fileinfo_analyze
-  Description: ÈºÏûÏ¢¼ÇÂ¼ÎÄ¼şĞÅÏ¢½âÎö
+  Description: ç¾¤æ¶ˆæ¯è®°å½•æ–‡ä»¶ä¿¡æ¯è§£æ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11306,7 +11306,7 @@ int im_group_fileinfo_analyze(char* fileinfo,struct group_fileinfo_struct* pfinf
         return ERROR;
     }
     strncpy(tmp_fileinfo,fileinfo,PNR_GROUP_EXTINFO_MAXLEN);
-    //fileinfo¸ñÊ½Îª  fid:fsize:fmd5:finfo   ×îºóµÄfinfo¿ÉÄÜÓĞ£¬¿ÉÄÜÃ»ÓĞ
+    //fileinfoæ ¼å¼ä¸º  fid:fsize:fmd5:finfo   æœ€åçš„finfoå¯èƒ½æœ‰ï¼Œå¯èƒ½æ²¡æœ‰
     tmp = tmp_fileinfo;
     info_end = tmp_fileinfo+strlen(tmp_fileinfo);
     tmp_end=strchr(tmp,':');
@@ -11349,13 +11349,13 @@ int im_group_fileinfo_analyze(char* fileinfo,struct group_fileinfo_struct* pfinf
 
 /**********************************************************************************
   Function:      pnr_group_create
-  Description: ´´½¨Èº×é³õÊ¼»¯
+  Description: åˆ›å»ºç¾¤ç»„åˆå§‹åŒ–
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11390,7 +11390,7 @@ int pnr_group_create(int gid,int ownerid,int verify,char* groupname,char* owner)
     g_grouplist[gid].verify = verify;
     g_grouplist[gid].init_flag = TRUE;
     snprintf(g_grouplist[gid].group_filepath,PNR_FILEPATH_MAXLEN,"%s%sg%d",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid);
-    //²åÈëÊı¾İ¿â
+    //æ’å…¥æ•°æ®åº“
     pnr_group_dbinsert(gid,ownerid,verify,owner,groupname,g_grouplist[gid].group_hid);
     pthread_mutex_unlock(&g_grouplock[gid]);
     return OK;
@@ -11398,13 +11398,13 @@ int pnr_group_create(int gid,int ownerid,int verify,char* groupname,char* owner)
 
 /**********************************************************************************
   Function:      pnr_group_adduser
-  Description: Ìí¼ÓÈº×é³ÉÔ±
+  Description: æ·»åŠ ç¾¤ç»„æˆå‘˜
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11438,7 +11438,7 @@ int pnr_group_adduser(int gid,int user_type,char* user_toxid,char* userkey)
     }
     for(u_id=1;u_id <= PNR_GROUP_USER_MAXNUM;u_id++)
     {
-        //ÕÒµ½Ò»¸ö¿ÕµÄ
+        //æ‰¾åˆ°ä¸€ä¸ªç©ºçš„
         if(g_grouplist[gid].user[u_id].userindex==0)
         {
             break;
@@ -11482,13 +11482,13 @@ int pnr_group_adduser(int gid,int user_type,char* user_toxid,char* userkey)
 }
 /**********************************************************************************
   Function:      pnr_group_deluser
-  Description: É¾³ıÈº×é³ÉÔ±
+  Description: åˆ é™¤ç¾¤ç»„æˆå‘˜
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11517,9 +11517,9 @@ int pnr_group_deluser(int gid,char* user_toxid)
         pthread_mutex_unlock(&g_grouplock[gid]);
         return ERROR;
     }
-    //É¾³ıÊı¾İ¿â¼ÇÂ¼
+    //åˆ é™¤æ•°æ®åº“è®°å½•
     pnr_groupuser_dbdelete_byuid(gid,puser->userindex);
-    //É¾³ıÄÚ´æ¼ÇÂ¼
+    //åˆ é™¤å†…å­˜è®°å½•
     memset(puser,0,sizeof(struct group_user));
     g_grouplist[gid].user_num--;
     pthread_mutex_unlock(&g_grouplock[gid]);
@@ -11528,13 +11528,13 @@ int pnr_group_deluser(int gid,char* user_toxid)
 }
 /**********************************************************************************
   Function:      pnr_group_dissolve
-  Description: Èº½âÉ¢
+  Description: ç¾¤è§£æ•£
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11550,19 +11550,19 @@ int pnr_group_dissolve(int gid)
         return ERROR;
     }
     pthread_mutex_lock(&g_grouplock[gid]);
-    //É¾³ıÊı¾İ¿âÓÃ»§¼ÇÂ¼
+    //åˆ é™¤æ•°æ®åº“ç”¨æˆ·è®°å½•
     pnr_groupuser_dbdelete_byuid(gid,0);
-    //É¾³ıÊı¾İ¿âÏûÏ¢¼ÇÂ¼
+    //åˆ é™¤æ•°æ®åº“æ¶ˆæ¯è®°å½•
     pnr_groupmsg_dbdelete_bymsgid(gid,0);
-    //É¾³ıÎÄ¼ş¼ÇÂ¼
+    //åˆ é™¤æ–‡ä»¶è®°å½•
     if(strlen(g_grouplist[gid].group_filepath) > strlen(DAEMON_PNR_USERDATA_DIR))
     {
         snprintf(cmd,CMD_MAXLEN,"rm -f %s/*",g_grouplist[gid].group_filepath);
         system(cmd);
     }
-    //É¾³ıÄÚ´æ¼ÇÂ¼
+    //åˆ é™¤å†…å­˜è®°å½•
     memset(&g_grouplist[gid],0,sizeof(struct group_info));    
-    //É¾³ıÈº¼ÇÂ¼
+    //åˆ é™¤ç¾¤è®°å½•
     pnr_group_dbdelete_bygid(gid);
     g_grouplist[gid].init_flag = FALSE;
     g_groupnum--;
@@ -11572,13 +11572,13 @@ int pnr_group_dissolve(int gid)
 }
 /**********************************************************************************
   Function:      im_group_create_deal
-  Description: IMÄ£¿é´´½¨Èº×éÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—åˆ›å»ºç¾¤ç»„æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11612,14 +11612,14 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(puserlist,0,sizeof(struct gpuser_maplist));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GroupName",groupname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",userkey,PNR_GROUP_USERKEY_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"VerifyMode",verify, 0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",fidlist,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendKey",fkeylist,PNR_GROUP_EXTINFO_MAXLEN);
-    //uid¼ì²é
+    //uidæ£€æŸ¥
     uindex = get_indexbytoxid(user_toxid);
     if(uindex == 0)
     {
@@ -11653,7 +11653,7 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_create_deal:now group over");
             ret_code = PNR_CREATEGROUP_RETCODE_GROUPOVER;
         }
-        else //ĞÂ½¨Ò»¸öÈº
+        else //æ–°å»ºä¸€ä¸ªç¾¤
         {
             for(i = 0;i<PNR_GROUP_MAXNUM;i++)
             {
@@ -11671,15 +11671,15 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"new group(%d)",gid);
-                //Éú³ÉÒ»¸öÄ£ÄâÈº×éÓÃ»§
+                //ç”Ÿæˆä¸€ä¸ªæ¨¡æ‹Ÿç¾¤ç»„ç”¨æˆ·
                 if(strlen(groupname) == 0)
                 {
                     snprintf(tmpname,PNR_USERNAME_MAXLEN,"group%d_%d",gid,(int)time(NULL));
                     pnr_base64_encode(tmpname,strlen(tmpname),groupname,&tmplen);
                 }
-                //³õÊ¼»¯Èº×é
+                //åˆå§‹åŒ–ç¾¤ç»„
                 pnr_group_create(gid,uindex,verify,groupname,user_toxid);
-                //Ìí¼ÓÈºÖ÷³ÉÔ±
+                //æ·»åŠ ç¾¤ä¸»æˆå‘˜
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"group(%d) add owner",gid);
                 if(pnr_group_adduser(gid,GROUP_USER_OWNER,user_toxid,userkey) != OK)
                 {
@@ -11690,9 +11690,9 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     if(g_group_invitee_needack == TRUE)
                     {
-                        //ÔİÊ±²»ÓÃÈ·ÈÏ
+                        //æš‚æ—¶ä¸ç”¨ç¡®è®¤
                     }
-                    else//Èç¹û²»ĞèÒªÓÃ»§Í¬Òâ£¬Ö±½ÓÌí¼Ó
+                    else//å¦‚æœä¸éœ€è¦ç”¨æˆ·åŒæ„ï¼Œç›´æ¥æ·»åŠ 
                     {
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"group(%d) add user",gid);
                         memset(&group_sysmsg,0,sizeof(group_sysmsg));
@@ -11741,7 +11741,7 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
         pthread_mutex_unlock(&g_grouptoplock);
     }
     free(puserlist);
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -11779,13 +11779,13 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_invite_deal
-  Description: IMÄ£¿éÑûÇëºÃÓÑ¼ÓÈëÈº×éÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—é‚€è¯·å¥½å‹åŠ å…¥ç¾¤ç»„æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11813,7 +11813,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     puserlist = (struct gpuser_maplist*)malloc(sizeof(struct gpuser_maplist));
     if(puserlist == NULL)
     {
@@ -11824,7 +11824,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Gid",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",fidlist,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendKey",fkeylist,PNR_GROUP_EXTINFO_MAXLEN);
-    //uid¼ì²é
+    //uidæ£€æŸ¥
     userindex = get_indexbytoxid(user_toxid);
     gid = get_gidbygrouphid(group_hid);
     pinviter = get_guserbyuindex(gid,userindex);
@@ -11854,7 +11854,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = userindex;
         }
-        //Èç¹ûĞèÒª¹ÜÀíÔ±ÉóÅú,²¢ÇÒ×Ô¼º²»ÊÇ¹ÜÀíÔ±
+        //å¦‚æœéœ€è¦ç®¡ç†å‘˜å®¡æ‰¹,å¹¶ä¸”è‡ªå·±ä¸æ˜¯ç®¡ç†å‘˜
         if(g_grouplist[gid].verify == TRUE && pinviter->type == GROUP_USER_NORMAL)
         {
             pthread_mutex_lock(&g_grouplock[gid]);
@@ -11864,7 +11864,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
             strcpy(invite_info.group_name,g_grouplist[gid].group_name);
             strcpy(invite_info.aduitor,g_grouplist[gid].owner);
             strcpy(invite_info.groud_hid,g_grouplist[gid].group_hid);
-            //Ïò¹ÜÀíÔ±ÍÆËÍ´ıÉóºËÏûÏ¢
+            //å‘ç®¡ç†å‘˜æ¨é€å¾…å®¡æ ¸æ¶ˆæ¯
             for(i=0;i<puserlist->usernum;i++)
             {
                 memset(&tmp_account,0,sizeof(tmp_account));
@@ -11885,7 +11885,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             pthread_mutex_unlock(&g_grouplock[gid]);
         }
-        else//·ñÔòÖ±½ÓÌí¼ÓÈëÈºÁË
+        else//å¦åˆ™ç›´æ¥æ·»åŠ å…¥ç¾¤äº†
         {
             memset(&group_sysmsg,0,sizeof(group_sysmsg));
             group_sysmsg.gid= gid;
@@ -11928,7 +11928,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -11965,13 +11965,13 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_invitedeal_deal
-  Description: IMÄ£¿éÑûÇëºÃÓÑ¼ÓÈëÈº×éÏìÓ¦ÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—é‚€è¯·å¥½å‹åŠ å…¥ç¾¤ç»„å“åº”æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -11994,7 +11994,7 @@ int im_group_invitedeal_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Userid",user_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"SelfId",user_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
@@ -12002,12 +12002,12 @@ int im_group_invitedeal_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Result",result,0);
    
     {
-        //´¦ÀíÔİÊ±²»ÊµÏÖ
+        //å¤„ç†æš‚æ—¶ä¸å®ç°
         if(result != OK)
         {}
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -12042,13 +12042,13 @@ int im_group_invitedeal_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_verify_deal
-  Description: IMÄ£¿éÉóºËºÃÓÑ¼ÓÈëÈº×éÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—å®¡æ ¸å¥½å‹åŠ å…¥ç¾¤ç»„æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12071,7 +12071,7 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(&invite_info,0,sizeof(invite_info));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",invite_info.inviter,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",invite_info.user,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Aduit",invite_info.aduitor,TOX_ID_STR_LEN);
@@ -12138,7 +12138,7 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_verify_deal:fail to get user(%s)",invite_info.user);
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -12175,13 +12175,13 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_quit_deal
-  Description: IMÄ£¿éÍË³öÈº×éÏûÏ¢½âÎö´¦Àí
+  Description: IMæ¨¡å—é€€å‡ºç¾¤ç»„æ¶ˆæ¯è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12204,12 +12204,12 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GroupName",gname,PNR_USERNAME_MAXLEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     gid = get_gidbygrouphid(group_hid);
     if(uindex == 0 || gid < 0)
@@ -12228,7 +12228,7 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
         strcpy(group_sysmsg.group_hid,group_hid);
         group_sysmsg.from_uid = uindex;
         strcpy(group_sysmsg.from_user,userid);
-        //Èç¹ûÊÇÈºÖ÷ÍË³ö£¬¾ÍÖ±½Ó½âÉ¢Èº
+        //å¦‚æœæ˜¯ç¾¤ä¸»é€€å‡ºï¼Œå°±ç›´æ¥è§£æ•£ç¾¤
         if(uindex == g_grouplist[gid].ownerid)
         {
             group_sysmsg.type = GROUP_SYSMSG_DISGROUP;
@@ -12265,7 +12265,7 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_DELUSER,uindex,uindex,g_grouplist[gid].group_name,userid,userid,"group self quit");
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -12302,13 +12302,13 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_pulllist_deal
-  Description: IMÄ£¿éÀ­È¡×Ô¼ºµÄÈº×éÁĞ±í½âÎö´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–è‡ªå·±çš„ç¾¤ç»„åˆ—è¡¨è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12335,13 +12335,13 @@ int im_group_pulllist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",rid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"TargetNum",num,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,TOX_ID_STR_LEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     if(uindex < 0)
     {
@@ -12400,7 +12400,7 @@ int im_group_pulllist_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {
                 pJsonsub = cJSON_CreateObject();
@@ -12459,13 +12459,13 @@ int im_group_pulllist_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_pulluser_deal
-  Description: IMÄ£¿éÀ­È¡×Ô¼ºµÄÈº×éÓÃ»§ÁĞ±í½âÎö´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–è‡ªå·±çš„ç¾¤ç»„ç”¨æˆ·åˆ—è¡¨è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12494,14 +12494,14 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",rid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"TargetNum",num,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,TOX_ID_STR_LEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     gid = get_gidbygrouphid(group_hid);
     if(uindex < 0 || gid < 0)
@@ -12562,7 +12562,7 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {
                 pJsonsub = cJSON_CreateObject();
@@ -12599,7 +12599,7 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
-                    //ÕâÀïÈç¹ûÈºêÇ³ÆÀïÃæÃ»ÓĞÉèÖÃ£¬ÔÙ¼ì²âÊÇ²»ÊÇ×Ô¼ºµÄºÃÓÑ£¬Èç¹ûÊÇ×Ô¼ººÃÓÑ²¢ÇÒºÃÓÑêÇ³ÆÀïÃæÉèÖÃÁË£¬·µ»ØºÃÓÑêÇ³Æ
+                    //è¿™é‡Œå¦‚æœç¾¤æ˜µç§°é‡Œé¢æ²¡æœ‰è®¾ç½®ï¼Œå†æ£€æµ‹æ˜¯ä¸æ˜¯è‡ªå·±çš„å¥½å‹ï¼Œå¦‚æœæ˜¯è‡ªå·±å¥½å‹å¹¶ä¸”å¥½å‹æ˜µç§°é‡Œé¢è®¾ç½®äº†ï¼Œè¿”å›å¥½å‹æ˜µç§°
                     fid = get_friendid_bytoxid(uindex,dbResult[offset+2]);
                     if(fid >= 0)
                     {
@@ -12647,13 +12647,13 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_pullmsg_deal
-  Description: IMÄ£¿éÀ­È¡×Ô¼ºµÄÈºÏûÏ¢ÁĞ±í½âÎö´¦Àí
+  Description: IMæ¨¡å—æ‹‰å–è‡ªå·±çš„ç¾¤æ¶ˆæ¯åˆ—è¡¨è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12688,7 +12688,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",rid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
@@ -12696,7 +12696,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgNum",num,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",msg_startid,TOX_ID_STR_LEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     gid = get_gidbygrouphid(group_hid);
     if(uindex < 0 || gid < 0)
@@ -12786,7 +12786,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
             &nColumn, &errmsg) == SQLITE_OK)
         {
-            offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+            offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
             for( i = 0; i < nRow ; i++ )
             {
                 pJsonsub = cJSON_CreateObject();
@@ -12807,7 +12807,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 cJSON_AddNumberToObject(pJsonsub,"MsgId",tmp_msgid);
                 cJSON_AddNumberToObject(pJsonsub,"MsgType",tmpmsgtype);
                 cJSON_AddNumberToObject(pJsonsub,"TimeStamp",atoi(dbResult[offset+3]));
-                //×Ô¼º·¢µÄÏûÏ¢£¬²»ÓÃfrom
+                //è‡ªå·±å‘çš„æ¶ˆæ¯ï¼Œä¸ç”¨from
                 if(tmp_uid == uindex)
                 {
                     cJSON_AddStringToObject(pJsonsub,"From","");
@@ -12830,10 +12830,10 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         cJSON_AddStringToObject(pJsonsub,"Msg",dbResult[offset+5]);
                     }
                 }
-                //Ö»ÓĞÎ´À­È¡¹ıµÄÏûÏ¢£¬²ÅĞèÒªÅĞ¶ÏpointÎ»
+                //åªæœ‰æœªæ‹‰å–è¿‡çš„æ¶ˆæ¯ï¼Œæ‰éœ€è¦åˆ¤æ–­pointä½
                 if(p_gowner != NULL && tmp_msgid > p_gowner->last_msgid)
                 {
-                    //attendÏî
+                    //attendé¡¹
                     if(dbResult[offset+6] != NULL)
                     {
                         pattend = dbResult[offset+6];
@@ -12854,12 +12854,12 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 if(tmpmsgtype == PNR_IM_MSGTYPE_IMAGE || tmpmsgtype == PNR_IM_MSGTYPE_AUDIO
                     || tmpmsgtype == PNR_IM_MSGTYPE_MEDIA || tmpmsgtype == PNR_IM_MSGTYPE_FILE)
                 {
-                    //ext ´æ´¢ÎÄ¼şÏà¶ÔÂ·¾¶
+                    //ext å­˜å‚¨æ–‡ä»¶ç›¸å¯¹è·¯å¾„
                     if(dbResult[offset+7] != NULL)
                     {
                         cJSON_AddStringToObject(pJsonsub,"FilePath",dbResult[offset+7]);
                     }
-                    //ext2 ´æ´¢ÎÄ¼şÏà¶ÔÏà¹ØÊôĞÔ
+                    //ext2 å­˜å‚¨æ–‡ä»¶ç›¸å¯¹ç›¸å…³å±æ€§
                     if(dbResult[offset+8] != NULL)
                     {
                         memset(&tmp_finfo,0,sizeof(tmp_finfo));
@@ -12873,7 +12873,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             }
                         }
                     }
-                    //filekey Ö»ÓĞ×ª·¢µÄÎÄ¼ş²ÅÓĞ
+                    //filekey åªæœ‰è½¬å‘çš„æ–‡ä»¶æ‰æœ‰
                     if(dbResult[offset+9] != NULL)
                     {
                         cJSON_AddStringToObject(pJsonsub,"FileKey",dbResult[offset+9]);
@@ -12888,7 +12888,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
-                    //ÕâÀï¿ÉÄÜÓÃ»§ÒÑ¾­ÍËÈºÁË£¬ËùÒÔÒªÓÃtoxidÈ¥ÕÒ¶ÔÓ¦µÄÕË»§
+                    //è¿™é‡Œå¯èƒ½ç”¨æˆ·å·²ç»é€€ç¾¤äº†ï¼Œæ‰€ä»¥è¦ç”¨toxidå»æ‰¾å¯¹åº”çš„è´¦æˆ·
                     memset(&tmpaccount,0,sizeof(tmpaccount));
                     if(dbResult[offset+4])
                     {
@@ -12922,7 +12922,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     strcpy(retmsg,ret_buff);
     free(ret_buff);
-    //¸üĞÂÀ­È¡µ½µÄlastmsgid
+    //æ›´æ–°æ‹‰å–åˆ°çš„lastmsgid
     if(p_gowner != NULL && new_lastmsgid > p_gowner->last_msgid)
     {
         p_gowner->last_msgid = new_lastmsgid;
@@ -12933,13 +12933,13 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_sendmsg_deal
-  Description: IMÄ£¿éÓÃ»§ÈºÀïÃæ·¢ÏûÏ¢
+  Description: IMæ¨¡å—ç”¨æˆ·ç¾¤é‡Œé¢å‘æ¶ˆæ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -12967,13 +12967,13 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(pmsg,0,sizeof(struct group_user_msg));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",pmsg->from,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Point",pmsg->attend,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",pmsg->msgpay,PNR_GROUP_USERMSG_MAXLEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
     if(uindex == 0 || group_hid < 0)
@@ -13037,7 +13037,7 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -13091,13 +13091,13 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_delmsg_deal
-  Description: IMÄ£¿éÓÃ»§ÈºÀïÃæÉ¾³ıÏûÏ¢
+  Description: IMæ¨¡å—ç”¨æˆ·ç¾¤é‡Œé¢åˆ é™¤æ¶ˆæ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -13129,13 +13129,13 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(pmsg,0,sizeof(struct group_user_msg));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",del_type,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msgid,0);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     gid = get_gidbygrouphid(group_hid);
     if(uindex == 0 || group_hid < 0)
@@ -13184,9 +13184,9 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
             group_sysmsg.gid = gid;
             strcpy(group_sysmsg.group_hid,group_hid);
             pthread_mutex_lock(&g_grouplock[gid]);
-            //É¾³ıÊı¾İ¿â¼ÇÂ¼
+            //åˆ é™¤æ•°æ®åº“è®°å½•
             pnr_groupmsg_dbdelete_bymsgid(gid,msgid);
-            //Èç¹ûÊÇÎÄ¼ş£¬É¾³ıÎÄ¼ş
+            //å¦‚æœæ˜¯æ–‡ä»¶ï¼Œåˆ é™¤æ–‡ä»¶
             if(pmsg->type == PNR_IM_MSGTYPE_IMAGE || pmsg->type == PNR_IM_MSGTYPE_AUDIO 
                 || pmsg->type == PNR_IM_MSGTYPE_MEDIA || pmsg->type == PNR_IM_MSGTYPE_FILE)
             {
@@ -13213,7 +13213,7 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -13251,19 +13251,19 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_sendfile_predeal
-  Description: IMÄ£¿éÓÃ»§ÈºÀïÃæ·¢ÎÄ¼şÔ¤´¦Àí
+  Description: IMæ¨¡å—ç”¨æˆ·ç¾¤é‡Œé¢å‘æ–‡ä»¶é¢„å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
                   Author:Will.Cao
                   Modification:Initialize
-ÔİÊ±²»ÓÃ
+æš‚æ—¶ä¸ç”¨
 ***********************************************************************************/
 int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
@@ -13281,7 +13281,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
 
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&account,0,sizeof(account));
     memset(&src_account,0,sizeof(src_account));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
@@ -13291,7 +13291,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Pubkey",src_account.user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     }
 
-    //rid¼ì²é
+    //ridæ£€æŸ¥
     if(strncmp(router_id,g_daemon_tox.user_toxid,TOX_ID_STR_LEN) != OK)
     {
         ret_code = PNR_RECOVERY_RETCODE_BAD_RID;
@@ -13303,15 +13303,15 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_account_dbget_byuserkey(&src_account);
             if(src_account.active == FALSE)
             {
-                //¸ÃÓÃ»§Î´×¢²á¼¤»î¹ı 
-                //ÁÙÊ±ÓÃ»§Ö±½Ó·µ»Ø
+                //è¯¥ç”¨æˆ·æœªæ³¨å†Œæ¿€æ´»è¿‡ 
+                //ä¸´æ—¶ç”¨æˆ·ç›´æ¥è¿”å›
                 if(strcmp(account.user_sn,g_account_array.temp_user_sn) == OK)
                 {
                     ret_code = PNR_RECOVERY_RETCODE_TEMP_USER;
                 }
                 else
                 {
-                    //²é¿´µ±Ç°¶şÎ¬ÂëÕË»§ÊÇ·ñÒÑ¾­±»Õ¼ÓÃ
+                    //æŸ¥çœ‹å½“å‰äºŒç»´ç è´¦æˆ·æ˜¯å¦å·²ç»è¢«å ç”¨
                     pnr_account_get_byusn(&account);
                     if(account.active == FALSE)
                     {
@@ -13323,7 +13323,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
                     }
                 }
             }
-            else//¸ÃÓÃ»§pubkeyÒÑ¾­×¢²á¹ı
+            else//è¯¥ç”¨æˆ·pubkeyå·²ç»æ³¨å†Œè¿‡
             {
                 ret_code = PNR_RECOVERY_RETCODE_USER_ACTIVED;
                 if(strcmp(account.user_sn,src_account.user_sn) != OK)
@@ -13348,9 +13348,9 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            //¸ù¾İusn»ñÈ¡µ±Ç°Êı¾İ¿âÖĞµÄÕËºÅĞÅÏ¢
+            //æ ¹æ®usnè·å–å½“å‰æ•°æ®åº“ä¸­çš„è´¦å·ä¿¡æ¯
             pnr_account_get_byusn(&account);
-            //·ÇÁÙÊ±ÕË»§Ö»ÓĞÒÑ¼¤»îµÄÕË»§²Å¿ÉÒÔÕÒ»Ø
+            //éä¸´æ—¶è´¦æˆ·åªæœ‰å·²æ¿€æ´»çš„è´¦æˆ·æ‰å¯ä»¥æ‰¾å›
             if(account.type < PNR_USER_TYPE_ADMIN || account.type >= PNR_USER_TYPE_BUTT)
             {
                 ret_code = PNR_RECOVERY_RETCODE_OTHERS_ERROR;
@@ -13366,7 +13366,7 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
 	cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -13408,13 +13408,13 @@ int im_group_sendfile_predeal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_group_sendfile_done_deal
-  Description: IMÄ£¿éÓÃ»§ÈºÀïÃæ·¢ÎÄ¼ş³É¹¦ºóÍ¨Öª
+  Description: IMæ¨¡å—ç”¨æˆ·ç¾¤é‡Œé¢å‘æ–‡ä»¶æˆåŠŸåé€šçŸ¥
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -13449,7 +13449,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(pmsg,0,sizeof(struct group_user_msg));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",pmsg->from,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileName",filename,PNR_FILENAME_MAXLEN);
@@ -13458,7 +13458,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileSize",filesize,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileType",filetype,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",fileid,PNR_FILEINFO_MAXLEN);
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
     if(uindex == 0 || group_hid < 0)
@@ -13532,7 +13532,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 g_grouplist[gid].last_msgid++;
                 pmsg->msgid = g_grouplist[gid].last_msgid;
                 strcpy(pmsg->group_name,g_grouplist[gid].group_name);
-                //²åÈëÊı¾İ¿â
+                //æ’å…¥æ•°æ®åº“
                 pnr_groupmsg_dbinsert(gid,uindex,pmsg->msgid,filetype,
                     pmsg->from,pmsg->msgpay,"",pmsg->ext1,pmsg->ext2,NULL);
                 for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
@@ -13555,7 +13555,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -13615,13 +13615,13 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_group_config_deal
-  Description: IMÄ£¿éÓÃ»§ÈºÅäÖÃĞŞ¸Ä
+  Description: IMæ¨¡å—ç”¨æˆ·ç¾¤é…ç½®ä¿®æ”¹
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -13646,7 +13646,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",groupid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",cmdtype,0);
@@ -13655,7 +13655,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"NeedVerify",verify,0);
 
     memset(&group_sysmsg,0,sizeof(group_sysmsg));
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     switch(cmdtype)
     {
         case GROUP_CONFIG_CMDTYPE_SET_GNAME:
@@ -13884,7 +13884,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             break;
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -13921,13 +13921,13 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
 /**********************************************************************************
   Function:      im_file_rename_deal
-  Description: ÎÄ¼şÖØÃüÃûÉèÖÃ
+  Description: æ–‡ä»¶é‡å‘½åè®¾ç½®
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -13960,12 +13960,12 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",uid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msgid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Filename",filename,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rename",newname,PNR_FILENAME_MAXLEN);
-    //uid¼ì²é
+    //uidæ£€æŸ¥
     index = get_indexbytoxid(uid);
     if(index == 0)
     {
@@ -13988,12 +13988,12 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = index;
         }
-        //¸ù¾İmsgid²éÕÒ¶ÔÓ¦Êı¾İ¿â¼ÇÂ¼
+        //æ ¹æ®msgidæŸ¥æ‰¾å¯¹åº”æ•°æ®åº“è®°å½•
         pnr_msglog_dbget_byid(index,msgid,msg);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:get msgid(%d) file(%s) path(%s)",msg->db_id,msg->msg_buff,msg->ext);
         if(head->api_version >= PNR_API_VERSION_V5)
         {
-            //ĞÂ°æ±¾Ö»ĞŞ¸ÄÂß¼­Ãû
+            //æ–°ç‰ˆæœ¬åªä¿®æ”¹é€»è¾‘å
             if(strcmp(newname,msg->msg_buff) != OK)
             {
                 pnr_msglog_dbupdate_filename_byid(index,msg->db_id,newname,msg->ext);
@@ -14031,7 +14031,7 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     free(msg);
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -14067,13 +14067,13 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_file_forward_deal
-  Description:  ÎÄ¼ş×ª·¢
+  Description:  æ–‡ä»¶è½¬å‘
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -14116,7 +14116,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(msg,0,sizeof(struct im_sendmsg_msgstruct));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msgid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromId",from,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",to,TOX_ID_STR_LEN);
@@ -14126,7 +14126,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,PNR_FILEPATH_MAXLEN);
     }
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     if(strlen(from) != TOX_ID_STR_LEN || strlen(to) != TOX_ID_STR_LEN || strcmp(from,to) == OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal input uid err(%s:%s)",from,to);
@@ -14185,7 +14185,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 *plws_index = fromid;
             }
             pnr_msglog_dbget_byid(fromid,msgid,msg);
-            //Ô­Ê¼ÎÄ¼şÄ¿Â¼
+            //åŸå§‹æ–‡ä»¶ç›®å½•
             if(strstr(msg->ext,DAEMON_PNR_USERDATA_DIR) == NULL)
             {
                 strcpy(src_ext,msg->ext);
@@ -14214,13 +14214,13 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             else
             {
                 filetype = msg->msgtype;
-                //×ª·¢µ½Èº
+                //è½¬å‘åˆ°ç¾¤
                 if(strncasecmp(to,PNR_GROUPID_PREFIX,PNR_GROUPID_PREFIX_LEN) == OK)
                 {
                     gid = get_gidbygrouphid(to);
                     if(gid>=0)
                     {
-                        //±¾µØ¿½±´Ò»·İÎÄ¼ş±¸·İ
+                        //æœ¬åœ°æ‹·è´ä¸€ä»½æ–‡ä»¶å¤‡ä»½
                         snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s",srcpath,targetpath);                    
                         system(cmd);
@@ -14254,10 +14254,10 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     pgmsg->msgid = g_grouplist[gid].last_msgid;
                     strcpy(pgmsg->group_name,g_grouplist[gid].group_name);
                     strcpy(pgmsg->file_key,dstkey);
-                    //²åÈëÊı¾İ¿â
+                    //æ’å…¥æ•°æ®åº“
                     pnr_groupmsg_dbinsert(gid,fromid,pgmsg->msgid,pgmsg->type,
                         pgmsg->from,pgmsg->msgpay,"",pgmsg->ext1,pgmsg->ext2,pgmsg->file_key);
-                    //ÏûÏ¢ÍÆËÍ
+                    //æ¶ˆæ¯æ¨é€
                     for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
                     {
                         if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != fromid)
@@ -14281,7 +14281,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     if(strcmp(from,msg->fromuser_toxid) == OK)
                     {
-                        //Èç¹ûÊÇ×Ô¼º·¢ËÍµÄÎÄ¼ş£¬×ª·¢¸ø±ğÈË,Ö»ĞèÒª¸üĞÂdstkeyºÍtoid
+                        //å¦‚æœæ˜¯è‡ªå·±å‘é€çš„æ–‡ä»¶ï¼Œè½¬å‘ç»™åˆ«äºº,åªéœ€è¦æ›´æ–°dstkeyå’Œtoid
                         memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
                         strcpy(msg->touser_toxid,to);
                         memset(msg->prikey,0,sizeof(PNR_RSA_KEY_MAXLEN));
@@ -14289,7 +14289,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     }
                     else// if(strcmp(from,msg->touser_toxid) == OK)
                     {
-                        //Èç¹ûÊÇ×Ô¼º½ÓÊÕµÄÎÄ¼ş£¬ÔòÔ­±¾µÄdstkey±ä³ÉĞÂµÄsrckey£¬È»ºó¸üĞÂdstkeyÎªĞÂµÄ
+                        //å¦‚æœæ˜¯è‡ªå·±æ¥æ”¶çš„æ–‡ä»¶ï¼Œåˆ™åŸæœ¬çš„dstkeyå˜æˆæ–°çš„srckeyï¼Œç„¶åæ›´æ–°dstkeyä¸ºæ–°çš„
                         memset(msg->fromuser_toxid,0,TOX_ID_STR_LEN);
                         strcpy(msg->fromuser_toxid,from);
                         memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
@@ -14304,7 +14304,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         strcpy(msg->nonce,fileinfo);
                     }
                     strcpy(msg->msg_buff,filename);
-                    //Êı¾İ¿â²åÈëÒ»Ìõ¼ÇÂ¼£¬Õâ¸ö±¾µØĞè²»ĞèÒªÔÙ±£´æÒ»´Î×ª·¢µÄ¼ÇÂ¼£¬´ı¶¨
+                    //æ•°æ®åº“æ’å…¥ä¸€æ¡è®°å½•ï¼Œè¿™ä¸ªæœ¬åœ°éœ€ä¸éœ€è¦å†ä¿å­˜ä¸€æ¬¡è½¬å‘çš„è®°å½•ï¼Œå¾…å®š
                     if(msg->msgtype == PNR_IM_MSGTYPE_IMAGE || msg->msgtype == PNR_IM_MSGTYPE_AUDIO 
                         ||msg->msgtype == PNR_IM_MSGTYPE_MEDIA || msg->msgtype == PNR_IM_MSGTYPE_FILE)
                     {
@@ -14313,12 +14313,12 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             msg->touser_toxid, msg->msg_buff, msg->sign, msg->prikey, src_ext, msg->ext2);
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward:user(%d) log_id(%d)",fromid,msg->log_id);
                     }
-                    //µ÷ÓÃÍÆËÍÏûÏ¢
+                    //è°ƒç”¨æ¨é€æ¶ˆæ¯
                     toid = get_indexbytoxid(to);
-                    //±¾µØ¶ÔÏó
+                    //æœ¬åœ°å¯¹è±¡
                     if(toid)
                     {
-                        //±¾µØ¿½±´Ò»·İÎÄ¼ş±¸·İ
+                        //æœ¬åœ°æ‹·è´ä¸€ä»½æ–‡ä»¶å¤‡ä»½
                         snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s%s",srcpath,DAEMON_PNR_USERDATA_DIR,targetpath);                    
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
@@ -14342,7 +14342,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     free(msg);
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -14402,13 +14402,13 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_upload_avatar_deal
-  Description:  ÓÃ»§ÉÏ´«Í·Ïñ
+  Description:  ç”¨æˆ·ä¸Šä¼ å¤´åƒ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -14437,12 +14437,12 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     memset(&newuser,0,sizeof(newuser));
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uid",newuser.userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileName",newuser.avatar,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileMD5",newuser.md5,PNR_MD5_VALUE_MAXLEN);
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     index = get_indexbytoxid(newuser.userid);
     if(index == 0)
     {
@@ -14451,7 +14451,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        //¼ì²âÄ¿±êÎÄ¼şÊÇ·ñ´æÔÚ
+        //æ£€æµ‹ç›®æ ‡æ–‡ä»¶æ˜¯å¦å­˜åœ¨
         ptmp = strrchr(newuser.avatar,'/');
         if(ptmp != NULL)
         {
@@ -14462,7 +14462,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
             strcpy(filename,newuser.avatar);
         }    
         snprintf(fullname,PNR_FILEPATH_MAXLEN,"%s%s%s",DAEMON_PNR_USERDATA_DIR,PNR_FILECACHE_DIR,filename);
-        //¼ì²âÎÄ¼şÊÇ·ñ´æÔÚºÍÎÄ¼şmd5
+        //æ£€æµ‹æ–‡ä»¶æ˜¯å¦å­˜åœ¨å’Œæ–‡ä»¶md5
         if(md5_hash_file(fullname,md5string) == NULL)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_upload_avatar_deal input file(%s) not exsit",newuser.avatar);
@@ -14479,7 +14479,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 *plws_index = index;
             }
-            //¸ù¾İuserid»ñÈ¡µ±Ç°ÏµÍ³ÒÑÓĞµÄÍ·Ïñ
+            //æ ¹æ®useridè·å–å½“å‰ç³»ç»Ÿå·²æœ‰çš„å¤´åƒ
             memset(&srcuser,0,sizeof(srcuser));
             strcpy(srcuser.userid,newuser.userid);
             pnr_userinfo_dbget_byuserid(&srcuser);
@@ -14513,7 +14513,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 memset(newuser.avatar,0,PNR_FILENAME_MAXLEN);
                 strcpy(newuser.avatar,filename);
                 strcpy(newuser.info,g_imusr_array.usrnode[index].user_nickname);
-                //Í¬²½Êı¾İ¿â
+                //åŒæ­¥æ•°æ®åº“
                 pnr_userinfo_dbupdate(&newuser);
                 snprintf(newavatar,PNR_FILEPATH_MAXLEN,"%s%s",PNR_AVATAR_DIR,filename);
                 snprintf(cmd,CMD_MAXLEN,"mv %s %s%s",fullname,DAEMON_PNR_USERDATA_DIR,newavatar);
@@ -14523,7 +14523,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -14557,13 +14557,13 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_updata_avatar_deal
-  Description:  ÓÃ»§¸üĞÂÖ¸¶¨ÓÃ»§Í·Ïñ
+  Description:  ç”¨æˆ·æ›´æ–°æŒ‡å®šç”¨æˆ·å¤´åƒ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -14589,11 +14589,11 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uid",from,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Fid",to,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Md5",md5string,PNR_MD5_VALUE_MAXLEN);
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     fromid = get_indexbytoxid(from);
     toid = get_indexbytoxid(to);
     if(fromid == 0)
@@ -14612,7 +14612,7 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = fromid;
         }
-        //»ñÈ¡ÏµÍ³µ±Ç°µÄÍ·ÏñĞÅÏ¢
+        //è·å–ç³»ç»Ÿå½“å‰çš„å¤´åƒä¿¡æ¯
         memset(&userinfo,0,sizeof(userinfo));
         strcpy(userinfo.userid,to);
         pnr_userinfo_dbget_byuserid(&userinfo);
@@ -14625,7 +14625,7 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_updata_avatar_deal get user(%d:%d:%s),avatar(%s:%s),info(%s)",
                 userinfo.index,userinfo.local,userinfo.userid,userinfo.avatar,userinfo.md5,userinfo.info);
-            //¼ì²âÄ¿±êÎÄ¼şÊÇ·ñ´æÔÚ
+            //æ£€æµ‹ç›®æ ‡æ–‡ä»¶æ˜¯å¦å­˜åœ¨
             snprintf(filename,PNR_FILENAME_MAXLEN,"/%s%s",PNR_AVATAR_DIR,userinfo.avatar);
             snprintf(fullname,PNR_FILEPATH_MAXLEN,"%s%s",PNR_AVATAR_FULLDIR,userinfo.avatar);
             if(access(fullname,F_OK) != OK)
@@ -14655,7 +14655,7 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -14712,13 +14712,13 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_pull_tmpaccount_deal
-  Description: IMÀ­È¡ÁÙÊ±ÕË»§ĞÅÏ¢
+  Description: IMæ‹‰å–ä¸´æ—¶è´¦æˆ·ä¿¡æ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -14738,10 +14738,10 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"userid",userid,TOX_ID_STR_LEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     if(uindex < 0)
     {
@@ -14756,7 +14756,7 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -14792,13 +14792,13 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_account_delete_deal
-  Description: ½Úµã¹ÜÀíÕßÉ¾³ıÈ¦×ÓÓÃ»§
+  Description: èŠ‚ç‚¹ç®¡ç†è€…åˆ é™¤åœˆå­ç”¨æˆ·
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -14822,12 +14822,12 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     memset(&account,0,sizeof(account));
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",fromid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sn",account.user_sn,PNR_USN_MAXLEN);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
@@ -14859,7 +14859,7 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pthread_mutex_lock(&g_pnruser_lock[uindex]);
             if(g_imusr_array.usrnode[uindex].user_onlinestatus == TRUE)
             {
-                //Èç¹û¸ÃÓÃ»§ÔÚÏß£¬ÍÆËÍÏûÏ¢£¬Í¨ÖªÓÃ»§logout
+                //å¦‚æœè¯¥ç”¨æˆ·åœ¨çº¿ï¼Œæ¨é€æ¶ˆæ¯ï¼Œé€šçŸ¥ç”¨æˆ·logout
                 if(g_imusr_array.usrnode[uindex].user_online_type == USER_ONLINE_TYPE_LWS)
                 {
                     pnr_relogin_pushbylws(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
@@ -14869,14 +14869,14 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     pnr_relogin_pushbytox(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
                 }
             }
-            //½Ó×ÅÍ£Ö¹¶ÔÓ¦µÄtoxÊµÀı
+            //æ¥ç€åœæ­¢å¯¹åº”çš„toxå®ä¾‹
             if(g_imusr_array.usrnode[uindex].init_flag == TRUE)
             {
-                //²»Í¨¹ıpthread_cancel
+                //ä¸é€šè¿‡pthread_cancel
                 g_imusr_array.usrnode[uindex].tox_status = PNR_TOX_STATUS_TRYTOEXIT;
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"set user(%d) tox_status(%d)",uindex,g_imusr_array.usrnode[uindex].tox_status);
             }
-            //¼ì²é¸ÃÓÃ»§ÊÇ²»ÊÇµ±Ç°ÓĞÈºÖ÷Éí·İ£¬Èç¹ûÓĞ£¬Òª¶ÔÓ¦½âÉ¢¸ÃÈº×é
+            //æ£€æŸ¥è¯¥ç”¨æˆ·æ˜¯ä¸æ˜¯å½“å‰æœ‰ç¾¤ä¸»èº«ä»½ï¼Œå¦‚æœæœ‰ï¼Œè¦å¯¹åº”è§£æ•£è¯¥ç¾¤ç»„
             for(gid = 0;gid <PNR_GROUP_MAXNUM;gid++)
             {
                 if(uindex == g_grouplist[gid].ownerid)
@@ -14904,7 +14904,7 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     pnr_group_dissolve(gid);
                 }
             }
-            //É¾³ı¸ÃÓÃ»§Êı¾İ
+            //åˆ é™¤è¯¥ç”¨æˆ·æ•°æ®
             pnr_usr_instance_dbdelete_bytoxid(account.toxid);
             pnr_friend_delete_bytoxid(account.toxid);
             pnr_userdev_mapping_dbdelte_byusrid(account.toxid);
@@ -15002,7 +15002,7 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
     }
     
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15037,13 +15037,13 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_rnode_pmsg_deal
-  Description: IM rid½Úµã·¢ËÍ¹ıÀ´µÄÏûÏ¢´¦Àí
+  Description: IM ridèŠ‚ç‚¹å‘é€è¿‡æ¥çš„æ¶ˆæ¯å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15070,12 +15070,12 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FromRid",from_rid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToRid",to_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Cmd",cmd,0);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     if(strcmp(to_id,g_daemon_tox.user_toxid) != OK)
     {
         ret_code = PNR_RNODEMSG_RETCODE_BADRID;
@@ -15086,7 +15086,7 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
         snprintf(info,PNR_ATTACH_INFO_MAXLEN,"bad cmdtype(%d)",cmd);
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15207,7 +15207,7 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                                 ret_code = PNR_RNODEMSG_RETCODE_OK;
                                 snprintf(info,PNR_ATTACH_INFO_MAXLEN,"userid(%s) active ok",userid);
                                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"renew user(%s)",g_imusr_array.usrnode[uindex].user_toxid);
-                                //Èç¹ûÊÇĞÂÓÃ»§¼¤»î¶ÔÓ¦Êı¾İ¿â¾ä±ú
+                                //å¦‚æœæ˜¯æ–°ç”¨æˆ·æ¿€æ´»å¯¹åº”æ•°æ®åº“å¥æŸ„
                                 if(g_msglogdb_handle[uindex] == NULL)
                                 {
                                      if (sql_msglogdb_init(uindex) != OK) 
@@ -15296,13 +15296,13 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_rnode_msgreply_deal
-  Description: IMÄ£¿é¸ù½Úµã·µ»ØÏûÏ¢´¦Àíº¯Êı
+  Description: IMæ¨¡å—æ ¹èŠ‚ç‚¹è¿”å›æ¶ˆæ¯å¤„ç†å‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15321,7 +15321,7 @@ int im_cmd_rnode_msgreply_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rid",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Info",info,PNR_ATTACH_INFO_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Cmd",cmd,0);
@@ -15331,13 +15331,13 @@ int im_cmd_rnode_msgreply_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_enableqlcnode_deal
-  Description: IMÄ£¿éÏûÏ¢´¦Àíqlc½ÚµãÊ¹ÄÜ
+  Description: IMæ¨¡å—æ¶ˆæ¯å¤„ç†qlcèŠ‚ç‚¹ä½¿èƒ½
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15357,10 +15357,10 @@ int im_cmd_enableqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Enable",enable,0);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     if(enable != TRUE && enable != FALSE)
     {
         ret_code = PNR_QLCNODE_ENABLE_NOSOURCE;
@@ -15380,7 +15380,7 @@ int im_cmd_enableqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         ret_code = PNR_QLCNODE_ENABLE_OK;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15413,13 +15413,13 @@ int im_cmd_enableqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_checkqlcnode_deal
-  Description: IMÄ£¿éÏûÏ¢»ñÈ¡qlc½Úµã×´Ì¬
+  Description: IMæ¨¡å—æ¶ˆæ¯è·å–qlcèŠ‚ç‚¹çŠ¶æ€
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15436,9 +15436,9 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
     {
         ret_code = PNR_QLCNODE_ENABLE_NOSOURCE;
@@ -15449,7 +15449,7 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
         pnr_get_qlcnode_status(&cur_status);
         ret_code = PNR_QLCNODE_ENABLE_OK;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15484,13 +15484,13 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_checkgmail_deal
-  Description: IMÄ£¿éÏûÏ¢»ñÈ¡gmail
+  Description: IMæ¨¡å—æ¶ˆæ¯è·å–gmail
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15510,14 +15510,14 @@ int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Name",username,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Enable",result,0);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"getgmail name(%s) enable(%d)",username,result);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
 
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15552,13 +15552,13 @@ int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_cmd_template_deal
-  Description: IMÄ£¿éÏûÏ¢´¦ÀíÄ£°åº¯Êı
+  Description: IMæ¨¡å—æ¶ˆæ¯å¤„ç†æ¨¡æ¿å‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15578,11 +15578,11 @@ int im_cmd_template_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    //½âÎö²ÎÊı
+    //è§£æå‚æ•°
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Result",result,0);
 
-    //²ÎÊı¼ì²é
+    //å‚æ•°æ£€æŸ¥
     uindex = get_indexbytoxid(userid);
     if(uindex < 0)
     {
@@ -15594,7 +15594,7 @@ int im_cmd_template_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(result)
         {}
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -15627,13 +15627,13 @@ int im_cmd_template_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 /**********************************************************************************
   Function:      im_rcvmsg_deal
-  Description: IMÄ£¿éÏûÏ¢´¦Àíº¯Êı
+  Description: IMæ¨¡å—æ¶ˆæ¯å¤„ç†å‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -15648,7 +15648,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
     struct imcmd_msghead_struct msg_head;
 	//int fileindex = 0;
 
-	//½ÓÊÕÎÄ¼şµÄsocket£¬ÔİÊ±²»ÓÃ
+	//æ¥æ”¶æ–‡ä»¶çš„socketï¼Œæš‚æ—¶ä¸ç”¨
 	#if 0
 	if (*plws_index > 0 && pss->fd > 0) {
 		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "pssfd:%d-%d-%d", msg_len, *plws_index, pss->fd);
@@ -15674,7 +15674,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
         return ERROR;
     }
 
-	pmsg[msg_len] = 0;	/* ±ÜÃâ´òÓ¡ÂÒÂë */
+	pmsg[msg_len] = 0;	/* é¿å…æ‰“å°ä¹±ç  */
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"id(%d) rec msg(%d):(%s)",pss->user_index,msg_len,pmsg);
     params = cJSON_GetObjectItem(root, "params");
     if (!params) {
@@ -15697,7 +15697,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
 	}
 	pthread_mutex_unlock(&g_formating_lock);
     memset(retmsg,0,IM_JSON_MAXLEN);
-    //ÕâÀï°´ÕÕapi½Ó¿Ú°æ±¾·ÖÅú´¦Àí
+    //è¿™é‡ŒæŒ‰ç…§apiæ¥å£ç‰ˆæœ¬åˆ†æ‰¹å¤„ç†
     if(msg_head.api_version == PNR_API_VERSION_V1)
     {
         switch(msg_head.im_cmdtype)
@@ -15810,7 +15810,7 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad cmdtype(%d)",msg_head.im_cmdtype);
                 break;
         }
-        //ĞèÒª»ØÏìÓ¦µÄÃüÁî
+        //éœ€è¦å›å“åº”çš„å‘½ä»¤
         if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGIN
             || msg_head.im_cmdtype == PNR_IM_CMDTYPE_DESTORY
             || msg_head.im_cmdtype == PNR_IM_CMDTYPE_ADDFRIENDREQ
@@ -16428,21 +16428,21 @@ int im_rcvmsg_deal(struct per_session_data__minimal *pss,char* pmsg,
 
 char g_tox_retbuf[IM_JSON_MAXLEN] = {0};
 /*****************************************************************************
- º¯ Êı Ãû  : im_tox_rcvmsg_deal
- ¹¦ÄÜÃèÊö  : ´¦Àíapp·¢ËÍµ½routerµÄtoxÏûÏ¢
- ÊäÈë²ÎÊı  : Tox *m         
+ å‡½ æ•° å  : im_tox_rcvmsg_deal
+ åŠŸèƒ½æè¿°  : å¤„ç†appå‘é€åˆ°routerçš„toxæ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : Tox *m         
              char *pmsg     
              int len        
              int friendnum  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
@@ -17342,7 +17342,7 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
 
     if (msg_head.forward) 
     {
-        //Ä¿±êÓÃ»§ÊÇ±¾µØÓÃ»§
+        //ç›®æ ‡ç”¨æˆ·æ˜¯æœ¬åœ°ç”¨æˆ·
         if(msg_head.to_userid)
         {
             im_pushmsg_callback(msg_head.to_userid,msg_head.im_cmdtype,TRUE,msg_head.api_version,msg_head.toxmsg);
@@ -17897,7 +17897,7 @@ char * g_pnr_cmdstring[]=
     PNR_IMCMD_ENABLEQLCNODE,
     PNR_IMCMD_CHECKQLCNODE,
     PNR_IMCMD_CHECKGMAIL,
-    //rid¶ÀÓĞµÄÏûÏ¢
+    //ridç‹¬æœ‰çš„æ¶ˆæ¯
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
     PNR_IMCMD_SYSDERLYCMD,
@@ -17905,13 +17905,13 @@ char * g_pnr_cmdstring[]=
 };
 /**********************************************************************************
   Function:      pnr_msghead_parses
-  Description: IMÄ£¿éÏûÏ¢Í·²¿½âÎö´¦Àí
+  Description: IMæ¨¡å—æ¶ˆæ¯å¤´éƒ¨è§£æå¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -17931,7 +17931,7 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
     CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"timestamp",phead->timestamp,0);
     CJSON_GET_VARSTR_BYKEYWORD(root,tmp_item,tmp_json_buff,"appid",phead->appid,APPID_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(root,tmp_item,tmp_json_buff,"apiversion",phead->api_version,0);
-    //Â·ÓÉ·¢ËÍ¹ıÀ´µÄÏûÏ¢²»½âÎömsgid
+    //è·¯ç”±å‘é€è¿‡æ¥çš„æ¶ˆæ¯ä¸è§£æmsgid
     if (!phead->no_parse_msgid) {
         CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"msgid",phead->msgid,0);
     }
@@ -18412,13 +18412,13 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
 }
 /**********************************************************************************
   Function:      pnr_cmdbylws_handle
-  Description: IMÄ£¿élwsÁ´½Ó¹ıÀ´µÄÏûÏ¢´¦Àíº¯Êı
+  Description: IMæ¨¡å—lwsé“¾æ¥è¿‡æ¥çš„æ¶ˆæ¯å¤„ç†å‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
   History: 1. Date:2018-07-30
                   Author:Will.Cao
@@ -18448,7 +18448,7 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get root failed");
         return ERROR;
     }
-	pmsg[msg_len] = 0;	/* ±ÜÃâ´òÓ¡ÂÒÂë */
+	pmsg[msg_len] = 0;	/* é¿å…æ‰“å°ä¹±ç  */
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"id(%d) rec msg(%d):(%s)",pss->user_index,msg_len,pmsg);
     params = cJSON_GetObjectItem(root, "params");
     if (!params) 
@@ -18481,10 +18481,10 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
     {
         return ERROR;
     }
-    //ÕâÀï°´ÕÕapi½Ó¿Ú°æ±¾·ÖÅú´¦Àí
+    //è¿™é‡ŒæŒ‰ç…§apiæ¥å£ç‰ˆæœ¬åˆ†æ‰¹å¤„ç†
     if(msg_head.api_version >= PNR_API_VERSION_V6)
     {
-        //¶ÔV6¼°V6ÒÔºó°æ±¾µÄÇëÇóÃüÁî£¬ĞèÒªÅĞ¶ÏÊ±¼ä´ÁÓĞĞ§ĞÔºÍÇ©ÃûĞ£Ñé
+        //å¯¹V6åŠV6ä»¥åç‰ˆæœ¬çš„è¯·æ±‚å‘½ä»¤ï¼Œéœ€è¦åˆ¤æ–­æ—¶é—´æˆ³æœ‰æ•ˆæ€§å’Œç­¾åæ ¡éªŒ
         if(p_cmddeal_cbnode->p_cmddeal_cb != NULL
             && p_cmddeal_cbnode->need_reply == TRUE)
         {
@@ -18495,7 +18495,7 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
             }
             if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGIN)
             {
-                //»ñÈ¡ÓÃ»§id
+                //è·å–ç”¨æˆ·id
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",toxid,TOX_ID_STR_LEN);
                 uindex = get_indexbytoxid(toxid);
                 if(uindex <= 0)
@@ -18557,7 +18557,7 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
 errbreak:
     if(retcode != OK)
     {
-        //¹¹½¨ÏìÓ¦ÏûÏ¢
+        //æ„å»ºå“åº”æ¶ˆæ¯
         char* ret_buff = NULL;
         cJSON * ret_root = cJSON_CreateObject();
         cJSON * ret_params = cJSON_CreateObject();
@@ -18591,19 +18591,19 @@ errbreak:
 }
 /*****************************************************************************
  Function:      pnr_cmdbytox_handle
- Description: IMÄ£¿étoxÁ´½Ó¹ıÀ´µÄÏûÏ¢´¦Àíº¯Êı
- ÊäÈë²ÎÊı  : Tox *m         
+ Description: IMæ¨¡å—toxé“¾æ¥è¿‡æ¥çš„æ¶ˆæ¯å¤„ç†å‡½æ•°
+ è¾“å…¥å‚æ•°  : Tox *m         
              char *pmsg     
              int len        
              int friendnum  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ25ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ25æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
@@ -18664,10 +18664,10 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
     {
         return ERROR;
     }
-    //ÕâÀï°´ÕÕapi½Ó¿Ú°æ±¾·ÖÅú´¦Àí
+    //è¿™é‡ŒæŒ‰ç…§apiæ¥å£ç‰ˆæœ¬åˆ†æ‰¹å¤„ç†
     if(msg_head.api_version >= PNR_API_VERSION_V6)
     {
-        //¶ÔV6¼°V6ÒÔºó°æ±¾µÄÇëÇóÃüÁî£¬ĞèÒªÅĞ¶ÏÊ±¼ä´ÁÓĞĞ§ĞÔºÍÇ©ÃûĞ£Ñé
+        //å¯¹V6åŠV6ä»¥åç‰ˆæœ¬çš„è¯·æ±‚å‘½ä»¤ï¼Œéœ€è¦åˆ¤æ–­æ—¶é—´æˆ³æœ‰æ•ˆæ€§å’Œç­¾åæ ¡éªŒ
         if(p_cmddeal_cbnode->p_cmddeal_cb != NULL
             && p_cmddeal_cbnode->need_reply == TRUE)
         {
@@ -18827,7 +18827,7 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
 
     if (msg_head.forward) 
     {
-        //Ä¿±êÓÃ»§ÊÇ±¾µØÓÃ»§
+        //ç›®æ ‡ç”¨æˆ·æ˜¯æœ¬åœ°ç”¨æˆ·
         if(msg_head.to_userid)
         {
             im_pushmsg_callback(msg_head.to_userid,msg_head.im_cmdtype,TRUE,msg_head.api_version,msg_head.toxmsg);
@@ -18841,7 +18841,7 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
 errbreak:
     if(retcode)
     {
-        //¹¹½¨ÏìÓ¦ÏûÏ¢
+        //æ„å»ºå“åº”æ¶ˆæ¯
         char* ret_buff = NULL;
         cJSON * ret_root = cJSON_CreateObject();
         cJSON * ret_params = cJSON_CreateObject();
@@ -18875,18 +18875,18 @@ errbreak:
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : im_send_file_by_tox
- ¹¦ÄÜÃèÊö  : Í¨¹ıtox·¢ËÍÎÄ¼ş
- ÊäÈë²ÎÊı  : struct im_user_msg_sendfile *pfile  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_send_file_by_tox
+ åŠŸèƒ½æè¿°  : é€šè¿‡toxå‘é€æ–‡ä»¶
+ è¾“å…¥å‚æ•°  : struct im_user_msg_sendfile *pfile  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ10ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ10æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void im_send_file_by_tox(Tox *tox, struct lws_cache_msg_struct *msg, int push)
@@ -18905,18 +18905,18 @@ void im_send_file_by_tox(Tox *tox, struct lws_cache_msg_struct *msg, int push)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_send_file_deal
- ¹¦ÄÜÃèÊö  : ÎÄ¼ş½ÓÊÕÍê³Éºó´¦Àí
- ÊäÈë²ÎÊı  : struct im_user_msg_sendfile *pfile  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : im_send_file_deal
+ åŠŸèƒ½æè¿°  : æ–‡ä»¶æ¥æ”¶å®Œæˆåå¤„ç†
+ è¾“å…¥å‚æ•°  : struct im_user_msg_sendfile *pfile  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ22ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ22æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void im_send_file_deal(struct im_user_msg_sendfile *pfile)
@@ -18943,24 +18943,24 @@ void im_send_file_deal(struct im_user_msg_sendfile *pfile)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_rcv_file_deal_bin
- ¹¦ÄÜÃèÊö  : ½ÓÊÕ¶ş½øÖÆÎÄ¼şÁ÷
- ÊäÈë²ÎÊı  : struct per_session_data__minimal *pss  
+ å‡½ æ•° å  : im_rcv_file_deal_bin
+ åŠŸèƒ½æè¿°  : æ¥æ”¶äºŒè¿›åˆ¶æ–‡ä»¶æµ
+ è¾“å…¥å‚æ•°  : struct per_session_data__minimal *pss  
              char *pmsg                             
              int msg_len                            
              char *retmsg                           
              int *retmsg_len                        
              int *ret_flag                          
              int *plws_index                        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ8ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ8æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
@@ -19026,7 +19026,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
             {
                 *plws_index = index;
 			}
-            //ÎÄ¼şÃûÖĞ¿ÉÄÜ¸½´øÎÄ¼şÊôĞÔĞÅÏ¢£¬Ô¤´¦Àí
+            //æ–‡ä»¶åä¸­å¯èƒ½é™„å¸¦æ–‡ä»¶å±æ€§ä¿¡æ¯ï¼Œé¢„å¤„ç†
             ptmp = strchr(pfile->filename,PNR_FILEINFO_ATTACH_FLAG);
             if(ptmp != NULL)
             {
@@ -19039,8 +19039,8 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 			if (!pss->fd) 
             {
                 //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get porperty_flag(%d) ver_str(%d)",(int)pfile->porperty_flag,(int)pfile->ver_str);
-                //Ìí¼ÓÈºÎÄ¼ş´¦Àí
-                if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//×Ö·ûµÄ0
+                //æ·»åŠ ç¾¤æ–‡ä»¶å¤„ç†
+                if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//å­—ç¬¦çš„0
                 {
                     srcfrom = PNR_FILE_SRCFROM_GROUPSEND;
                     gid = get_gidbygrouphid(pfile->toid);
@@ -19109,12 +19109,12 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 					pss->fd = 0;
 					pss->buflen = 0;
 					pss->sfile = 0;
-                    //Ìí¼ÓÈºÎÄ¼ş´¦Àí
+                    //æ·»åŠ ç¾¤æ–‡ä»¶å¤„ç†
                     if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)
                     {
-                        //ÀÏ°æ±¾ÕâÀïÖ»Ğ´ÎÄ¼ş£¬ÎÄ¼şÏà¹Ø¼ÇÂ¼µÄ±£´æÔÚGroupSendFileDoneÖĞ´¦Àí
+                        //è€ç‰ˆæœ¬è¿™é‡Œåªå†™æ–‡ä»¶ï¼Œæ–‡ä»¶ç›¸å…³è®°å½•çš„ä¿å­˜åœ¨GroupSendFileDoneä¸­å¤„ç†
                     }
-                    else //ÆÕÍ¨ÏûÏ¢
+                    else //æ™®é€šæ¶ˆæ¯
                     {
                         if(action == PNR_IM_MSGTYPE_AVATAR){
                             srcfrom = PNR_FILE_SRCFROM_AVATAR;
@@ -19138,7 +19138,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                             PNR_REAL_FILEPATH_GET(filepath,index,srcfrom,htonl(pfile->fileid),gid,pfile->filename);
                             DEBUG_PRINT(DEBUG_LEVEL_INFO,"new rcvfile bin reset filename(%s)",filepath);
                         }
-                        //ÕâÀïÓÃmagic´«µİlogid
+                        //è¿™é‡Œç”¨magicä¼ é€’logid
     					pfile->magic = pss->logid;
                         if(fileinfo_len > 0)
                         {
@@ -19172,24 +19172,24 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : im_rcvmsg_deal_bin
- ¹¦ÄÜÃèÊö  : ´¦Àí¶ş½øÖÆÏûÏ¢
- ÊäÈë²ÎÊı  : struct per_session_data__minimal *pss  
+ å‡½ æ•° å  : im_rcvmsg_deal_bin
+ åŠŸèƒ½æè¿°  : å¤„ç†äºŒè¿›åˆ¶æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : struct per_session_data__minimal *pss  
              char* pmsg                             
              int msg_len                            
              char* retmsg                           
              int* retmsg_len                        
              int* ret_flag                          
              int* plws_index                        
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : Ã¿´«ÊäÒ»¸öÎÄ¼şÆğÒ»¸ösocket,ËùÒÔ´Ë´¦²»¿¼ÂÇÁ¬°üÎÊÌâ
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : æ¯ä¼ è¾“ä¸€ä¸ªæ–‡ä»¶èµ·ä¸€ä¸ªsocket,æ‰€ä»¥æ­¤å¤„ä¸è€ƒè™‘è¿åŒ…é—®é¢˜
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ8ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ8æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
@@ -19291,13 +19291,13 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 
 /**********************************************************************************
   Function:      imtox_pushmsg_predeal
-  Description: IMtoxÄ£¿éÏûÏ¢Ô¤´¦Àíº¯Êı
+  Description: IMtoxæ¨¡å—æ¶ˆæ¯é¢„å¤„ç†å‡½æ•°
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -19373,7 +19373,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",devinfo.user_devid, TOX_ID_STR_LEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterName",devinfo.user_devname, PNR_USERNAME_MAXLEN);
 
-            //ÕâÀïĞèÒª·´ÏòÒ»ÏÂ
+            //è¿™é‡Œéœ€è¦åå‘ä¸€ä¸‹
             if(friend.result == OK)
             {
                 pnr_friend_dbinsert(friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
@@ -19406,7 +19406,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             }
             else if(msg_head.api_version >= PNR_API_VERSION_V3)
             {
-#if 0//ÔİÊ±²»ÓÃhashid
+#if 0//æš‚æ—¶ä¸ç”¨hashid
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",sendmsg.from_uid,PNR_USER_HASHID_MAXLEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",sendmsg.to_uid,PNR_USER_HASHID_MAXLEN);
                 pnr_gettoxid_byhashid(sendmsg.from_uid,sendmsg.fromuser_toxid);
@@ -19434,7 +19434,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 {
                     pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
-#if 0//ÔİÊ±²»ÓÃhashid
+#if 0//æš‚æ—¶ä¸ç”¨hashid
                     int f_id = 0;
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"PushMsg:src hasdid(%s->%s)",sendmsg.from_uid,sendmsg.to_uid);
                     f_id = get_friendid_bytoxid(index,sendmsg.fromuser_toxid);
@@ -19496,7 +19496,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",psendmsg->fromuser_toxid,TOX_ID_STR_LEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",psendmsg->touser_toxid,TOX_ID_STR_LEN);
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
-            //ÕâÀïÒªĞŞ¸ÄÍÆËÍµ½appµÄmsgid
+            //è¿™é‡Œè¦ä¿®æ”¹æ¨é€åˆ°appçš„msgid
             index = get_indexbytoxid(psendmsg->touser_toxid);
             if(index)
             {
@@ -19520,7 +19520,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"DstKey",sendfile.dstkey,PNR_RSA_KEY_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileInfo",fileinfo,PNR_FILEINFO_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,UPLOAD_FILENAME_MAXLEN);
-            //ÕâÀïÒªĞŞ¸ÄÍÆËÍµ½appµÄmsgid
+            //è¿™é‡Œè¦ä¿®æ”¹æ¨é€åˆ°appçš„msgid
             index = get_indexbytoxid(sendfile.touser_toxid);
             if(index)
             {
@@ -19611,7 +19611,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             break;
 
         case PNR_IM_CMDTYPE_PUSHFILE:
-            //ĞÂ°æÂß¼­Ãû³Æ
+            //æ–°ç‰ˆé€»è¾‘åç§°
             snprintf(filepath, UPLOAD_FILENAME_MAXLEN, "/user%d/r/%s", id, filename);
             snprintf(fullfile, UPLOAD_FILENAME_MAXLEN*2, "%sr/%s",
                 g_imusr_array.usrnode[id].userdata_pathurl, filename);
@@ -19666,7 +19666,7 @@ int im_server_init(void)
         snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",PNR_FILECACHE_FULLDIR);
         system(cmd);   
     }
-    //ÓÃ»§ÕËºÅĞÅÏ¢³õÊ¼»¯
+    //ç”¨æˆ·è´¦å·ä¿¡æ¯åˆå§‹åŒ–
 	pnr_account_init_fromdb();
 	for(i=0;i<=PNR_IMUSER_MAXNUM;i++)
     {
@@ -19720,7 +19720,7 @@ int im_server_init(void)
             g_imusr_array.usrnode[i].user_index,g_imusr_array.usrnode[i].user_name,
             g_imusr_array.usrnode[i].userdata_pathurl,g_imusr_array.usrnode[i].userinfo_fullurl);*/
 
-		//ÏûÏ¢¶ÓÁĞ³õÊ¼»¯
+		//æ¶ˆæ¯é˜Ÿåˆ—åˆå§‹åŒ–
         INIT_LIST_HEAD(&g_lws_msglist[i].list);
         INIT_LIST_HEAD(&g_tox_msglist[i].list);
 		INIT_LIST_HEAD(&g_lws_cache_msglist[i].list);
@@ -19733,7 +19733,7 @@ int im_server_init(void)
         pthread_mutex_init(&(g_user_msgidlock[i]),NULL);
         pthread_mutex_init(&(g_user_toxdatalock[i]),NULL);
         pthread_mutex_init(&(g_toxmsg_cache_lock[i]),NULL);
-		//ÓÃ»§ĞÅÏ¢³õÊ¼»¯,ÏÖÔÚ²»ÓÃinstance±íÁË£¬Ö±½ÓÔÚaccount±í³õÊ¼»¯µÄÊ±ºò¾Í¸³ÖµÁË
+		//ç”¨æˆ·ä¿¡æ¯åˆå§‹åŒ–,ç°åœ¨ä¸ç”¨instanceè¡¨äº†ï¼Œç›´æ¥åœ¨accountè¡¨åˆå§‹åŒ–çš„æ—¶å€™å°±èµ‹å€¼äº†
         //pnr_usr_instance_get(i);
         if(g_imusr_array.usrnode[i].user_toxid[0] != 0)
         {
@@ -19742,9 +19742,9 @@ int im_server_init(void)
                 &g_imusr_array.usrnode[i].hashid,g_imusr_array.usrnode[i].u_hashstr);
             /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"id(%d) tox_id(%s) hashid(%d:%s)",
                 i,g_imusr_array.usrnode[i].user_toxid,g_imusr_array.usrnode[i].hashid,g_imusr_array.usrnode[i].u_hashstr);*/
-            //³õÊ¼»¯ºÃÓÑÁĞ±í
+            //åˆå§‹åŒ–å¥½å‹åˆ—è¡¨
             pnr_dbget_friendsall_byuserid(i,g_imusr_array.usrnode[i].user_toxid);
-            //³õÊ¼»¯Êı¾İ¿â¾ä±ú
+            //åˆå§‹åŒ–æ•°æ®åº“å¥æŸ„
             if (sql_msglogdb_init(i) != OK){
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed", i);
                 return ERROR;
@@ -19758,18 +19758,18 @@ int im_server_init(void)
 		for (j = 0; j <= PNR_IMUSER_FRIENDS_MAXNUM; j++) {
 			pthread_mutex_init(&g_imusr_array.usrnode[i].friends[j].lock_sended, NULL);
 		}
-        //lws¾ä±úÖ¸Õë
+        //lwså¥æŸ„æŒ‡é’ˆ
         g_lws_handler[i] = NULL;
 
-        //tox linknode Ö¸Õë
+        //tox linknode æŒ‡é’ˆ
         g_tox_linknode[i] = NULL;
     }
 
-    //ÓÃ»§ÏûÏ¢»º´æ³õÊ¼»¯
+    //ç”¨æˆ·æ¶ˆæ¯ç¼“å­˜åˆå§‹åŒ–
 	pnr_msgcache_init();
-    //ÓÃ»§tox dataĞÅÏ¢³õÊ¼»¯
+    //ç”¨æˆ·tox dataä¿¡æ¯åˆå§‹åŒ–
     pnr_tox_datafile_init_fromdb();
-    //ÈºĞÅÏ¢³õÊ¼»¯
+    //ç¾¤ä¿¡æ¯åˆå§‹åŒ–
     pnr_groupinfo_init();
     return OK;
 }
@@ -19831,19 +19831,19 @@ fail:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : imuser_friendstatus_push
- ¹¦ÄÜÃèÊö  : ºÃÓÑ×´Ì¬¸üĞÂÍÆËÍ
- ÊäÈë²ÎÊı  : int index          
+ å‡½ æ•° å  : imuser_friendstatus_push
+ åŠŸèƒ½æè¿°  : å¥½å‹çŠ¶æ€æ›´æ–°æ¨é€
+ è¾“å…¥å‚æ•°  : int index          
              int online_status  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ10ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ10æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int imuser_friendstatus_push(int index,int online_status)
@@ -19851,8 +19851,8 @@ int imuser_friendstatus_push(int index,int online_status)
     int i=0,j=0,friend_id=0;
     struct im_friend_msgstruct user;
 
-    //ÒÅÁôÎÊÌâ£¬ÉÏÏßÊ±Èç¹ûºÃÓÑ²»ÔÚÏßÔõÃ´´¦Àí£¿
-    //¶ÔÆäËùÓĞµÄºÃÓÑ·¢ËÍ×´Ì¬¸Ä±äÏûÏ¢
+    //é—ç•™é—®é¢˜ï¼Œä¸Šçº¿æ—¶å¦‚æœå¥½å‹ä¸åœ¨çº¿æ€ä¹ˆå¤„ç†ï¼Ÿ
+    //å¯¹å…¶æ‰€æœ‰çš„å¥½å‹å‘é€çŠ¶æ€æ”¹å˜æ¶ˆæ¯
     for(i=0;i<PNR_IMUSER_FRIENDS_MAXNUM;i++)
     {
        if(g_imusr_array.usrnode[index].friends[i].exsit_flag)
@@ -19862,12 +19862,12 @@ int imuser_friendstatus_push(int index,int online_status)
            memcpy(user.touser_toxid,g_imusr_array.usrnode[index].friends[i].user_toxid,TOX_ID_STR_LEN);
            user.result = online_status;
 
-           //ÏÈÕÒµ½ºÃÓÑ
+           //å…ˆæ‰¾åˆ°å¥½å‹
            friend_id=get_indexbytoxid(g_imusr_array.usrnode[index].friends[i].user_toxid);
-           //¶ÔÓÚÄ¿±êºÃÓÑÎª±¾µØÓÃ»§
+           //å¯¹äºç›®æ ‡å¥½å‹ä¸ºæœ¬åœ°ç”¨æˆ·
            if(friend_id != 0)
            {
-                //ÔÙÔÚºÃÓÑµÄºÃÓÑÁĞ±íÖĞÕÒµ½×Ô¼º£¬²¢ÇÒ¸Ä±ä×´Ì¬
+                //å†åœ¨å¥½å‹çš„å¥½å‹åˆ—è¡¨ä¸­æ‰¾åˆ°è‡ªå·±ï¼Œå¹¶ä¸”æ”¹å˜çŠ¶æ€
                 for(j=0;j<PNR_IMUSER_FRIENDS_MAXNUM;j++)
                 {
                     if((g_imusr_array.usrnode[friend_id].friends[j].exsit_flag == TRUE)
@@ -19881,7 +19881,7 @@ int imuser_friendstatus_push(int index,int online_status)
            }
            else
            {
-           		//±ÜÃâºÃÓÑ¹ØÏµ¶ªÊ§µ¼ÖÂÎŞ·¨½ÓÊÕÏûÏ¢
+           		//é¿å…å¥½å‹å…³ç³»ä¸¢å¤±å¯¼è‡´æ— æ³•æ¥æ”¶æ¶ˆæ¯
 				check_and_add_friends(g_tox_linknode[index], g_imusr_array.usrnode[index].friends[i].user_toxid, 
 					g_imusr_array.usrnode[index].userinfo_fullurl);
                 //im_pushmsg_callback(index,PNR_IM_CMDTYPE_ONLINESTATUSPUSH,FALSE,PNR_API_VERSION_V4,(void *)&user);
@@ -19893,13 +19893,13 @@ int imuser_friendstatus_push(int index,int online_status)
 
 /**********************************************************************************
   Function:      imuser_heartbeat_deal
-  Description:   ĞÄÌø´¦Àí
+  Description:   å¿ƒè·³å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -19910,7 +19910,7 @@ int imuser_heartbeat_deal(void)
 {
     int index = 0;
 
-    //±éÀú£¬¶ÔËùÓĞ·ÇÀëÏß×´Ì¬µÄÓÃ»§¼ì²âĞÄÌø¼ÆÊı
+    //éå†ï¼Œå¯¹æ‰€æœ‰éç¦»çº¿çŠ¶æ€çš„ç”¨æˆ·æ£€æµ‹å¿ƒè·³è®¡æ•°
     for(index=1;index<=PNR_IMUSER_MAXNUM;index++)
     {
         pthread_mutex_lock(&(g_pnruser_lock[index]));
@@ -19933,13 +19933,13 @@ int imuser_heartbeat_deal(void)
 }
 /**********************************************************************************
   Function:      im_global_info_show
-  Description:   È«¾Öµ÷ÊÔĞÅÏ¢
+  Description:   å…¨å±€è°ƒè¯•ä¿¡æ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20124,13 +20124,13 @@ int im_global_info_show(char* pcmd)
 }
 /**********************************************************************************
   Function:      pnr_datafile_base64encode
-  Description:   dataÎÄ¼şbase64±àÂë
+  Description:   dataæ–‡ä»¶base64ç¼–ç 
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20154,7 +20154,7 @@ int pnr_datafile_base64encode(char* file_url,char* encode_buff,int* encode_bufle
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_datafile_base64encode:open file(%s) error",file_url);
         return ERROR;
     }
-    while(!feof(fp))/*ÅĞ¶ÏÊÇ·ñ½áÊø£¬ÕâÀï»áÓĞ¸öÎÄ¼ş½áÊø·û*/
+    while(!feof(fp))/*åˆ¤æ–­æ˜¯å¦ç»“æŸï¼Œè¿™é‡Œä¼šæœ‰ä¸ªæ–‡ä»¶ç»“æŸç¬¦*/
     {
         fread(fpos,sizeof(char),1,fp);
         data_srclen++;
@@ -20173,13 +20173,13 @@ int pnr_datafile_base64encode(char* file_url,char* encode_buff,int* encode_bufle
 }
 /**********************************************************************************
   Function:      pnr_datafile_base64decode
-  Description:   base64×Ö·û´®½âÂëÎªdataÎÄ¼ş
+  Description:   base64å­—ç¬¦ä¸²è§£ç ä¸ºdataæ–‡ä»¶
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20228,13 +20228,13 @@ int pnr_datafile_base64decode(char* file_url,char* src_buff,int src_buflen)
 }
 /**********************************************************************************
   Function:      im_datafile_base64_change
-  Description:   dataÎÄ¼ş¸ñÊ½×ª»»
+  Description:   dataæ–‡ä»¶æ ¼å¼è½¬æ¢
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20252,7 +20252,7 @@ int im_datafile_base64_change(char* src_file,char* dst_file,int encode_flag)
     {
         return ERROR;
     }
-    //Èç¹ûÊÇtrue£¬base64¼ÓÃÜ
+    //å¦‚æœæ˜¯trueï¼Œbase64åŠ å¯†
     if(encode_flag == TRUE)
     {
         if(pnr_datafile_base64encode(src_file,base64_buf,&bufflen) != OK)
@@ -20280,7 +20280,7 @@ int im_datafile_base64_change(char* src_file,char* dst_file,int encode_flag)
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_datafile_base64_change:open file(%s) error",src_file);
             return ERROR;
         }
-        while(!feof(fp))/*ÅĞ¶ÏÊÇ·ñ½áÊø£¬ÕâÀï»áÓĞ¸öÎÄ¼ş½áÊø·û*/
+        while(!feof(fp))/*åˆ¤æ–­æ˜¯å¦ç»“æŸï¼Œè¿™é‡Œä¼šæœ‰ä¸ªæ–‡ä»¶ç»“æŸç¬¦*/
         {
             fread(fpos,sizeof(char),1,fp);
             bufflen++;
@@ -20288,7 +20288,7 @@ int im_datafile_base64_change(char* src_file,char* dst_file,int encode_flag)
         }   
         fclose(fp);
         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"decode(%d:%s)",bufflen,base64_buf);
-        bufflen--;//È¥µô×îºóµÄ½áÎ²·û
+        bufflen--;//å»æ‰æœ€åçš„ç»“å°¾ç¬¦
         if(pnr_datafile_base64decode(dst_file,base64_buf,bufflen) != OK)
         {
             return ERROR;
@@ -20298,13 +20298,13 @@ int im_datafile_base64_change(char* src_file,char* dst_file,int encode_flag)
 }
 /**********************************************************************************
   Function:      im_datafile_base64_change_cmddeal
-  Description:   dataÎÄ¼ş¸ñÊ½×ª»»ÃüÁî´¦Àí
+  Description:   dataæ–‡ä»¶æ ¼å¼è½¬æ¢å‘½ä»¤å¤„ç†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20328,13 +20328,13 @@ int im_datafile_base64_change_cmddeal(char* pcmd)
 
 /**********************************************************************************
   Function:      im_delete_friend_filelog
-  Description:   É¾³ıºÃÓÑÔ¤´¦Àí£¬É¾³ıºÃÓÑÖ®¼äÎÄ¼ş¼ÇÂ¼
+  Description:   åˆ é™¤å¥½å‹é¢„å¤„ç†ï¼Œåˆ é™¤å¥½å‹ä¹‹é—´æ–‡ä»¶è®°å½•
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20347,13 +20347,13 @@ int im_delete_friend_filelog(int msgid,int filetype,char* user_id,char* friend_i
 }
 /**********************************************************************************
   Function:      im_delete_friend_predeal
-  Description:   É¾³ıºÃÓÑÔ¤´¦Àí£¬É¾³ıºÃÓÑÖ®¼ä¶ÔÓ¦µÄÁÄÌì¼ÇÂ¼£¬ÎÄ¼ş´«Êä¼ÇÂ¼
+  Description:   åˆ é™¤å¥½å‹é¢„å¤„ç†ï¼Œåˆ é™¤å¥½å‹ä¹‹é—´å¯¹åº”çš„èŠå¤©è®°å½•ï¼Œæ–‡ä»¶ä¼ è¾“è®°å½•
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20372,20 +20372,20 @@ int im_delete_friend_predeal(char* user_id,char* friend_id)
     {
         return ERROR;
     }
-    //ÁÄÌì¼ÇÂ¼Ö±½ÓÉ¾³ı
+    //èŠå¤©è®°å½•ç›´æ¥åˆ é™¤
     pnr_msglog_dbdelete(user_index,PNR_IM_MSGTYPE_TEXT,0,user_id,friend_id);
-    //ÒôÆµÊÓÆµÎÄ¼ş´«Êä£¬ÏÈ¸ù¾İÏûÏ¢¼ÇÂ¼£¬ÇåÀí¶ÔÓ¦ÎÄ¼ş£¬ÔÙÉ¾³ıÏûÏ¢¼ÇÂ¼
+    //éŸ³é¢‘è§†é¢‘æ–‡ä»¶ä¼ è¾“ï¼Œå…ˆæ ¹æ®æ¶ˆæ¯è®°å½•ï¼Œæ¸…ç†å¯¹åº”æ–‡ä»¶ï¼Œå†åˆ é™¤æ¶ˆæ¯è®°å½•
     return OK;
 }
 /**********************************************************************************
   Function:      pnr_qrcode_encrype
-  Description:  ¶şÎ¬Âë¼ÓÃÜ
+  Description:  äºŒç»´ç åŠ å¯†
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20430,13 +20430,13 @@ int pnr_qrcode_encrype(char* src_msg,char* p_ret,int* ret_len)
 
 /**********************************************************************************
   Function:      pnr_create_account_qrcode
-  Description:  Éú³ÉĞÂµÄÕË»§¶şÎ¬Âë
+  Description:  ç”Ÿæˆæ–°çš„è´¦æˆ·äºŒç»´ç 
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                 1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                 1:è°ƒç”¨å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20465,13 +20465,13 @@ int pnr_create_account_qrcode(char* p_usn,char* p_ret,int* ret_len)
 }
 /**********************************************************************************
   Function:      im_account_qrcode_get_cmddeal
-  Description:   »ñÈ¡ÕËºÅ¶şÎ¬ÂëµÄÃüÁî
+  Description:   è·å–è´¦å·äºŒç»´ç çš„å‘½ä»¤
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20524,13 +20524,13 @@ int im_account_qrcode_get_cmddeal(char* pcmd)
 }
 /**********************************************************************************
   Function:      im_debug_imcmd_deal
-  Description:   ²âÊÔÖ¸Áî
+  Description:   æµ‹è¯•æŒ‡ä»¤
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20569,7 +20569,7 @@ int im_debug_imcmd_deal(char* pcmd)
     }
     switch(cmd_type)
     {      
-        // 1 ³õÊ¼»¯Ò»¸öÊµÀı
+        // 1 åˆå§‹åŒ–ä¸€ä¸ªå®ä¾‹
         case PNR_IM_CMDTYPE_LOGIN:
             if(g_imusr_array.usrnode[user_index].init_flag == TRUE)
             {
@@ -20597,7 +20597,7 @@ int im_debug_imcmd_deal(char* pcmd)
                 }
             }
             break;
-            // 2 Ïú»ÙÒ»¸öÊµÀı
+            // 2 é”€æ¯ä¸€ä¸ªå®ä¾‹
         case PNR_IM_CMDTYPE_DESTORY:
             if(g_imusr_array.usrnode[user_index].init_flag == TRUE)
             {
@@ -20606,7 +20606,7 @@ int im_debug_imcmd_deal(char* pcmd)
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d:%s) logout",user_index,g_imusr_array.usrnode[user_index].user_toxid);
             }
             break;
-            // 3.Ìí¼ÓºÃÓÑ
+            // 3.æ·»åŠ å¥½å‹
         case PNR_IM_CMDTYPE_ADDFRIENDREQ:
             pbuf = strchr(pbuf,' ');
             if(pbuf == NULL)
@@ -20631,7 +20631,7 @@ int im_debug_imcmd_deal(char* pcmd)
             }
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"add success");
             break;
-            // 7 É¾³ıºÃÓÑ
+            // 7 åˆ é™¤å¥½å‹
         case PNR_IM_CMDTYPE_DELFRIENDCMD:
             pbuf = strchr(pbuf,' ');
             if(pbuf == NULL)
@@ -20661,7 +20661,7 @@ int im_debug_imcmd_deal(char* pcmd)
             }
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"del success");
             break;
-            //9 ·¢ËÍÏûÏ¢
+            //9 å‘é€æ¶ˆæ¯
         case PNR_IM_CMDTYPE_SENDMSG:
             pbuf = strchr(pbuf,' ');
             if(pbuf == NULL)
@@ -20694,10 +20694,10 @@ int im_debug_imcmd_deal(char* pcmd)
                 TOX_MESSAGE_TYPE_NORMAL,(uint8_t *)pmsg, msglen, NULL);
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"send msg(%s) return %d",pmsg,msgid);
             break;
-        //ĞÂÉú³ÉÒ»¸öÆÕÍ¨ÓÃ»§
+        //æ–°ç”Ÿæˆä¸€ä¸ªæ™®é€šç”¨æˆ·
         case PNR_IM_CMDTYPE_CREATENORMALUSER:
             account.type = user_index;
-            account.index = g_account_array.total_user_num+1;//ÕâÀïÒª¼ÓÉÏÄ¬ÈÏµÄadminÓÃ»§µÄÒ»¸öÊıÁ¿
+            account.index = g_account_array.total_user_num+1;//è¿™é‡Œè¦åŠ ä¸Šé»˜è®¤çš„adminç”¨æˆ·çš„ä¸€ä¸ªæ•°é‡
             g_account_array.normal_user_num++;
             g_account_array.total_user_num++;
             if(account.type == PNR_USER_TYPE_ADMIN)
@@ -20730,13 +20730,13 @@ int im_debug_imcmd_deal(char* pcmd)
 }
 /**********************************************************************************
   Function:      adminaccount_qrcode_init
-  Description:   adminuser ¶şÎ¬ÂëÎÄ¼şÉú³É
+  Description:   adminuser äºŒç»´ç æ–‡ä»¶ç”Ÿæˆ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20746,10 +20746,10 @@ int im_debug_imcmd_deal(char* pcmd)
 int adminaccount_qrcode_init(void)
 {
     int ret_len =0;
-    //tmpÕË»§Éú³É¶şÎ¬Âë
+    //tmpè´¦æˆ·ç”ŸæˆäºŒç»´ç 
     pnr_create_account_qrcode(g_account_array.temp_user_sn,g_account_array.temp_user_qrcode,&ret_len);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"adminaccount_qrcode_init:temp usn(%s) qrcode(%s)",g_account_array.temp_user_sn,g_account_array.temp_user_qrcode);
-    //Ö÷ÅÉÉúÕË»§Ğ´¶şÎ¬ÂëÎÄ¼ş
+    //ä¸»æ´¾ç”Ÿè´¦æˆ·å†™äºŒç»´ç æ–‡ä»¶
     pnr_create_account_qrcode(g_account_array.account[PNR_ADMINUSER_PSN_INDEX].user_sn,g_account_array.defadmin_user_qrcode,&ret_len);
 #ifdef DEV_ONESPACE
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"adminaccount_qrcode_init:get def adminuser qrcode(%s)",g_account_array.defadmin_user_qrcode);
@@ -20761,13 +20761,13 @@ int adminaccount_qrcode_init(void)
 }
 /**********************************************************************************
   Function:      adminaccount_qrcode_show
-  Description:   adminuser ¶şÎ¬ÂëÎÄ¼şÏÔÊ¾ÔÚshellÉÏ
+  Description:   adminuser äºŒç»´ç æ–‡ä»¶æ˜¾ç¤ºåœ¨shellä¸Š
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20806,13 +20806,13 @@ int account_qrcode_show(char* p_sn)
 }
 /**********************************************************************************
   Function:      pnr_encrypt_show
-  Description:   ²âÊÔ¼ÓÃÜ½Ó¿Ú
+  Description:   æµ‹è¯•åŠ å¯†æ¥å£
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20839,13 +20839,13 @@ int g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
 int g_udpdebug_flag = FALSE;
 /**********************************************************************************
   Function:      pnr_post_attach_touser
-  Description:   post_newmsgÓÃ»§Ìí¼Ó
+  Description:   post_newmsgç”¨æˆ·æ·»åŠ 
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20886,13 +20886,13 @@ int pnr_post_attach_touser(char* uid)
 }
 /**********************************************************************************
   Function:      pnr_post_newmsg_notice_task
-  Description:   ĞÂÏûÏ¢ÌáĞÑÍÆËÍÈÎÎñ
+  Description:   æ–°æ¶ˆæ¯æé†’æ¨é€ä»»åŠ¡
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -20966,18 +20966,18 @@ static void *pnr_post_newmsg_notice_task(void *para)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : post_newmsg_notice
- ¹¦ÄÜÃèÊö  : ÍÆËÍĞÂÏûÏ¢ÌáĞÑ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : post_newmsg_notice
+ åŠŸèƒ½æè¿°  : æ¨é€æ–°æ¶ˆæ¯æé†’
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
@@ -21014,13 +21014,13 @@ int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
 }
 /**********************************************************************************
   Function:      pnr_post_newmsgs_notice_once
-  Description:   ĞÂÏûÏ¢ÅúÁ¿ÍÆËÍÒ»´Î
+  Description:   æ–°æ¶ˆæ¯æ‰¹é‡æ¨é€ä¸€æ¬¡
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21085,18 +21085,18 @@ static void *pnr_post_newmsgs_notice_once(void *para)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : post_newmsg_loop_task
- ¹¦ÄÜÃèÊö  : ÂÖÑ¯ÍÆËÍĞÂÏûÏ¢ÍÆËÍ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : post_newmsg_loop_task
+ åŠŸèƒ½æè¿°  : è½®è¯¢æ¨é€æ–°æ¶ˆæ¯æ¨é€
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void post_newmsgs_loop_task(void *para)
@@ -21148,13 +21148,13 @@ void post_newmsgs_loop_task(void *para)
 
 /**********************************************************************************
   Function:      im_debug_pushnewnotice_deal
-  Description:   ²âÊÔÍÆËÍĞÂÏûÏ¢
+  Description:   æµ‹è¯•æ¨é€æ–°æ¶ˆæ¯
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21190,13 +21190,13 @@ int im_debug_pushnewnotice_deal(char* pbuf)
 }
 /**********************************************************************************
   Function:      im_debug_setfunc_deal
-  Description:   ¶¯Ì¬ÉèÖÃ¹¦ÄÜ¿ª¹Ø
+  Description:   åŠ¨æ€è®¾ç½®åŠŸèƒ½å¼€å…³
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21290,13 +21290,13 @@ int im_debug_setfunc_deal(char* pcmd)
 }
 /**********************************************************************************
   Function:      pnr_relogin_pushbylws
-  Description:   ÍÆËÍÖØ¸´µÇÂ½µÄÏûÏ¢Í¨¹ılws
+  Description:   æ¨é€é‡å¤ç™»é™†çš„æ¶ˆæ¯é€šè¿‡lws
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21320,7 +21320,7 @@ int pnr_relogin_pushbylws(int index,int type)
     {
 		return ERROR;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -21384,7 +21384,7 @@ int pnr_relogin_pushbylws(int index,int type)
         return ERROR;
     }
 
-    //Çå³ıÔ­index
+    //æ¸…é™¤åŸindex
     //pss->user_index = 0;
     pthread_mutex_unlock(&pss->lock_ring);
 
@@ -21401,13 +21401,13 @@ int pnr_relogin_pushbylws(int index,int type)
 }
 /**********************************************************************************
   Function:      pnr_relogin_pushbytox
-  Description:   ÍÆËÍÖØ¸´µÇÂ½µÄÏûÏ¢Í¨¹ıtox
+  Description:   æ¨é€é‡å¤ç™»é™†çš„æ¶ˆæ¯é€šè¿‡tox
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21429,7 +21429,7 @@ int pnr_relogin_pushbytox(int index,int type)
     {
 		return ERROR;
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -21470,13 +21470,13 @@ int pnr_relogin_pushbytox(int index,int type)
 
 /**********************************************************************************
   Function:      pnr_relogin_push
-  Description:   ¼ì²âÊÇ·ñÖØ¸´µÇÂ½£¬Èç¹ûÊÇÖØ¸´µÇÂ½£¬ÍÆËÍÏûÏ¢¸øÇ°Ò»¸öÓÃ»§
+  Description:   æ£€æµ‹æ˜¯å¦é‡å¤ç™»é™†ï¼Œå¦‚æœæ˜¯é‡å¤ç™»é™†ï¼Œæ¨é€æ¶ˆæ¯ç»™å‰ä¸€ä¸ªç”¨æˆ·
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21544,13 +21544,13 @@ pthread_t simulation_task[PNR_IMUSER_FRIENDS_MAXNUM+1];
 #define SIMULATION_MSGSIGN  "s6+Exn7t7i4MgvQ9oMlNaEtuV71Y9WX4JBdx748whlb0WSsCB7vQK44BsCRKHcRKERABDKBhcG5HI3pIwvvTDPnDnGRLXD5e/+Eq0ph9mWIF90yC9zdqvsPJvvAw2D54"
 /**********************************************************************************
   Function:      pnr_simulation_user_task
-  Description:   Ä£ÄâÓÃ»§ÈÎÎñ
+  Description:   æ¨¡æ‹Ÿç”¨æˆ·ä»»åŠ¡
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21583,10 +21583,10 @@ static void *pnr_simulation_user_task(void *para)
         return NULL;
     }
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_simulation_user_task:user(%d:%s)",uindex,g_imusr_array.usrnode[uindex].user_toxid);
-    //Ã»ÓĞÊµÀı»¯µÄÓÃ»§£¬ĞèÒªÏÈ×¢²á»òÕßµÇÂ½¼¤»î
+    //æ²¡æœ‰å®ä¾‹åŒ–çš„ç”¨æˆ·ï¼Œéœ€è¦å…ˆæ³¨å†Œæˆ–è€…ç™»é™†æ¿€æ´»
     if(g_imusr_array.usrnode[uindex].init_flag != TRUE)
     {
-        //µÇÂ½
+        //ç™»é™†
         if(g_imusr_array.usrnode[uindex].user_toxid[0] != 0)
         {
             memset(&src_account,0,sizeof(src_account));
@@ -21614,7 +21614,7 @@ static void *pnr_simulation_user_task(void *para)
             cJSON_AddItemToObject(params, "DataFileVersion", cJSON_CreateNumber(1));
             cJSON_AddItemToObject(root, "params", params);
         }
-        else//×¢²á
+        else//æ³¨å†Œ
         {
             root =  cJSON_CreateObject();
             params = cJSON_CreateObject();
@@ -21637,7 +21637,7 @@ static void *pnr_simulation_user_task(void *para)
             cJSON_AddItemToObject(params, "Pubkey", cJSON_CreateString(username_encode));
             cJSON_AddItemToObject(root, "params", params);
         }
-        //ÏûÏ¢½âÎö
+        //æ¶ˆæ¯è§£æ
         memset(&msg_head,0,sizeof(msg_head));
         if(im_msghead_parses(root,params,&msg_head) != OK)
         {
@@ -21682,7 +21682,7 @@ static void *pnr_simulation_user_task(void *para)
         DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"user(%d) simulation exit",uindex);
         return NULL;
     }
-    //È»ºó¶¨ÆÚ·¢ÏûÏ¢
+    //ç„¶åå®šæœŸå‘æ¶ˆæ¯
     root =  cJSON_CreateObject();
     params = cJSON_CreateObject();
     if(root == NULL || params == NULL)
@@ -21725,13 +21725,13 @@ static void *pnr_simulation_user_task(void *para)
 }
 /**********************************************************************************
   Function:      im_simulation_setfunc_deal
-  Description:  Ä£Äâ²âÊÔ¹¦ÄÜ¿ª¹Ø
+  Description:  æ¨¡æ‹Ÿæµ‹è¯•åŠŸèƒ½å¼€å…³
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21794,18 +21794,18 @@ int im_simulation_setfunc_deal(char* pcmd)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_frpc_setconfig
- ¹¦ÄÜÃèÊö  : pnr frpc´úÀí·şÎñÅäÖÃ
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_frpc_setconfig
+ åŠŸèƒ½æè¿°  : pnr frpcä»£ç†æœåŠ¡é…ç½®
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_frpc_setconfig(struct pnrdev_netconn_info* pnetinfo)
@@ -21857,18 +21857,18 @@ int pnr_frpc_setconfig(struct pnrdev_netconn_info* pnetinfo)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_frpc_enable
- ¹¦ÄÜÃèÊö  : pnr frpc´úÀí·şÎñÅäÖÃ
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_frpc_enable
+ åŠŸèƒ½æè¿°  : pnr frpcä»£ç†æœåŠ¡é…ç½®
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_frpc_enable(int enable)
@@ -21896,18 +21896,18 @@ int pnr_frpc_enable(int enable)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_devinfo_get
- ¹¦ÄÜÃèÊö  : Éè±¸ĞÅÏ¢»ñÈ¡
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_devinfo_get
+ åŠŸèƒ½æè¿°  : è®¾å¤‡ä¿¡æ¯è·å–
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_devinfo_get(struct pnrdev_register_info* pinfo)
@@ -21938,13 +21938,13 @@ int pnr_devinfo_get(struct pnrdev_register_info* pinfo)
 
 /**********************************************************************************
   Function:      pnr_dev_register_task
-  Description:   Éè±¸Æô¶¯Ö®ºó×¢²á
+  Description:   è®¾å¤‡å¯åŠ¨ä¹‹åæ³¨å†Œ
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -21969,7 +21969,7 @@ void *pnr_dev_register_task(void *para)
         sleep(1);
     }
     g_devreg_repeat_time = PNR_REPEAT_TIME_1MIN;
-    //»ñÈ¡µ±Ç°Éè±¸ĞÅÏ¢
+    //è·å–å½“å‰è®¾å¤‡ä¿¡æ¯
     if(pnr_devinfo_get(&devinfo) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_devinfo_get err");
@@ -21977,7 +21977,7 @@ void *pnr_dev_register_task(void *para)
     }
     pnr_netconfig_dbget(&netinfo);
 
-    //Èç¹ûÊÇÆô¶¯ÁËfrp´úÀí£¬¼ì²âfrpÁ¬½Ó×´Ì¬
+    //å¦‚æœæ˜¯å¯åŠ¨äº†frpä»£ç†ï¼Œæ£€æµ‹frpè¿æ¥çŠ¶æ€
     if(netinfo.pubnet_mode == PNRDEV_NETCONN_FRPPROXY)
     {
         pnr_check_process_byname("frpc",&pid);
@@ -22020,7 +22020,7 @@ void *pnr_dev_register_task(void *para)
     cJSON_Delete(params);
     data_len = strlen(post_data);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_dev_register_task:post_data(%s)",post_data);
-    //ÔÆ¶Ë×¢²á
+    //äº‘ç«¯æ³¨å†Œ
     //https_post(PAPUSHMSG_DEVELOP_HTTPS_SERVER,PAPUSHMSG_HTTPSSERVER_PORT,PNR_HTTPSSERVER_DEVREGISTER,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     if(https_post(PAPUSHMSG_PRODUCT_HTTPS_SERVER,PAPUSHMSG_HTTPSSERVER_PORT,PNR_HTTPSSERVER_DEVREGISTER,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN) < 0)
     {
@@ -22030,7 +22030,7 @@ void *pnr_dev_register_task(void *para)
     }
     free(post_data);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_dev_register_task:rec(%s)",rec_buff);
-    //·µ»ØÖµ´¦Àí
+    //è¿”å›å€¼å¤„ç†
 	params = cJSON_Parse(rec_buff);
     if(params == NULL)
     {
@@ -22091,22 +22091,22 @@ void *pnr_dev_register_task(void *para)
         changeflag = TRUE;
         dbupdate_strvalue_byname(g_db_handle,"generconf_tbl",DB_PUBNET_IPSTR_KEYWORD,netinfo.pub_ipstr);
     }
-    //Èç¹ûÍøÂçÅäÖÃÓĞ±ä»¯£¬ĞŞ¸Ä
+    //å¦‚æœç½‘ç»œé…ç½®æœ‰å˜åŒ–ï¼Œä¿®æ”¹
     if(resp.renew_flag == TRUE || changeflag == TRUE)
     {
         if(netinfo.pubnet_mode != PNRDEV_NETCONN_FRPPROXY)
         {
-           //Í£Ö¹ftpc·şÎñ
+           //åœæ­¢ftpcæœåŠ¡
            pnr_frpc_enable(FALSE);
         }
         else if(resp.frp_mode != 0)
         {
-            //Éú³ÉĞÂµÄfrpÅäÖÃ
+            //ç”Ÿæˆæ–°çš„frpé…ç½®
             pnr_frpc_setconfig(&netinfo);
             pnr_frpc_enable(TRUE);
         }
     }
-    //¼ì²âÈç¹ûÊÇfrpÄ£Ê½
+    //æ£€æµ‹å¦‚æœæ˜¯frpæ¨¡å¼
     if(netinfo.pubnet_mode == PNRDEV_NETCONN_FRPPROXY)
     {
         if(access(PNR_FRPC_CONFIG_FILE,F_OK) != OK)
@@ -22124,18 +22124,18 @@ void *pnr_dev_register_task(void *para)
     return NULL;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : post_devinfo_upload_task
- ¹¦ÄÜÃèÊö  : ÍÆËÍÉè±¸×¢²áĞÅÏ¢
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : post_devinfo_upload_task
+ åŠŸèƒ½æè¿°  : æ¨é€è®¾å¤‡æ³¨å†Œä¿¡æ¯
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void post_devinfo_upload_task(void *para)
@@ -22145,7 +22145,7 @@ void post_devinfo_upload_task(void *para)
     int first_flag = TRUE;
     while(1)
     {
-        //µÚÒ»´ÎĞèÒªÖÍºó1min£¬µÈÍøÂçÆğÀ´
+        //ç¬¬ä¸€æ¬¡éœ€è¦æ»å1minï¼Œç­‰ç½‘ç»œèµ·æ¥
         if(first_flag == TRUE)
         {
             sleep(PNR_REPEAT_TIME_30SEC);
@@ -22167,18 +22167,18 @@ int post_devinfo_upload_once(void* param)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_rnode_msg_push
- ¹¦ÄÜÃèÊö  : rid½ÚµãÏûÏ¢ÍÆËÍ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_rnode_msg_push
+ åŠŸèƒ½æè¿°  : ridèŠ‚ç‚¹æ¶ˆæ¯æ¨é€
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
@@ -22227,7 +22227,7 @@ int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
             }
         }
     }
-    //¹¹½¨ÏìÓ¦ÏûÏ¢
+    //æ„å»ºå“åº”æ¶ˆæ¯
     cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
     if(ret_root == NULL || ret_params == NULL)
@@ -22282,18 +22282,18 @@ int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_rnode_debugmsg_send
- ¹¦ÄÜÃèÊö  : rid½Úµãµ÷ÊÔÏûÏ¢·¢ËÍ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_rnode_debugmsg_send
+ åŠŸèƒ½æè¿°  : ridèŠ‚ç‚¹è°ƒè¯•æ¶ˆæ¯å‘é€
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_rnode_debugmsg_send(char* pcmd)
@@ -22332,18 +22332,18 @@ int pnr_rnode_debugmsg_send(char* pcmd)
     return pnr_rnode_msg_push(cmdtype,p_target_rid,param1,param2);
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_router_node_friend_init
- ¹¦ÄÜÃèÊö  : ½ÚµãÆô¶¯ºó£¬ËùÓĞÓĞºÃÓÑ¹ØÏµrid»¥Ïà¼ÓºÃÓÑ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_router_node_friend_init
+ åŠŸèƒ½æè¿°  : èŠ‚ç‚¹å¯åŠ¨åï¼Œæ‰€æœ‰æœ‰å¥½å‹å…³ç³»ridäº’ç›¸åŠ å¥½å‹
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_router_node_friend_init(void)
@@ -22360,7 +22360,7 @@ int pnr_router_node_friend_init(void)
     if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow, 
         &nColumn, &errmsg) == SQLITE_OK)
     {
-        offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+        offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
         for( i = 0; i < nRow ; i++ )
         {
             if(dbResult[offset] != NULL)
@@ -22404,13 +22404,13 @@ int pnr_router_node_friend_init(void)
 
 /**********************************************************************************
   Function:      pnr_monitor_warning_task
-  Description:   Éè±¸¼à¿Ø¸æ¾¯
+  Description:   è®¾å¤‡ç›‘æ§å‘Šè­¦
   Calls:
   Called By:
   Input:
   Output:        none
-  Return:        0:³É¹¦
-                 1:Ê§°Ü
+  Return:        0:æˆåŠŸ
+                 1:å¤±è´¥
   Others:
 
   History: 1. Date:2018-07-30
@@ -22472,18 +22472,18 @@ static void *pnr_monitor_warning_task(void *para)
     return NULL;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_netstat_check
- ¹¦ÄÜÃèÊö  : ¼ì²âÍøÂç×èÈû
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_netstat_check
+ åŠŸèƒ½æè¿°  : æ£€æµ‹ç½‘ç»œé˜»å¡
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
@@ -22529,7 +22529,7 @@ int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
         }
         if(recq_num > PNR_NETSTAT_RECQMAXNUM)
         {
-            //·¢ÏÖÓµÈû
+            //å‘ç°æ‹¥å¡
             pinfo->err_no = PNR_MONITORINFO_ENUM_NETSTATERR;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"break");
             break;
@@ -22539,7 +22539,7 @@ int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
         memset(netstat_process,0,PNR_USERNAME_MAXLEN);
     }
     pclose(fp);
-    //Èç¹û·¢ÏÖÓµÈû£¬ÏÈÉÏ±¨£¬ÔÙ´¦Àí
+    //å¦‚æœå‘ç°æ‹¥å¡ï¼Œå…ˆä¸ŠæŠ¥ï¼Œå†å¤„ç†
     if(pinfo->err_no == PNR_MONITORINFO_ENUM_NETSTATERR)
     {
         memset(pcmd,0,CMD_MAXLEN);
@@ -22563,7 +22563,7 @@ int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
         {
             snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"just warnning");
         }
-        //ÉÏ±¨
+        //ä¸ŠæŠ¥
         if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
@@ -22578,18 +22578,18 @@ int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_sysresource_check
- ¹¦ÄÜÃèÊö  : ¼ì²âÏµÍ³×ÊÔ´
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_sysresource_check
+ åŠŸèƒ½æè¿°  : æ£€æµ‹ç³»ç»Ÿèµ„æº
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
@@ -22607,7 +22607,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
     }
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
-        //¼ì²âtmpÄ¿Â¼ÊÇ·ñÂú
+        //æ£€æµ‹tmpç›®å½•æ˜¯å¦æ»¡
         snprintf(pcmd,CMD_MAXLEN,"df -h |grep /tmp |awk '{print $5}'");
         if (!(fp = popen(pcmd, "r"))) 
         {
@@ -22626,7 +22626,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
             pinfo->err_no = PNR_MONITORINFO_ENUM_TMPOVER;
             snprintf(pinfo->err_info,PNR_ATTACH_INFO_MAXLEN,"tmp buff over %d",tmp_used);
             snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"kill onecgi");
-            //ÉÏ±¨
+            //ä¸ŠæŠ¥
             if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
@@ -22638,7 +22638,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
             memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
             memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);
         }
-        //¼ì²âcpuÊÇ·ñ¹ı¸ß
+        //æ£€æµ‹cpuæ˜¯å¦è¿‡é«˜
         memset(pcmd,0,CMD_MAXLEN);
         snprintf(pcmd,CMD_MAXLEN,"ps aux|grep pnr_server |grep -v grep |awk '{print $3}'");
         if (!(fp = popen(pcmd, "r"))) 
@@ -22658,7 +22658,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
             pinfo->err_no = PNR_MONITORINFO_ENUM_CPUOVER;
             snprintf(pinfo->err_info,PNR_ATTACH_INFO_MAXLEN,"cpu over %d",cpu_used);
             snprintf(pinfo->repair_info,PNR_ATTACH_INFO_MAXLEN,"kill pnr_server");
-            //ÉÏ±¨
+            //ä¸ŠæŠ¥
             if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, pinfo) != 0) 
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
@@ -22675,18 +22675,18 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
 }
 extern char g_dev_hwaddr[MACSTR_MAX_LEN];
 /*****************************************************************************
- º¯ Êı Ãû  : self_monitor_thread
- ¹¦ÄÜÃèÊö  : ×ÔÎÒ¼à²âÈÎÎñ
- ÊäÈë²ÎÊı  : void arg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : self_monitor_thread
+ åŠŸèƒ½æè¿°  : è‡ªæˆ‘ç›‘æµ‹ä»»åŠ¡
+ è¾“å…¥å‚æ•°  : void arg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 void *self_monitor_thread(void *para)
@@ -22703,7 +22703,7 @@ void *self_monitor_thread(void *para)
     info.mode_num = 1;
 	while (TRUE) 
     {
-        //¼ì²âÍøÂç¶Ë¿Ú×èÈû
+        //æ£€æµ‹ç½‘ç»œç«¯å£é˜»å¡
         pnr_netstat_check(&info);
         pnr_sysresource_check(&info);
         sleep(PNR_SELF_MONITOR_CYCLE);
@@ -22721,18 +22721,18 @@ char* g_pnr_warninginfo[PNR_MONITORINFO_ENUM_BUTT+1]=
     "BUTT"
 };
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_sysoperation_done
- ¹¦ÄÜÃèÊö  : ÏµÍ³¹Ø¼üĞÔ²Ù×÷´¦Àí
- ÊäÈë²ÎÊı  : 
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_sysoperation_done
+ åŠŸèƒ½æè¿°  : ç³»ç»Ÿå…³é”®æ€§æ“ä½œå¤„ç†
+ è¾“å…¥å‚æ•°  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ30ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ30æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_sysoperation_done(int type)
@@ -22751,12 +22751,12 @@ int pnr_sysoperation_done(int type)
         warninfo.err_no = type;
         strcpy(warninfo.err_info,g_pnr_warninginfo[type]);
         strcpy(warninfo.repair_info,"Just warning");
-        //±¾µØ¼ÇÂ¼
+        //æœ¬åœ°è®°å½•
         snprintf(syscmd,CMD_MAXLEN,"echo 'time(%d) warntype(%d) info(%s) repair(%s)' >> %s",
             (int)time(NULL),warninfo.err_no,warninfo.err_info,warninfo.repair_info,PNR_SYSWARNING_LOG);
         system(syscmd);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"syscmd(%s)",syscmd);
-        //ÉÏ±¨
+        //ä¸ŠæŠ¥
         if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, &warninfo) != 0) 
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_sysoperation_done failed");

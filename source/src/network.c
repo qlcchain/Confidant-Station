@@ -3,8 +3,8 @@
  */
 
 /*
- * Copyright © 2016-2018 The TokTok team.
- * Copyright © 2013 Tox project.
+ * Copyright Â© 2016-2018 The TokTok team.
+ * Copyright Â© 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -667,7 +667,7 @@ int networking_at_startup(void)
     randombytes_stir();
 #else
 	pthread_mutex_lock(&g_sodium_init_lock);
-    //²âÊÔ·¢ÏÖÕâ¸ö±ØĞë·ÅÔÚµ±Ç°Ïß³Ì£¬·ñÔòsodium_init»¹ÊÇ»á¿¨×¡
+    //æµ‹è¯•å‘ç°è¿™ä¸ªå¿…é¡»æ”¾åœ¨å½“å‰çº¿ç¨‹ï¼Œå¦åˆ™sodium_initè¿˜æ˜¯ä¼šå¡ä½
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
         system("/usr/bin/rngd -r/dev/urandom");
