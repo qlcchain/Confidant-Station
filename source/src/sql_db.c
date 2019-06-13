@@ -25,7 +25,7 @@ extern Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 extern pthread_mutex_t g_user_msgidlock[PNR_IMUSER_MAXNUM+1];
 /***********************************************************************************
   Function:      sql_db_repair
-  Description:  Ä£¿éµÄÊı¾İ¿âĞŞ¸´
+  Description:  æ¨¡å—çš„æ•°æ®åº“ä¿®å¤
   Calls:
   Called By:     main
   Input:
@@ -53,7 +53,7 @@ int sql_db_repair(int uindex,int db_num,int db_tbl_index)
         return ERROR;
     }
      
-    //Êı¾İ¿â±¸·İ
+    //æ•°æ®åº“å¤‡ä»½
     switch(db_num)
     {
         case PNR_DBFILE_INDEX_GENERDB:
@@ -102,13 +102,13 @@ int sql_db_repair(int uindex,int db_num,int db_tbl_index)
 
 /**********************************************************************************
   Function:      dbupdate_intvalue_byname
-  Description:   Êı¾İ¿â¸üĞÂÕûĞÎ²ÎÊı
+  Description:   æ•°æ®åº“æ›´æ–°æ•´å½¢å‚æ•°
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -134,13 +134,13 @@ int dbupdate_intvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,int 
 }
 /**********************************************************************************
   Function:      dbupdate_strvalue_byname
-  Description:   Êı¾İ¿â¸üĞÂstring²ÎÊı
+  Description:   æ•°æ®åº“æ›´æ–°stringå‚æ•°
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -167,13 +167,13 @@ int dbupdate_strvalue_byname(sqlite3 * pdb,char* table_name, char* key_name,char
 
 /**********************************************************************************
   Function:      dbget_int_result
-  Description:   Êı¾İ¿â²éÑ¯×Ô¶¨ÒåintÀà±ğ²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢è‡ªå®šä¹‰intç±»åˆ«æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -198,13 +198,13 @@ int32 dbget_int_result(void* obj, int n_columns, char** column_values,char** col
 
 /**********************************************************************************
   Function:      dbget_singstr_result
-  Description:   Êı¾İ¿â²éÑ¯µ¥¸östringÀà±ğ²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢å•ä¸ªstringç±»åˆ«æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -226,7 +226,7 @@ int32 dbget_singstr_result(void* obj, int n_columns, char** column_values,char**
 }
 /***********************************************************************************
   Function:      sql_db_sync
-  Description:  Êı¾İ¿âÍ¬²½,ÔİÊ±¿Õ×Å
+  Description:  æ•°æ®åº“åŒæ­¥,æš‚æ—¶ç©ºç€
   Calls:
   Called By:     main
   Input:
@@ -246,7 +246,7 @@ int sql_db_sync(int cur_db_version)
 
     if(cur_db_version == DB_VERSION_V1)
     {
-        //³õÊ¼»¯È«¾Öuser_account_tbl±í
+        //åˆå§‹åŒ–å…¨å±€user_account_tblè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"create table user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,"
             "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime);");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -256,10 +256,10 @@ int sql_db_sync(int cur_db_version)
             return ERROR;
         }     
         sql_tempaccount_sn_init();
-        //³õÊ¼»¯admin_count
+        //åˆå§‹åŒ–admin_count
         sql_adminaccount_init();
 
-        //³õÊ¼»¯È«¾Ötox_datafile_tbl±í
+        //åˆå§‹åŒ–å…¨å±€tox_datafile_tblè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"create table tox_datafile_tbl(id integer primary key autoincrement,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile);");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
         {
@@ -289,7 +289,7 @@ int sql_db_sync(int cur_db_version)
             sqlite3_free(errMsg);
             return ERROR;
         }
-        //À©Õ¹user_account_tbl±í,²¢³õÊ¼»¯Îª¿Õ×Ö·û´®
+        //æ‰©å±•user_account_tblè¡¨,å¹¶åˆå§‹åŒ–ä¸ºç©ºå­—ç¬¦ä¸²
         snprintf(sql_cmd,SQL_CMD_LEN,"ALTER TABLE user_account_tbl ADD COLUMN pubkey varchar;");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
         {
@@ -304,7 +304,7 @@ int sql_db_sync(int cur_db_version)
             sqlite3_free(errMsg);
             return ERROR;
         }
-        //Ôö¼Ó³õÊ¼»¯È«¾Öuserdev_mapping_tbl±í
+        //å¢åŠ åˆå§‹åŒ–å…¨å±€userdev_mapping_tblè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"create table userdev_mapping_tbl(id integer primary key autoincrement,userindex,usrid,devid,devname);");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
         {
@@ -324,7 +324,7 @@ int sql_db_sync(int cur_db_version)
     }
     if(cur_db_version == DB_VERSION_V5)
     {
-        //³õÊ¼»¯È«¾Öuserinfo_tbl±í
+        //åˆå§‹åŒ–å…¨å±€userinfo_tblè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"create table userinfo_tbl(id integer primary key autoincrement,userindex,local,usrid,devid,avatar,md5,info);");
         if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
         {
@@ -336,7 +336,7 @@ int sql_db_sync(int cur_db_version)
     }
     if(cur_db_version == DB_VERSION_V6)
     {
-        //³õÊ¼»¯È«¾Öuserinfo_tbl±í
+        //åˆå§‹åŒ–å…¨å±€userinfo_tblè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"ALTER TABLE groupmsg_tbl ADD COLUMN filekey char(512);");
         if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
         {
@@ -410,7 +410,7 @@ int sql_db_sync(int cur_db_version)
         }
         cur_db_version++;
     }
-    //¸üĞÂÊı¾İ¿â°æ±¾
+    //æ›´æ–°æ•°æ®åº“ç‰ˆæœ¬
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -423,7 +423,7 @@ int sql_db_sync(int cur_db_version)
 }
 /***********************************************************************************
   Function:      sql_db_check
-  Description:  Ä£¿éµÄÊı¾İ¿â¼ì²â
+  Description:  æ¨¡å—çš„æ•°æ®åº“æ£€æµ‹
   Calls:
   Called By:     main
   Input:
@@ -474,7 +474,7 @@ int sql_db_check(void)
 		return ERROR;
     }
 	
-	//»ñÈ¡µ±Ç°Êı¾İ¿â°æ±¾
+	//è·å–å½“å‰æ•°æ®åº“ç‰ˆæœ¬
 	snprintf(sql_cmd,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_VERSION_KEYWORD);
     if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&cur_db_version,&errMsg))
 	{
@@ -485,7 +485,7 @@ int sql_db_check(void)
 		return ERROR;
 	}
     
-	//Èç¹û°æ±¾²»¶Ô£¬ĞèÒªÍ¬²½
+	//å¦‚æœç‰ˆæœ¬ä¸å¯¹ï¼Œéœ€è¦åŒæ­¥
 	if(cur_db_version < DB_CURRENT_VERSION)
 	{
 		if(sql_db_sync(cur_db_version)!= OK)
@@ -502,7 +502,7 @@ int sql_db_check(void)
 }
 /***********************************************************************************
   Function:      sql_adminaccount_init
-  Description:  ÅÉÉúÕËºÅµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ´¾ç”Ÿè´¦å·çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -539,7 +539,7 @@ int sql_adminaccount_init(void)
 }
 /***********************************************************************************
   Function:      sql_tempaccount_sn_init
-  Description:  ÅÉÉúÕËºÅµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ´¾ç”Ÿè´¦å·çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -574,7 +574,7 @@ int sql_tempaccount_sn_init(void)
 }
 /***********************************************************************************
   Function:      sql_friendsdb_init
-  Description:  Ä£¿éµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ¨¡å—çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -598,7 +598,7 @@ int sql_friendsdb_init(void)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_friendsdb_init failed");
         return ERROR;
     }
-	//³õÊ¼»¯±í
+	//åˆå§‹åŒ–è¡¨
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table friends_tbl(id,timestamp,userid,friendid,friendname,userkey,oneway,remarks);");
     if(sqlite3_exec(g_friendsdb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -610,7 +610,7 @@ int sql_friendsdb_init(void)
 }
 /***********************************************************************************
   Function:      sql_groupinfodb_init
-  Description:  Ä£¿éµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ¨¡å—çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -634,7 +634,7 @@ int sql_groupinfodb_init(void)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_groupinfodb_init failed");
         return ERROR;
     }
-	//³õÊ¼»¯±í
+	//åˆå§‹åŒ–è¡¨
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table grouplist_tbl(id,hash,owner,ownerid,verify,manager,gname,createtime);");
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -682,7 +682,7 @@ int sql_groupinfodb_init(void)
 
 /***********************************************************************************
   Function:      sql_msglogdb_init
-  Description:  Ä£¿éµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ¨¡å—çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -710,9 +710,9 @@ int sql_msglogdb_init(int index)
 	        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
 	        return ERROR;
 	    }
-	    //ÉèÖÃÊı¾İ¿âµÄĞ´Í¬²½£¬ÔÚÏµÍ³¶ÏµçµÄÇé¿öÏÂ¿ÉÄÜ¶ªÊ§Êı¾İ
+	    //è®¾ç½®æ•°æ®åº“çš„å†™åŒæ­¥ï¼Œåœ¨ç³»ç»Ÿæ–­ç”µçš„æƒ…å†µä¸‹å¯èƒ½ä¸¢å¤±æ•°æ®
 	    sqlite3_exec(g_msglogdb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);
-        //¿ªÆôWALÄ£Ê½
+        //å¼€å¯WALæ¨¡å¼
         //sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA journal_mode=WAL; ", 0,0,0);
 #else
         if (sqlite3_open(dbfile, &g_msglogdb_handle[index]) != OK)
@@ -722,12 +722,12 @@ int sql_msglogdb_init(int index)
         }
 #endif 
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
-		//³õÊ¼»¯msglog±í
+		//åˆå§‹åŒ–msglogè¡¨
 		snprintf(sql_cmd,SQL_CMD_LEN,"create table msg_tbl("
 		    "userindex,timestamp,id integer primary key autoincrement,"
 		    "logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);");
 #else
-        //³õÊ¼»¯msglog±í
+        //åˆå§‹åŒ–msglogè¡¨
         snprintf(sql_cmd,SQL_CMD_LEN,"create table msg_tbl("
             "userindex,timestamp,id integer primary key autoincrement,"
             "logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);");
@@ -738,7 +738,7 @@ int sql_msglogdb_init(int index)
 	        sqlite3_free(errMsg);
 	        return ERROR;
 	    }
-        //³õÊ¼»¯filelist_tbl±í
+        //åˆå§‹åŒ–filelist_tblè¡¨
 		snprintf(sql_cmd,SQL_CMD_LEN,"create table filelist_tbl("
 		    "userindex,timestamp,id integer primary key autoincrement,version,"
 		    "msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey);");
@@ -756,9 +756,9 @@ int sql_msglogdb_init(int index)
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
             return ERROR;
         }
-        //ÉèÖÃÊı¾İ¿âµÄĞ´Í¬²½£¬ÔÚÏµÍ³¶ÏµçµÄÇé¿öÏÂ¿ÉÄÜ¶ªÊ§Êı¾İ
+        //è®¾ç½®æ•°æ®åº“çš„å†™åŒæ­¥ï¼Œåœ¨ç³»ç»Ÿæ–­ç”µçš„æƒ…å†µä¸‹å¯èƒ½ä¸¢å¤±æ•°æ®
         sqlite3_exec(g_msglogdb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);
-        //¿ªÆôWALÄ£Ê½
+        //å¼€å¯WALæ¨¡å¼
         //sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA journal_mode=WAL; ", 0,0,0);
 #else
         if (sqlite3_open(dbfile, &g_msglogdb_handle[index]) != OK)
@@ -769,7 +769,7 @@ int sql_msglogdb_init(int index)
 #endif 
     }
 	
-    //»ñÈ¡µ±Ç°dbµÄid×î´óÖµ
+    //è·å–å½“å‰dbçš„idæœ€å¤§å€¼
     memset(sql_cmd,0,SQL_CMD_LEN);
     snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from msg_tbl;");
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&g_imusr_array.usrnode[index].msglog_dbid,&errMsg))
@@ -779,7 +779,7 @@ int sql_msglogdb_init(int index)
         return ERROR;
     }
     g_imusr_array.usrnode[index].msglog_dbid++;
-    //»ñÈ¡µ±Ç°dbµÄid×î´óÖµ,À´ÅĞ¶ÏÊÇ·ñÓĞfilelist±í
+    //è·å–å½“å‰dbçš„idæœ€å¤§å€¼,æ¥åˆ¤æ–­æ˜¯å¦æœ‰filelistè¡¨
     memset(sql_cmd,0,SQL_CMD_LEN);
     snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from filelist_tbl;");
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&db_id,&errMsg))
@@ -806,7 +806,7 @@ int sql_msglogdb_init(int index)
 
 /***********************************************************************************
   Function:      qlv_db_init
-  Description:  Ä£¿éµÄÊı¾İ¿â³õÊ¼»¯
+  Description:  æ¨¡å—çš„æ•°æ®åº“åˆå§‹åŒ–
   Calls:
   Called By:     main
   Input:
@@ -830,7 +830,7 @@ int sql_db_init(void)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite3_open failed");
         return ERROR;
     }
-	//³õÊ¼»¯È«¾Öconf±í
+	//åˆå§‹åŒ–å…¨å±€confè¡¨
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table generconf_tbl(name,value);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -908,7 +908,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
-    //³õÊ¼»¯È«¾Öuser_instance±í
+    //åˆå§‹åŒ–å…¨å±€user_instanceè¡¨
     snprintf(sql_cmd,SQL_CMD_LEN,"create table user_instance_tbl(userid primary key,"
     	"name,nickname,toxid,pathurl,datafile);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -917,7 +917,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
-    //³õÊ¼»¯log_cache_tbl
+    //åˆå§‹åŒ–log_cache_tbl
     snprintf(sql_cmd,SQL_CMD_LEN,"create table log_cache_tbl(timestamp,type,from_user,to_user,msg,ext);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -925,7 +925,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
-    //³õÊ¼»¯user_account_tbl
+    //åˆå§‹åŒ–user_account_tbl
     snprintf(sql_cmd,SQL_CMD_LEN,"create table user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,"
                 "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
@@ -934,7 +934,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }    
-    //³õÊ¼»¯È«¾Ötox_datafile_tbl±í
+    //åˆå§‹åŒ–å…¨å±€tox_datafile_tblè¡¨
     snprintf(sql_cmd,SQL_CMD_LEN,"create table tox_datafile_tbl(id integer primary key autoincrement,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -942,7 +942,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }  
-    //³õÊ¼»¯È«¾Öuserdev_mapping_tbl±í
+    //åˆå§‹åŒ–å…¨å±€userdev_mapping_tblè¡¨
     snprintf(sql_cmd,SQL_CMD_LEN,"create table userdev_mapping_tbl(id integer primary key autoincrement,userindex,usrid,devid,devname);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -950,7 +950,7 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     } 
-    //³õÊ¼»¯È«¾Öuserinfo_tbl±í
+    //åˆå§‹åŒ–å…¨å±€userinfo_tblè¡¨
     snprintf(sql_cmd,SQL_CMD_LEN,"create table userinfo_tbl(id integer primary key autoincrement,userindex,local,usrid,devid,avatar,md5,info);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -958,26 +958,26 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     } 
-    //³õÊ¼»¯ÁÙÊ±ÕË»§µÄsn
+    //åˆå§‹åŒ–ä¸´æ—¶è´¦æˆ·çš„sn
     sql_tempaccount_sn_init();
-    //³õÊ¼»¯admin_count
+    //åˆå§‹åŒ–admin_count
     sql_adminaccount_init();
 	return OK;
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : sql_msgcachedb_init
- ¹¦ÄÜÃèÊö  : ÏûÏ¢»º´ædb³õÊ¼»¯
- ÊäÈë²ÎÊı  : ÎŞ
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : sql_msgcachedb_init
+ åŠŸèƒ½æè¿°  : æ¶ˆæ¯ç¼“å­˜dbåˆå§‹åŒ–
+ è¾“å…¥å‚æ•°  : æ— 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int sql_msgcachedb_init(int index)
@@ -994,7 +994,7 @@ int sql_msgcachedb_init(int index)
 	        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
 	        return ERROR;
 	    }
-	    //ÉèÖÃÊı¾İ¿âµÄĞ´Í¬²½£¬ÔÚÏµÍ³¶ÏµçµÄÇé¿öÏÂ¿ÉÄÜ¶ªÊ§Êı¾İ
+	    //è®¾ç½®æ•°æ®åº“çš„å†™åŒæ­¥ï¼Œåœ¨ç³»ç»Ÿæ–­ç”µçš„æƒ…å†µä¸‹å¯èƒ½ä¸¢å¤±æ•°æ®
 	    sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);
 #else        
         if (sqlite3_open(dbfile, &g_msgcachedb_handle[index]) != OK) {
@@ -1022,7 +1022,7 @@ int sql_msgcachedb_init(int index)
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
             return ERROR;
         }
-	    //ÉèÖÃÊı¾İ¿âµÄĞ´Í¬²½£¬ÔÚÏµÍ³¶ÏµçµÄÇé¿öÏÂ¿ÉÄÜ¶ªÊ§Êı¾İ
+	    //è®¾ç½®æ•°æ®åº“çš„å†™åŒæ­¥ï¼Œåœ¨ç³»ç»Ÿæ–­ç”µçš„æƒ…å†µä¸‹å¯èƒ½ä¸¢å¤±æ•°æ®
 	    sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);		
 #else
         if (sqlite3_open(dbfile, &g_msgcachedb_handle[index]) != OK) {
@@ -1031,7 +1031,7 @@ int sql_msgcachedb_init(int index)
 	    }
 #endif
     }
-    //»ñÈ¡µ±Ç°dbµÄid×î´óÖµ
+    //è·å–å½“å‰dbçš„idæœ€å¤§å€¼
     memset(sql_cmd,0,SQL_CMD_LEN);
     snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from msg_tbl;");
     if(sqlite3_exec(g_msgcachedb_handle[index],sql_cmd,dbget_int_result,&g_imusr_array.usrnode[index].cachelog_dbid,&errMsg))
@@ -1046,13 +1046,13 @@ int sql_msgcachedb_init(int index)
 
 /**********************************************************************************
   Function:      pnr_usr_instance_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÊµÀıÀà±ğ²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢å®ä¾‹ç±»åˆ«æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -1090,7 +1090,7 @@ int32 pnr_usr_instance_dbget(void* obj, int n_columns, char** column_values,char
 
 /***********************************************************************************
   Function:      pnr_usr_instance_get
-  Description:  »ñÈ¡pnr userÊµÀı»¯ĞÅÏ¢
+  Description:  è·å–pnr userå®ä¾‹åŒ–ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -1126,7 +1126,7 @@ int pnr_usr_instance_get(int index)
 
 /***********************************************************************************
   Function:      pnr_usr_instance_insert
-  Description:  ²åÈëpnr userÊµÀı»¯ĞÅÏ¢
+  Description:  æ’å…¥pnr userå®ä¾‹åŒ–ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -1149,7 +1149,7 @@ int pnr_usr_instance_insert(int index)
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from user_instance_tbl where toxid='%s';",
             g_imusr_array.usrnode[index].user_toxid);
     if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&count,&errMsg))
@@ -1177,7 +1177,7 @@ int pnr_usr_instance_insert(int index)
 }
 /***********************************************************************************
   Function:      pnr_usr_instance_insert
-  Description:  ²åÈëpnr userÊµÀı»¯ĞÅÏ¢
+  Description:  æ’å…¥pnr userå®ä¾‹åŒ–ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -1210,7 +1210,7 @@ int pnr_usr_instance_dbdelete_bytoxid(char* toxid)
 }
 /***********************************************************************************
   Function:      pnr_dbget_friendsall_byuserid
-  Description:  »ñÈ¡Ä³¸öÓÃ»§µÄËùÓĞºÃÓÑĞÅÏ¢
+  Description:  è·å–æŸä¸ªç”¨æˆ·çš„æ‰€æœ‰å¥½å‹ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -1241,7 +1241,7 @@ int pnr_dbget_friendsall_byuserid(int id,char* userid)
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_dbget_friendsall_byuserid sql_cmd(%s)",sql_cmd);
 	if(sqlite3_get_table(g_friendsdb_handle, sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
     {
-        index = nColumn; //×Ö¶ÎÖµ´Óindex¿ªÊ¼Ñ½
+        index = nColumn; //å­—æ®µå€¼ä»indexå¼€å§‹å‘€
         for( i = 0; i < nRow ; i++ )
         {
             snprintf(g_imusr_array.usrnode[id].friends[i].user_nickname,PNR_USERNAME_MAXLEN,"%s",dbResult[index]);
@@ -1282,7 +1282,7 @@ int pnr_dbget_friendsall_byuserid(int id,char* userid)
 }
 /***********************************************************************************
   Function:      pnr_friend_dbinsert
-  Description:  ²åÈëÒ»¸öpnr ºÃÓÑ¹ØÏµ
+  Description:  æ’å…¥ä¸€ä¸ªpnr å¥½å‹å…³ç³»
   Calls:
   Called By:     main
   Input:
@@ -1320,7 +1320,7 @@ int pnr_friend_dbinsert(char* from_toxid,char* to_toxid,char* nickname,char* use
         return ERROR;
     }
 	
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
 	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from friends_tbl where userid='%s' and friendid='%s';",from_toxid,to_toxid);
     if(sqlite3_exec(g_friendsdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
 	{
@@ -1351,7 +1351,7 @@ int pnr_friend_dbinsert(char* from_toxid,char* to_toxid,char* nickname,char* use
 }
 /***********************************************************************************
   Function:      pnr_friend_dbdelete
-  Description:  É¾³ıÒ»¸öpnr ºÃÓÑ¹ØÏµ
+  Description:  åˆ é™¤ä¸€ä¸ªpnr å¥½å‹å…³ç³»
   Calls:
   Called By:     main
   Input:
@@ -1412,7 +1412,7 @@ int pnr_friend_dbdelete(char* from_toxid,char* to_toxid, int oneway)
 }
 /***********************************************************************************
   Function:      pnr_friend_dbupdate_nicename_bytoxid
-  Description:  ¸üĞÂºÃÓÑêÇ³Æ
+  Description:  æ›´æ–°å¥½å‹æ˜µç§°
   Calls:
   Called By:     main
   Input:
@@ -1446,7 +1446,7 @@ int pnr_friend_dbupdate_nicename_bytoxid(char* from_toxid,char* to_toxid,char* n
 }
 /***********************************************************************************
   Function:      pnr_friend_dbupdate_remarks_bytoxid
-  Description:  ¸üĞÂºÃÓÑ±¸×¢
+  Description:  æ›´æ–°å¥½å‹å¤‡æ³¨
   Calls:
   Called By:     main
   Input:
@@ -1480,20 +1480,20 @@ int pnr_friend_dbupdate_remarks_bytoxid(char* from_toxid,char* to_toxid,char* re
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_friend_get_remark
- ¹¦ÄÜÃèÊö  : »ñÈ¡ºÃÓÑ±¸×¢»òÕßêÇ³Æ
- ÊäÈë²ÎÊı  : char *userid    
+ å‡½ æ•° å  : pnr_friend_get_remark
+ åŠŸèƒ½æè¿°  : è·å–å¥½å‹å¤‡æ³¨æˆ–è€…æ˜µç§°
+ è¾“å…¥å‚æ•°  : char *userid    
              char *friendid  
              char *value     
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ14ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ14æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_friend_get_remark(char *userid, char *friendid, char *value, int len)
@@ -1524,20 +1524,20 @@ int pnr_friend_get_remark(char *userid, char *friendid, char *value, int len)
 	return 0;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_friend_get_pubkey_bytoxid
- ¹¦ÄÜÃèÊö  : »ñÈ¡ºÃÓÑ±¸×¢»òÕßêÇ³Æ
- ÊäÈë²ÎÊı  : char *userid    
+ å‡½ æ•° å  : pnr_friend_get_pubkey_bytoxid
+ åŠŸèƒ½æè¿°  : è·å–å¥½å‹å¤‡æ³¨æˆ–è€…æ˜µç§°
+ è¾“å…¥å‚æ•°  : char *userid    
              char *friendid  
              char *pubkey     
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ14ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ14æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_friend_get_pubkey_bytoxid(char *userid, char *friendid, char *pubkey)
@@ -1557,18 +1557,18 @@ int pnr_friend_get_pubkey_bytoxid(char *userid, char *friendid, char *pubkey)
 	return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_friend_del_bytoxid
- ¹¦ÄÜÃèÊö  pnr_friend_delete_bytoxid
- ÊäÈë²ÎÊı  : char *userid      
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_friend_del_bytoxid
+ åŠŸèƒ½æè¿°  pnr_friend_delete_bytoxid
+ è¾“å…¥å‚æ•°  : char *userid      
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2019Äê1ÔÂ14ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2019å¹´1æœˆ14æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_friend_delete_bytoxid(char *userid)
@@ -1590,18 +1590,18 @@ int pnr_friend_delete_bytoxid(char *userid)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msglog_getid
- ¹¦ÄÜÃèÊö  : Ìí¼ÓÒ»Ìõmsglod£¬²¢»ñÈ¡±íID
- ÊäÈë²ÎÊı  : int *msgid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msglog_getid
+ åŠŸèƒ½æè¿°  : æ·»åŠ ä¸€æ¡msglodï¼Œå¹¶è·å–è¡¨ID
+ è¾“å…¥å‚æ•°  : int *msgid  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ24ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ24æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msglog_getid(int index, int *logid)
@@ -1634,18 +1634,18 @@ int pnr_msglog_getid(int index, int *logid)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msglog_delid
- ¹¦ÄÜÃèÊö  : É¾³ıÖ¸¶¨logidµÄÏûÏ¢ÈÕÖ¾
- ÊäÈë²ÎÊı  : int logid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msglog_delid
+ åŠŸèƒ½æè¿°  : åˆ é™¤æŒ‡å®šlogidçš„æ¶ˆæ¯æ—¥å¿—
+ è¾“å…¥å‚æ•°  : int logid  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ24ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ24æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msglog_delid(int index, int id)
@@ -1666,7 +1666,7 @@ int pnr_msglog_delid(int index, int id)
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbinsert
-  Description:  ²åÈëÒ»Ìõ¼ÇÂ¼
+  Description:  æ’å…¥ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -1783,7 +1783,7 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
 
 /***********************************************************************************
   Function:      pnr_msglog_dbinsert_specifyid
-  Description:  ²åÈëÒ»Ìõ¼ÇÂ¼
+  Description:  æ’å…¥ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -1898,7 +1898,7 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
 
 /***********************************************************************************
   Function:      pnr_msglog_dbupdate
-  Description:  ¸üĞÂÒ»Ìõ¼ÇÂ¼
+  Description:  æ›´æ–°ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -1951,7 +1951,7 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
     {
         p_newdkey = dkey;
     }
-//ĞŞ¸ÄÎªÖ±½Ó²åÈë    
+//ä¿®æ”¹ä¸ºç›´æ¥æ’å…¥    
 #if 0
     //msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey,sign,nonce,prikey
     snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set userindex=%d,"
@@ -1998,7 +1998,7 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbinsert_v3
-  Description:  ²åÈëÒ»Ìõ¼ÇÂ¼
+  Description:  æ’å…¥ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -2115,7 +2115,7 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbinsert_specifyid
-  Description:  ²åÈëÒ»Ìõ¼ÇÂ¼
+  Description:  æ’å…¥ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -2229,7 +2229,7 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbupdate_v3
-  Description:  ¸üĞÂÒ»Ìõ¼ÇÂ¼
+  Description:  æ›´æ–°ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -2321,7 +2321,7 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbupdate_stauts_byid
-  Description:  ¸üĞÂÒ»Ìõ¼ÇÂ¼
+  Description:  æ›´æ–°ä¸€æ¡è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -2344,7 +2344,7 @@ int pnr_msglog_dbupdate_stauts_byid(int index,int db_id,int msgstatus)
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹
     snprintf(sql_cmd,SQL_CMD_LEN,"select status from msg_tbl where userindex=%d and id=%d;",index,db_id);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&cur_status,&errMsg))
     {
@@ -2370,7 +2370,7 @@ int pnr_msglog_dbupdate_stauts_byid(int index,int db_id,int msgstatus)
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbget_logid_byid
-  Description:  ¸ù¾İid»ñÈ¡logid
+  Description:  æ ¹æ®idè·å–logid
   Calls:
   Called By:     main
   Input:
@@ -2389,7 +2389,7 @@ int pnr_msglog_dbget_logid_byid(int index,int id,int* logid)
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     int target_id = 0;    
 
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹
     snprintf(sql_cmd,SQL_CMD_LEN,"select logid from msg_tbl where id=%d;",id);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&target_id,&errMsg))
     {
@@ -2402,7 +2402,7 @@ int pnr_msglog_dbget_logid_byid(int index,int id,int* logid)
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbget_dbid_bylogid
-  Description:  ¸ù¾İºÃÓÑÃû³ÆºÍlogid»ñÈ¡¸ÃÌõ¼ÇÂ¼µÄid
+  Description:  æ ¹æ®å¥½å‹åç§°å’Œlogidè·å–è¯¥æ¡è®°å½•çš„id
   Calls:
   Called By:     main
   Input:
@@ -2424,7 +2424,7 @@ int pnr_msglog_dbget_dbid_bylogid(int index,int log_id,char* from,char* to,int* 
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹
     snprintf(sql_cmd,SQL_CMD_LEN,"select id from msg_tbl where logid=%d and from_user='%s' and to_user='%s';",
     log_id,from,to);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&target_id,&errMsg))
@@ -2439,13 +2439,13 @@ int pnr_msglog_dbget_dbid_bylogid(int index,int log_id,char* from,char* to,int* 
 }
 /**********************************************************************************
   Function:      pnr_msglog_dbget_callbak
-  Description:   Êı¾İ¿â²éÑ¯ÏûÏ¢¼ÇÂ¼»Øµô
+  Description:   æ•°æ®åº“æŸ¥è¯¢æ¶ˆæ¯è®°å½•å›æ‰
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -2520,7 +2520,7 @@ int32 pnr_msglog_dbget_callbak(void* obj, int n_columns, char** column_values,ch
 
 /***********************************************************************************
   Function:      pnr_msglog_dbget_byid
-  Description:  ¸ù¾İid»ñÈ¡¸ÃÌõ¼ÇÂ¼µÄĞÅÏ¢
+  Description:  æ ¹æ®idè·å–è¯¥æ¡è®°å½•çš„ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -2541,7 +2541,7 @@ int pnr_msglog_dbget_byid(int index,int db_id,struct im_sendmsg_msgstruct* pmsg)
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹
     snprintf(sql_cmd,SQL_CMD_LEN,"select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,ext,ext2,sign,nonce,"
 				"prikey,id from msg_tbl where id=%d",db_id);
@@ -2555,7 +2555,7 @@ int pnr_msglog_dbget_byid(int index,int db_id,struct im_sendmsg_msgstruct* pmsg)
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbupdate_filename_byid
-  Description:  ¸üĞÂÒ»Ìõ¼ÇÂ¼µÄÎÄ¼şÃû³Æ
+  Description:  æ›´æ–°ä¸€æ¡è®°å½•çš„æ–‡ä»¶åç§°
   Calls:
   Called By:     main
   Input:
@@ -2587,7 +2587,7 @@ int pnr_msglog_dbupdate_filename_byid(int uindex,int dbid,char* filename, char* 
 }
 /***********************************************************************************
   Function:      pnr_msglog_dbdelete
-  Description:  É¾³ıÏûÏ¢¼ÇÂ¼
+  Description:  åˆ é™¤æ¶ˆæ¯è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -2652,9 +2652,9 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
             "logid=%d and from_user='%s' and to_user='%s';",
             log_id, from_toxid, to_toxid);
     }
-    else//Îª0¾ÍÉ¾³ıÁ½ÈË¼ûÈ«²¿Êı¾İ
+    else//ä¸º0å°±åˆ é™¤ä¸¤äººè§å…¨éƒ¨æ•°æ®
     {
-        //É¾³ıÄ³Ò»ÀàĞÍÏûÏ¢È«²¿¼ÇÂ¼
+        //åˆ é™¤æŸä¸€ç±»å‹æ¶ˆæ¯å…¨éƒ¨è®°å½•
         if(msgtype >= PNR_IM_MSGTYPE_TEXT && msgtype <= PNR_IM_MSGTYPE_AVATAR)
         {
             snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where "
@@ -2662,7 +2662,7 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
                 "(from_user='%s' and to_user='%s')) and msgtype=%d;",from_toxid,to_toxid,to_toxid,from_toxid,msgtype);
         
         }
-        //É¾³ıÁ½ÈËÖ®¼äËùÓĞÀàĞÍÏûÏ¢¼ÇÂ¼
+        //åˆ é™¤ä¸¤äººä¹‹é—´æ‰€æœ‰ç±»å‹æ¶ˆæ¯è®°å½•
         else
         {
             snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where "
@@ -2683,18 +2683,18 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_getid
- ¹¦ÄÜÃèÊö  : »ñÈ¡ÏûÏ¢id
- ÊäÈë²ÎÊı  : int *msgid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msgcache_getid
+ åŠŸèƒ½æè¿°  : è·å–æ¶ˆæ¯id
+ è¾“å…¥å‚æ•°  : int *msgid  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ16ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ16æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_getid(int index, int *msgid)
@@ -2726,24 +2726,24 @@ int pnr_msgcache_getid(int index, int *msgid)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbinsert
- ¹¦ÄÜÃèÊö  : ²åÈëÏûÏ¢µ½»º´ædb
- ÊäÈë²ÎÊı  : int index     
+ å‡½ æ•° å  : pnr_msgcache_dbinsert
+ åŠŸèƒ½æè¿°  : æ’å…¥æ¶ˆæ¯åˆ°ç¼“å­˜db
+ è¾“å…¥å‚æ•°  : int index     
              int msgtype   
              int *msgid    
              char *fromid  
              char *toid    
              char *pmsg    
              char *pext    
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type, 
@@ -2877,7 +2877,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
 		}
 	}
     
-#if 0//»»³ÉÖ±½Ó²åÈë·½Ê½    
+#if 0//æ¢æˆç›´æ¥æ’å…¥æ–¹å¼    
     snprintf(sql, MSGSQL_CMD_LEN, "update msg_tbl set fromid='%s',"
 		"toid='%s',type=%d,ctype=%d,msg='%s',len=%d,filename='%s',filepath='%s',"
 		"filesize=%d,logid=%d,ftype=%d,skey='%s',dkey='%s' where id=%d;", 
@@ -2980,24 +2980,24 @@ OUT:
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbinsert_v3
- ¹¦ÄÜÃèÊö  : ²åÈëÏûÏ¢µ½»º´ædb
- ÊäÈë²ÎÊı  : int index     
+ å‡½ æ•° å  : pnr_msgcache_dbinsert_v3
+ åŠŸèƒ½æè¿°  : æ’å…¥æ¶ˆæ¯åˆ°ç¼“å­˜db
+ è¾“å…¥å‚æ•°  : int index     
              int msgtype   
              int *msgid    
              char *fromid  
              char *toid    
              char *pmsg    
              char *pext    
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type, 
@@ -3137,7 +3137,7 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 		}
 	}
     
-#if 0//»»³ÉÖ±½Ó²åÈë·½Ê½    
+#if 0//æ¢æˆç›´æ¥æ’å…¥æ–¹å¼    
     snprintf(sql, MSGSQL_CMD_LEN, "update msg_tbl set fromid='%s',"
 		"toid='%s',type=%d,ctype=%d,msg='%s',len=%d,filename='%s',filepath='%s',"
 		"filesize=%d,logid=%d,ftype=%d,skey='%s',dkey='%s' where id=%d;", 
@@ -3229,18 +3229,18 @@ OUT:
 	return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbdelete
- ¹¦ÄÜÃèÊö  : É¾³ıÖ¸¶¨msgidµÄÏûÏ¢»º´æ
- ÊäÈë²ÎÊı  : int msgid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msgcache_dbdelete
+ åŠŸèƒ½æè¿°  : åˆ é™¤æŒ‡å®šmsgidçš„æ¶ˆæ¯ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int msgid  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ15ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ15æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbdelete(int msgid, int userid)
@@ -3276,7 +3276,7 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
             case PNR_MSG_CACHE_TYPE_LWS:
             case PNR_MSG_CACHE_TYPE_TOXA:
             case PNR_MSG_CACHE_TYPE_TOXAF:  
-#if 0//ÏÖÔÚ²»»áÔÚÏìÓ¦ÖĞĞ´Êı¾İ¿â£¬¶øÊÇÖ±½ÓÔÚ·¢ËÍµÄÊ±ºò¾ÍĞ´ÈëÁË
+#if 0//ç°åœ¨ä¸ä¼šåœ¨å“åº”ä¸­å†™æ•°æ®åº“ï¼Œè€Œæ˜¯ç›´æ¥åœ¨å‘é€çš„æ—¶å€™å°±å†™å…¥äº†
                 if (msg->type == PNR_IM_CMDTYPE_PUSHFILE
                     || msg->type == PNR_IM_CMDTYPE_PUSHFILE_TOX) {
                     /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"PUSHFILE userid(%d) (%s->%s) (%s->%s) filename(%s,%s)",
@@ -3337,18 +3337,18 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgchache_dbdelete_by_logid
- ¹¦ÄÜÃèÊö  : Í¨¹ılogidÉ¾³ıÏûÏ¢¶ÓÁĞÖĞµÄÏûÏ¢
- ÊäÈë²ÎÊı  : struct im_sendmsg_msgstruct *msg  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msgchache_dbdelete_by_logid
+ åŠŸèƒ½æè¿°  : é€šè¿‡logidåˆ é™¤æ¶ˆæ¯é˜Ÿåˆ—ä¸­çš„æ¶ˆæ¯
+ è¾“å…¥å‚æ•°  : struct im_sendmsg_msgstruct *msg  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê11ÔÂ29ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´11æœˆ29æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbdelete_by_logid(int index, struct im_sendmsg_msgstruct *msg)
@@ -3453,19 +3453,19 @@ int pnr_msgcache_dbdelete_by_logid(int index, struct im_sendmsg_msgstruct *msg)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbdelete_nolock
- ¹¦ÄÜÃèÊö  : ÎŞËøÉ¾³ıÏûÏ¢»º´æ
- ÊäÈë²ÎÊı  : int msgid   
+ å‡½ æ•° å  : pnr_msgcache_dbdelete_nolock
+ åŠŸèƒ½æè¿°  : æ— é”åˆ é™¤æ¶ˆæ¯ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int msgid   
              int userid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ24ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ24æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbdelete_nolock(struct lws_cache_msg_struct *msg)
@@ -3489,19 +3489,19 @@ int pnr_msgcache_dbdelete_nolock(struct lws_cache_msg_struct *msg)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbdelete_by_friendid
- ¹¦ÄÜÃèÊö  : É¾³ıºÃÓÑÏà¹ØµÄÏûÏ¢»º´æ
- ÊäÈë²ÎÊı  : int index       
+ å‡½ æ•° å  : pnr_msgcache_dbdelete_by_friendid
+ åŠŸèƒ½æè¿°  : åˆ é™¤å¥½å‹ç›¸å…³çš„æ¶ˆæ¯ç¼“å­˜
+ è¾“å…¥å‚æ•°  : int index       
              char *friendid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê12ÔÂ24ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´12æœˆ24æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbdelete_by_friendid(int index, char *friendid)
@@ -3531,21 +3531,21 @@ int pnr_msgcache_dbdelete_by_friendid(int index, char *friendid)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_dbget
- ¹¦ÄÜÃèÊö  : ½âÎöÏûÏ¢»º´æÊı¾İ
- ÊäÈë²ÎÊı  : void *obj        
+ å‡½ æ•° å  : pnr_msgcache_dbget
+ åŠŸèƒ½æè¿°  : è§£ææ¶ˆæ¯ç¼“å­˜æ•°æ®
+ è¾“å…¥å‚æ•°  : void *obj        
              int cols         
              char **colval    
              char **colnames  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_dbget(void *obj, int colnum, char **colval, char **colnames)
@@ -3588,7 +3588,7 @@ int pnr_msgcache_dbget(void *obj, int colnum, char **colval, char **colnames)
     msg->ftype = strtoul(colval[11], NULL, 0);
 	msg->msglen = len;
 	msg->timestamp = time(NULL);
-    msg->notice_flag = TRUE; //ÖØÆôºó²»ÍÆËÍ
+    msg->notice_flag = TRUE; //é‡å¯åä¸æ¨é€
     memcpy(msg->fromid, colval[1], TOX_ID_STR_LEN);
     memcpy(msg->toid, colval[2], TOX_ID_STR_LEN);
 	memcpy(msg->msg, colval[5], len);
@@ -3651,18 +3651,18 @@ OUT:
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_msgcache_init
- ¹¦ÄÜÃèÊö  : ´ÓÊı¾İ¿âÖĞ³õÊ¼»¯Ö¸¶¨ÓÃ»§µÄÏûÏ¢»º´æÁĞ±í
- ÊäÈë²ÎÊı  : int userid  
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_msgcache_init
+ åŠŸèƒ½æè¿°  : ä»æ•°æ®åº“ä¸­åˆå§‹åŒ–æŒ‡å®šç”¨æˆ·çš„æ¶ˆæ¯ç¼“å­˜åˆ—è¡¨
+ è¾“å…¥å‚æ•°  : int userid  
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : lichao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : lichao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_msgcache_init(void)
@@ -3694,7 +3694,7 @@ int pnr_msgcache_init(void)
 
 /***********************************************************************************
   Function:      pnr_filelog_delete_byid
-  Description:  ¸ù¾İmsgidÉ¾³ıÎÄ¼ş¼°ÎÄ¼ş¼ÇÂ¼
+  Description:  æ ¹æ®msgidåˆ é™¤æ–‡ä»¶åŠæ–‡ä»¶è®°å½•
   Calls:
   Called By:     
   Input:
@@ -3734,7 +3734,7 @@ int pnr_filelog_delete_byid(int msgid,char* user_id,char* friend_id)
 
     if(access(filepath,F_OK) == OK)
     {
-        //ÕâÀïÉæ¼°µ½É¾³ıÎÄ¼ş£¬ĞèÒªÏÈ¼ì²âÏÂÉ¾³ıÄ¿Â¼µÄºÏ·¨ĞÔ
+        //è¿™é‡Œæ¶‰åŠåˆ°åˆ é™¤æ–‡ä»¶ï¼Œéœ€è¦å…ˆæ£€æµ‹ä¸‹åˆ é™¤ç›®å½•çš„åˆæ³•æ€§
         if(strncasecmp(filepath,DAEMON_PNR_USERDATA_DIR,strlen(DAEMON_PNR_USERDATA_DIR)) == OK)
         {
             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
@@ -3742,7 +3742,7 @@ int pnr_filelog_delete_byid(int msgid,char* user_id,char* friend_id)
             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byid file delete:%s",filepath);
         }
     }
-    //É¾³ı¶ÔÓ¦ÏûÏ¢¼ÇÂ¼
+    //åˆ é™¤å¯¹åº”æ¶ˆæ¯è®°å½•
     pnr_msglog_dbdelete(0,PNR_IM_MSGTYPE_FILEALL,0,user_id,friend_id);
     return OK;
 }
@@ -3750,13 +3750,13 @@ int pnr_filelog_delete_byid(int msgid,char* user_id,char* friend_id)
 
 /**********************************************************************************
   Function:      pnr_del_filelog_dbcallback
-  Description:   É¾³ıÎÄ¼ş¼ÇÂ¼µÄÊı¾İ¿â»Øµô´¦Àí
+  Description:   åˆ é™¤æ–‡ä»¶è®°å½•çš„æ•°æ®åº“å›æ‰å¤„ç†
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -3791,7 +3791,7 @@ int32 pnr_del_filelog_dbcallback(void* obj, int n_columns, char** column_values,
     }
     if(access(p_file,F_OK) == OK)
     {
-        //ÕâÀïÉæ¼°µ½É¾³ıÎÄ¼ş£¬ĞèÒªÏÈ¼ì²âÏÂÉ¾³ıÄ¿Â¼µÄºÏ·¨ĞÔ
+        //è¿™é‡Œæ¶‰åŠåˆ°åˆ é™¤æ–‡ä»¶ï¼Œéœ€è¦å…ˆæ£€æµ‹ä¸‹åˆ é™¤ç›®å½•çš„åˆæ³•æ€§
         if(strncasecmp(p_file,DAEMON_PNR_USERDATA_DIR,strlen(DAEMON_PNR_USERDATA_DIR)) == OK)
         {
             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",p_file);
@@ -3800,14 +3800,14 @@ int32 pnr_del_filelog_dbcallback(void* obj, int n_columns, char** column_values,
         }
     }
 
-    //É¾³ı¶ÔÓ¦ÏûÏ¢¼ÇÂ¼
+    //åˆ é™¤å¯¹åº”æ¶ˆæ¯è®°å½•
     pnr_msglog_dbdelete(msgid,pmsg->msgtype,0,pmsg->fromuser_toxid,pmsg->touser_toxid);
     return OK;
 }
 
 /***********************************************************************************
   Function:      pnr_filelog_delete_byfiletype
-  Description:  ¸ù¾İÎÄ¼şÀàĞÍÉ¾³ıÎÄ¼ş¼°ÎÄ¼ş¼ÇÂ¼
+  Description:  æ ¹æ®æ–‡ä»¶ç±»å‹åˆ é™¤æ–‡ä»¶åŠæ–‡ä»¶è®°å½•
   Calls:
   Called By:     
   Input:
@@ -3839,11 +3839,11 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
 
     switch(filetype)
     {
-        //½ö½öÉ¾³ıÁÄÌìÏûÏ¢
+        //ä»…ä»…åˆ é™¤èŠå¤©æ¶ˆæ¯
         case PNR_IM_MSGTYPE_TEXT:
             pnr_msglog_dbdelete(userindex,filetype,0,user_id,friend_id);
             break;  
-        //É¾³ıÄ³Ò»ÀàĞÍµÄÎÄ¼ş¼ÇÂ¼
+        //åˆ é™¤æŸä¸€ç±»å‹çš„æ–‡ä»¶è®°å½•
         case PNR_IM_MSGTYPE_IMAGE:
         case PNR_IM_MSGTYPE_AUDIO:
         case PNR_IM_MSGTYPE_MEDIA:
@@ -3853,7 +3853,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
             if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
                     &nColumn, &errMsg) == SQLITE_OK)
             {
-                offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+                offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
                 for( i = 0; i < nRow ; i++ )
                 {               
                     memset(filepath,0,PNR_FILEPATH_MAXLEN);
@@ -3861,7 +3861,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                     strcpy(filepath,dbResult[offset+1]);
                     if(access(filepath,F_OK) == OK)
                     {
-                        //ÕâÀïÉæ¼°µ½É¾³ıÎÄ¼ş£¬ĞèÒªÏÈ¼ì²âÏÂÉ¾³ıÄ¿Â¼µÄºÏ·¨ĞÔ
+                        //è¿™é‡Œæ¶‰åŠåˆ°åˆ é™¤æ–‡ä»¶ï¼Œéœ€è¦å…ˆæ£€æµ‹ä¸‹åˆ é™¤ç›®å½•çš„åˆæ³•æ€§
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
@@ -3888,7 +3888,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
             if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
                     &nColumn, &errMsg) == SQLITE_OK)
             {
-                offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+                offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
                 for( i = 0; i < nRow ; i++ )
                 {               
                     memset(filepath,0,PNR_FILEPATH_MAXLEN);
@@ -3896,7 +3896,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                     strcpy(filepath,dbResult[offset+1]);
                     if(access(filepath,F_OK) == OK)
                     {
-                        //ÕâÀïÉæ¼°µ½É¾³ıÎÄ¼ş£¬ĞèÒªÏÈ¼ì²âÏÂÉ¾³ıÄ¿Â¼µÄºÏ·¨ĞÔ
+                        //è¿™é‡Œæ¶‰åŠåˆ°åˆ é™¤æ–‡ä»¶ï¼Œéœ€è¦å…ˆæ£€æµ‹ä¸‹åˆ é™¤ç›®å½•çš„åˆæ³•æ€§
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
@@ -3924,7 +3924,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
             if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
                     &nColumn, &errMsg) == SQLITE_OK)
             {
-                offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+                offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
                 for( i = 0; i < nRow ; i++ )
                 {               
                     memset(filepath,0,PNR_FILEPATH_MAXLEN);
@@ -3932,7 +3932,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                     strcpy(filepath,dbResult[offset+1]);
                     if(access(filepath,F_OK) == OK)
                     {
-                        //ÕâÀïÉæ¼°µ½É¾³ıÎÄ¼ş£¬ĞèÒªÏÈ¼ì²âÏÂÉ¾³ıÄ¿Â¼µÄºÏ·¨ĞÔ
+                        //è¿™é‡Œæ¶‰åŠåˆ°åˆ é™¤æ–‡ä»¶ï¼Œéœ€è¦å…ˆæ£€æµ‹ä¸‹åˆ é™¤ç›®å½•çš„åˆæ³•æ€§
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
@@ -3958,18 +3958,18 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_init_fromdb
- ¹¦ÄÜÃèÊö  : ´ÓÊı¾İ¿âÖĞ³õÊ¼»¯Ö¸¶¨ÓÃ»§µÄÕË»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_init_fromdb
+ åŠŸèƒ½æè¿°  : ä»æ•°æ®åº“ä¸­åˆå§‹åŒ–æŒ‡å®šç”¨æˆ·çš„è´¦æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_init_fromdb(void)
@@ -3984,7 +3984,7 @@ int pnr_account_init_fromdb(void)
     struct db_string_ret db_ret;
 
     memset(&g_account_array,0,sizeof(g_account_array));
-    //»ñÈ¡tmp usnĞÅÏ¢
+    //è·å–tmp usnä¿¡æ¯
     db_ret.buf_len = PNR_USN_MAXLEN;
     db_ret.pbuf = g_account_array.temp_user_sn;
 	snprintf(sql,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_TEMPACCOUNT_USN_KEYWORD);
@@ -3995,12 +3995,12 @@ int pnr_account_init_fromdb(void)
         return ERROR;
     }
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_server start!!!get temp account usn %s",g_account_array.temp_user_sn);
-    //»ñÈ¡ÕË»§ĞÅÏ¢
+    //è·å–è´¦æˆ·ä¿¡æ¯
 	snprintf(sql, SQL_CMD_LEN, "select type,active,identifycode,mnemonic,usersn,"
                 "userindex,nickname,loginkey,toxid,pubkey,lastactive,createtime from user_account_tbl;");
     if(sqlite3_get_table(g_db_handle, sql, &dbResult, &nRow, &nColumn, &errMsg) == SQLITE_OK)
     {
-        offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+        offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
         for( i = 0; i < nRow ; i++ )
         {           
             temp_usertype = atoi(dbResult[offset]);
@@ -4019,7 +4019,7 @@ int pnr_account_init_fromdb(void)
                     g_account_array.account[tmpid].type = temp_usertype;
                     g_account_array.account[tmpid].active = atoi(dbResult[offset+1]);
                     strncpy(g_account_array.account[tmpid].identifycode,dbResult[offset+2],PNR_IDCODE_MAXLEN);
-                    //²»ÊÇnormalÕËºÅÃ»ÓĞÖú¼Ç·û
+                    //ä¸æ˜¯normalè´¦å·æ²¡æœ‰åŠ©è®°ç¬¦
                     strncpy(g_account_array.account[tmpid].user_sn,dbResult[offset+4],PNR_USN_MAXLEN);
                     if(g_account_array.account[tmpid].active == TRUE)
                     {
@@ -4107,18 +4107,18 @@ int pnr_account_init_fromdb(void)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbinsert
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â²åÈëÒ»¸öĞÂµÄÓÃ»§ÕËºÅ
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbinsert
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“æ’å…¥ä¸€ä¸ªæ–°çš„ç”¨æˆ·è´¦å·
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbinsert(struct pnr_account_struct* p_account)
@@ -4130,7 +4130,7 @@ int pnr_account_dbinsert(struct pnr_account_struct* p_account)
     {
         return ERROR;
     }
-    //ÕâÀï¶ÔadminÕË»§ºÍtempÕË»§£¬Ìí¼ÓÄ¬ÈÏÖú¼Ç·û
+    //è¿™é‡Œå¯¹adminè´¦æˆ·å’Œtempè´¦æˆ·ï¼Œæ·»åŠ é»˜è®¤åŠ©è®°ç¬¦
     if(strlen(p_account->mnemonic) <= 0)
     {
         switch(p_account->type)
@@ -4161,13 +4161,13 @@ int pnr_account_dbinsert(struct pnr_account_struct* p_account)
 }
 /**********************************************************************************
   Function:      pnr_usrdev_mappinginfo_dbget
-  Description:   Êı¾İ¿â²éÑ¯toxidÓë´ÓÊôÂ·ÓÉÆ÷¶ÔÓ¦¹ØÏµ
+  Description:   æ•°æ®åº“æŸ¥è¯¢toxidä¸ä»å±è·¯ç”±å™¨å¯¹åº”å…³ç³»
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -4193,13 +4193,13 @@ int32 pnr_usrdev_mappinginfo_dbget(void* obj, int n_columns, char** column_value
 }
 /**********************************************************************************
   Function:      pnr_usrdev_mappinginfo_sqlget
-  Description:   Êı¾İ¿â²éÑ¯toxidÓë´ÓÊôÂ·ÓÉÆ÷¶ÔÓ¦¹ØÏµ
+  Description:   æ•°æ®åº“æŸ¥è¯¢toxidä¸ä»å±è·¯ç”±å™¨å¯¹åº”å…³ç³»
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -4226,7 +4226,7 @@ int32 pnr_usrdev_mappinginfo_sqlget(struct im_userdev_mapping_struct* p_info)
 }
 /***********************************************************************************
   Function:      pnr_userdev_mapping_dbupdate
-  Description:  ¸üĞÂÓÃ»§ºÍÉè±¸¶ÔÓ¦¹ØÏµĞÅÏ¢
+  Description:  æ›´æ–°ç”¨æˆ·å’Œè®¾å¤‡å¯¹åº”å…³ç³»ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -4264,7 +4264,7 @@ int pnr_userdev_mapping_dbupdate(char* user_id,char* dev_id,char* dev_name)
     if(user.id == 0)
     {
         index = get_indexbytoxid(user.user_toxid);
-        //ĞÂ¼ÇÂ¼£¬²åÈë
+        //æ–°è®°å½•ï¼Œæ’å…¥
         memset(sql_cmd,0,SQL_CMD_LEN);
         snprintf(sql_cmd, SQL_CMD_LEN, "insert into userdev_mapping_tbl values(NULL,%d,'%s','%s','%s');",
             index,user.user_toxid,dev_id,dev_name);
@@ -4294,7 +4294,7 @@ int pnr_userdev_mapping_dbupdate(char* user_id,char* dev_id,char* dev_name)
 }
 /***********************************************************************************
   Function:      pnr_userdev_mapping_dbupdate_bydevid
-  Description:  ¸üĞÂÓÃ»§ºÍÉè±¸¶ÔÓ¦¹ØÏµĞÅÏ¢
+  Description:  æ›´æ–°ç”¨æˆ·å’Œè®¾å¤‡å¯¹åº”å…³ç³»ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -4329,7 +4329,7 @@ int pnr_userdev_mapping_dbupdate_bydevid(char* dev_id,char* dev_name)
 }
 /***********************************************************************************
   Function:      pnr_userdev_mapping_dbdelte_byusrid
-  Description:  ¸ù¾İÓÃ»§toxidÉ¾³ıÓÃ»§ºÍÉè±¸¶ÔÓ¦¹ØÏµĞÅÏ¢
+  Description:  æ ¹æ®ç”¨æˆ·toxidåˆ é™¤ç”¨æˆ·å’Œè®¾å¤‡å¯¹åº”å…³ç³»ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -4363,18 +4363,18 @@ int pnr_userdev_mapping_dbdelte_byusrid(char* usrid)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_tmpuser_dbinsert
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â²åÈëÒ»¸öĞÂµÄÁÙÊ±ÓÃ»§ÕËºÅ
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_tmpuser_dbinsert
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“æ’å…¥ä¸€ä¸ªæ–°çš„ä¸´æ—¶ç”¨æˆ·è´¦å·
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_tmpuser_dbinsert(struct pnr_account_struct* p_account)
@@ -4399,18 +4399,18 @@ int pnr_account_tmpuser_dbinsert(struct pnr_account_struct* p_account)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbupdate
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â¸úĞÂÒ»¸öĞÂµÄÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbupdate
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“è·Ÿæ–°ä¸€ä¸ªæ–°çš„ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbupdate(struct pnr_account_struct* p_account)
@@ -4445,18 +4445,18 @@ int pnr_account_dbupdate(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbupdate_idcode_byusn
- ¹¦ÄÜÃèÊö  : ¸ù¾İusnĞŞ¸Äidcode
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbupdate_idcode_byusn
+ åŠŸèƒ½æè¿°  : æ ¹æ®usnä¿®æ”¹idcode
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbupdate_idcode_byusn(struct pnr_account_struct* p_account)
@@ -4488,18 +4488,18 @@ int pnr_account_dbupdate_idcode_byusn(struct pnr_account_struct* p_account)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbupdate_bytoxid
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â¸úĞÂÒ»¸öĞÂµÄÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbupdate_bytoxid
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“è·Ÿæ–°ä¸€ä¸ªæ–°çš„ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbupdate_bytoxid(struct pnr_account_struct* p_account)
@@ -4525,18 +4525,18 @@ int pnr_account_dbupdate_bytoxid(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbupdate_dbinfo_bytoxid
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â¸úĞÂÒ»¸öÕË»§Ïà¹ØÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbupdate_dbinfo_bytoxid
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“è·Ÿæ–°ä¸€ä¸ªè´¦æˆ·ç›¸å…³ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbupdate_dbinfo_bytoxid(struct pnr_account_struct* p_account)
@@ -4559,18 +4559,18 @@ int pnr_account_dbupdate_dbinfo_bytoxid(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbupdate_lastactive_bytoxid
- ¹¦ÄÜÃèÊö  : Êı¾İ¿â¸úĞÂÒ»¸öĞÂµÄÓÃ»§×îºó»î¶¯Ê±¼ä
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbupdate_lastactive_bytoxid
+ åŠŸèƒ½æè¿°  : æ•°æ®åº“è·Ÿæ–°ä¸€ä¸ªæ–°çš„ç”¨æˆ·æœ€åæ´»åŠ¨æ—¶é—´
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbupdate_lastactive_bytoxid(char* p_toxid)
@@ -4597,13 +4597,13 @@ int pnr_account_dbupdate_lastactive_bytoxid(char* p_toxid)
 
 /**********************************************************************************
   Function:      pnr_usr_account_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÕËºÅÀà±ğ²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢è´¦å·ç±»åˆ«æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -4640,18 +4640,18 @@ int32 pnr_usr_account_dbget(void* obj, int n_columns, char** column_values,char*
 	return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbcheck_bypubkey
- ¹¦ÄÜÃèÊö  : ¸ù¾İ¼ì²éÊÇ·ñÓĞÖØ¸´µÄÕËºÅºÍpubkey
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbcheck_bypubkey
+ åŠŸèƒ½æè¿°  : æ ¹æ®æ£€æŸ¥æ˜¯å¦æœ‰é‡å¤çš„è´¦å·å’Œpubkey
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbcheck_bypubkey(struct pnr_account_struct* p_account)
@@ -4679,18 +4679,18 @@ int pnr_account_dbcheck_bypubkey(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbget_byusn
- ¹¦ÄÜÃèÊö  : ¸ù¾İusn²éÕÒ¶ÔÓ¦ÕËºÅĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbget_byusn
+ åŠŸèƒ½æè¿°  : æ ¹æ®usnæŸ¥æ‰¾å¯¹åº”è´¦å·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_get_byusn(struct pnr_account_struct* p_account)
@@ -4715,18 +4715,18 @@ int pnr_account_get_byusn(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbget_byuserkey
- ¹¦ÄÜÃèÊö  : ¸ù¾İpubkey²éÕÒ¶ÔÓ¦ÕËºÅĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbget_byuserkey
+ åŠŸèƒ½æè¿°  : æ ¹æ®pubkeyæŸ¥æ‰¾å¯¹åº”è´¦å·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbget_byuserkey(struct pnr_account_struct* p_account)
@@ -4750,18 +4750,18 @@ int pnr_account_dbget_byuserkey(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbget_byuserid
- ¹¦ÄÜÃèÊö  : ¸ù¾İuserid²éÕÒ¶ÔÓ¦ÕËºÅĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbget_byuserid
+ åŠŸèƒ½æè¿°  : æ ¹æ®useridæŸ¥æ‰¾å¯¹åº”è´¦å·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account)
@@ -4786,18 +4786,18 @@ int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_account_dbdelete_byuserid
- ¹¦ÄÜÃèÊö  : ¸ù¾İuseridÉ¾³ı¶ÔÓ¦ÕËºÅĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_account_dbdelete_byuserid
+ åŠŸèƒ½æè¿°  : æ ¹æ®useridåˆ é™¤å¯¹åº”è´¦å·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_account_dbdelete_byuserid(char* userid)
@@ -4820,13 +4820,13 @@ int pnr_account_dbdelete_byuserid(char* userid)
 }
 /**********************************************************************************
   Function:      pnr_userinfo_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÓÃ»§ĞÅÏ¢²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢ç”¨æˆ·ä¿¡æ¯æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -4870,18 +4870,18 @@ int32 pnr_userinfo_dbget(void* obj, int n_columns, char** column_values,char** c
 	return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_userinfo_dbget_byuserid
- ¹¦ÄÜÃèÊö  : ¸ù¾İuserid²éÕÒ¶ÔÓ¦ÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_userinfo_dbget_byuserid
+ åŠŸèƒ½æè¿°  : æ ¹æ®useridæŸ¥æ‰¾å¯¹åº”ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_userinfo_dbget_byuserid(struct pnr_userinfo_struct* puser)
@@ -4904,18 +4904,18 @@ int pnr_userinfo_dbget_byuserid(struct pnr_userinfo_struct* puser)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_userinfo_dbupdate
- ¹¦ÄÜÃèÊö  : ¸üĞÂÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : userinfo
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_userinfo_dbupdate
+ åŠŸèƒ½æè¿°  : æ›´æ–°ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : userinfo
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
@@ -4931,7 +4931,7 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬Çø±ğÊÇ²åÈë»¹ÊÇ¸üĞÂ
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼ŒåŒºåˆ«æ˜¯æ’å…¥è¿˜æ˜¯æ›´æ–°
     snprintf(sql_cmd,CMD_MAXLEN,"select count(*) from userinfo_tbl where usrid='%s';",puser->userid);
     if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&count,&errMsg))
     {
@@ -4962,18 +4962,18 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_userinfo_dbdelete_byuserid
- ¹¦ÄÜÃèÊö  : ¸ù¾İuseridÉ¾³ı¶ÔÓ¦ÓÃ»§ĞÅÏ¢
- ÊäÈë²ÎÊı  : account
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_userinfo_dbdelete_byuserid
+ åŠŸèƒ½æè¿°  : æ ¹æ®useridåˆ é™¤å¯¹åº”ç”¨æˆ·ä¿¡æ¯
+ è¾“å…¥å‚æ•°  : account
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_userinfo_dbdelete_byuserid(char* usrid)
@@ -4997,13 +4997,13 @@ int pnr_userinfo_dbdelete_byuserid(char* usrid)
 }
 /**********************************************************************************
   Function:      pnr_tox_datafile_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÊµÀıÀà±ğ²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢å®ä¾‹ç±»åˆ«æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -5034,13 +5034,13 @@ int pnr_tox_datafile_dbget(void* obj, int n_columns, char** column_values,char**
 
 /**********************************************************************************
   Function:      pnr_tox_datafile_dbinsert
-  Description:   Êı¾İ¿â²åÈëĞÂµÄtox data¼ÇÂ¼²Ù×÷
+  Description:   æ•°æ®åº“æ’å…¥æ–°çš„tox dataè®°å½•æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -5056,7 +5056,7 @@ int pnr_tox_datafile_dbinsert(int index)
     {
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     /*tox_datafile_tbl (id integer primary key autoincrement,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile)*/
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from tox_datafile_tbl where toxid='%s';",
             g_tox_datafile[index].toxid);
@@ -5086,13 +5086,13 @@ int pnr_tox_datafile_dbinsert(int index)
 
 /**********************************************************************************
   Function:      pnr_tox_datafile_md5update_byid
-  Description:   Êı¾İ¿â¸üĞÂdataµÄmd5Öµ
+  Description:   æ•°æ®åº“æ›´æ–°dataçš„md5å€¼
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -5120,18 +5120,18 @@ int pnr_tox_datafile_md5update_byid(int userindex,int data_version,char* md5)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_tox_datafile_init_fromdb
- ¹¦ÄÜÃèÊö  : ´ÓÊı¾İ¿âÖĞ³õÊ¼»¯ÓÃ»§µÄtoxdatafileĞÅÏ¢
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_tox_datafile_init_fromdb
+ åŠŸèƒ½æè¿°  : ä»æ•°æ®åº“ä¸­åˆå§‹åŒ–ç”¨æˆ·çš„toxdatafileä¿¡æ¯
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_tox_datafile_init_fromdb(void)
@@ -5144,12 +5144,12 @@ int pnr_tox_datafile_init_fromdb(void)
     int temp_userindex = 0;
 
     memset(&g_tox_datafile,0,sizeof(g_tox_datafile));
-    //»ñÈ¡ÕË»§ĞÅÏ¢
+    //è·å–è´¦æˆ·ä¿¡æ¯
     /*tox_datafile_tbl (id integer primary key autoincrement,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile)*/
 	snprintf(sql, SQL_CMD_LEN, "select id,userindex,dataversion,toxid,toxmd5,curdatafile,bakdatafile from tox_datafile_tbl;");
     if(sqlite3_get_table(g_db_handle, sql, &dbResult, &nRow, &nColumn, &errMsg) == SQLITE_OK)
     {
-        offset = nColumn; //×Ö¶ÎÖµ´Óoffset¿ªÊ¼Ñ½
+        offset = nColumn; //å­—æ®µå€¼ä»offsetå¼€å§‹å‘€
         for( i = 0; i < nRow ; i++ )
         {           
             temp_userindex = atoi(dbResult[offset+1]);
@@ -5176,13 +5176,13 @@ int pnr_tox_datafile_init_fromdb(void)
 }
 /**********************************************************************************
   Function:      pnr_tox_datafile_dbdelete_bytoxid
-  Description:   Êı¾İ¿âÉ¾³ıdata¼ÇÂ¼
+  Description:   æ•°æ®åº“åˆ é™¤dataè®°å½•
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -5210,18 +5210,18 @@ int pnr_tox_datafile_dbdelete_bytoxid(char* toxid)
 }
 
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_devloginkey_dbupdate
- ¹¦ÄÜÃèÊö  : ¸üĞÂÉè±¸¹ÜÀíµÇÂ½ÃÜÂë
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_devloginkey_dbupdate
+ åŠŸèƒ½æè¿°  : æ›´æ–°è®¾å¤‡ç®¡ç†ç™»é™†å¯†ç 
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_devloginkey_dbupdate(char* loginkey)
@@ -5245,18 +5245,18 @@ int pnr_devloginkey_dbupdate(char* loginkey)
     return OK;
 }
 /*****************************************************************************
- º¯ Êı Ãû  : pnr_devname_dbupdate
- ¹¦ÄÜÃèÊö  : ¸üĞÂÉè±¸Ãû³Æ
- ÊäÈë²ÎÊı  : null
- Êä³ö²ÎÊı  : ÎŞ
- ·µ »Ø Öµ  : 
- µ÷ÓÃº¯Êı  : 
- ±»µ÷º¯Êı  : 
+ å‡½ æ•° å  : pnr_devname_dbupdate
+ åŠŸèƒ½æè¿°  : æ›´æ–°è®¾å¤‡åç§°
+ è¾“å…¥å‚æ•°  : null
+ è¾“å‡ºå‚æ•°  : æ— 
+ è¿” å› å€¼  : 
+ è°ƒç”¨å‡½æ•°  : 
+ è¢«è°ƒå‡½æ•°  : 
  
- ĞŞ¸ÄÀúÊ·      :
-  1.ÈÕ    ÆÚ   : 2018Äê10ÔÂ17ÈÕ
-    ×÷    Õß   : willcao
-    ĞŞ¸ÄÄÚÈİ   : ĞÂÉú³Éº¯Êı
+ ä¿®æ”¹å†å²      :
+  1.æ—¥    æœŸ   : 2018å¹´10æœˆ17æ—¥
+    ä½œ    è€…   : willcao
+    ä¿®æ”¹å†…å®¹   : æ–°ç”Ÿæˆå‡½æ•°
 
 *****************************************************************************/
 int pnr_devname_dbupdate(char* new_name)
@@ -5281,7 +5281,7 @@ int pnr_devname_dbupdate(char* new_name)
 }
 /***********************************************************************************
   Function:      pnr_group_dbinsert
-  Description:  ²åÈëpnr group ĞÅÏ¢
+  Description:  æ’å…¥pnr group ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -5305,7 +5305,7 @@ int pnr_group_dbinsert(int gid,int uindex,int verify,char* utoxid,char* name,cha
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupuser_insert:input err");
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     //grouplist_tbl(id,hash,owner,ownerid,verify,manager,gname,createtime);
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from grouplist_tbl where id=%d;",gid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
@@ -5333,7 +5333,7 @@ int pnr_group_dbinsert(int gid,int uindex,int verify,char* utoxid,char* name,cha
 }
 /***********************************************************************************
   Function:      pnr_group_dbdelete_bygid
-  Description:  ¸ù¾İidÉ¾³ı¶ÔÓ¦ÈºĞÅÏ¢
+  Description:  æ ¹æ®idåˆ é™¤å¯¹åº”ç¾¤ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -5356,7 +5356,7 @@ int pnr_group_dbdelete_bygid(int gid)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_group_dbdelete_bygid:input err");
         return ERROR;
     }
-    //ÕâÀïÇø·ÖÏÂ£¬ÊÇÈ«²¿É¾³ı»¹ÊÇµ¥¸öÉ¾³ı
+    //è¿™é‡ŒåŒºåˆ†ä¸‹ï¼Œæ˜¯å…¨éƒ¨åˆ é™¤è¿˜æ˜¯å•ä¸ªåˆ é™¤
     //grouplist_tbl(id,hash,owner,ownerid,verify,manager,gname,createtime);
     snprintf(sql_cmd,SQL_CMD_LEN,"delete from grouplist_tbl where id=%d;",gid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
@@ -5369,7 +5369,7 @@ int pnr_group_dbdelete_bygid(int gid)
 }
 /***********************************************************************************
   Function:      pnr_groupname_dbupdate_bygid
-  Description:  ¸ù¾İidĞŞ¸Ä¶ÔÓ¦ÈºÃû³Æ
+  Description:  æ ¹æ®idä¿®æ”¹å¯¹åº”ç¾¤åç§°
   Calls:
   Called By:     main
   Input:
@@ -5404,7 +5404,7 @@ int pnr_groupname_dbupdate_bygid(int gid,char* gname)
 }
 /***********************************************************************************
   Function:      pnr_groupverify_dbupdate_bygid
-  Description:  ¸ù¾İidĞŞ¸Ä¶ÔÓ¦ÈºÉóºËÈ¨ÏŞ
+  Description:  æ ¹æ®idä¿®æ”¹å¯¹åº”ç¾¤å®¡æ ¸æƒé™
   Calls:
   Called By:     main
   Input:
@@ -5440,7 +5440,7 @@ int pnr_groupverify_dbupdate_bygid(int gid,int verify)
 
 /***********************************************************************************
   Function:      pnr_groupuser_insert
-  Description:  ²åÈëpnr group userĞÅÏ¢
+  Description:  æ’å…¥pnr group userä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -5465,7 +5465,7 @@ int pnr_groupuser_dbinsert(int gid,int uid,int uindex,int type,int msgid,char* u
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupuser_insert:input err");
         return ERROR;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from groupuser_tbl where gid=%d and uindex=%d;",gid,uindex);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
@@ -5493,7 +5493,7 @@ int pnr_groupuser_dbinsert(int gid,int uid,int uindex,int type,int msgid,char* u
 }
 /***********************************************************************************
   Function:      pnr_groupuser_gremark_dbupdate_byid
-  Description:  ¸ù¾İidĞŞ¸Ä¶ÔÓ¦ÈºÃû³Æ
+  Description:  æ ¹æ®idä¿®æ”¹å¯¹åº”ç¾¤åç§°
   Calls:
   Called By:     main
   Input:
@@ -5528,7 +5528,7 @@ int pnr_groupuser_gremark_dbupdate_byid(int gid,int uindex,char* gname)
 }
 /***********************************************************************************
   Function:      pnr_groupuser_lastmsgid_dbupdate_byid
-  Description:  ¸ù¾İidĞŞ¸Ä¶ÔÓ¦¶ÁÈ¡×îĞÂµÄmsgid
+  Description:  æ ¹æ®idä¿®æ”¹å¯¹åº”è¯»å–æœ€æ–°çš„msgid
   Calls:
   Called By:     main
   Input:
@@ -5564,7 +5564,7 @@ int pnr_groupuser_lastmsgid_dbupdate_byid(int gid,int uindex,int last_msgid)
 
 /***********************************************************************************
   Function:      pnr_groupuser_dbdelete_byuid
-  Description:  ¸ù¾İidÉ¾³ı¶ÔÓ¦ÈºÖĞÓÃ»§
+  Description:  æ ¹æ®idåˆ é™¤å¯¹åº”ç¾¤ä¸­ç”¨æˆ·
   Calls:
   Called By:     main
   Input:
@@ -5587,7 +5587,7 @@ int pnr_groupuser_dbdelete_byuid(int gid,int uindex)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupuser_delbyuid:input err");
         return ERROR;
     }
-    //ÕâÀïÇø·ÖÏÂ£¬ÊÇÈ«²¿É¾³ı»¹ÊÇµ¥¸öÉ¾³ı
+    //è¿™é‡ŒåŒºåˆ†ä¸‹ï¼Œæ˜¯å…¨éƒ¨åˆ é™¤è¿˜æ˜¯å•ä¸ªåˆ é™¤
     //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
     if(uindex == 0)
     {
@@ -5608,7 +5608,7 @@ int pnr_groupuser_dbdelete_byuid(int gid,int uindex)
 }
 /***********************************************************************************
   Function:      pnr_groupmsg_dbinsert
-  Description:  ²åÈëpnr group msgĞÅÏ¢
+  Description:  æ’å…¥pnr group msgä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -5667,7 +5667,7 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
     {
         p_filekey = filekey;
     }
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)   
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from groupmsg_tbl where gid=%d and msgid=%d;",gid,msgid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
@@ -5707,7 +5707,7 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
 }
 /***********************************************************************************
   Function:      pnr_groupmsg_dbget_lastmsgid
-  Description:  »ñÈ¡×î´óµÄmsgidÖµ
+  Description:  è·å–æœ€å¤§çš„msgidå€¼
   Calls:
   Called By:     main
   Input:
@@ -5730,7 +5730,7 @@ int pnr_groupmsg_dbget_lastmsgid(int gid,int* pmsgid)
         return ERROR;
     }
     
-    //ÕâÀïÒª¼ì²éÒ»ÏÂ£¬±ÜÃâÖØ¸´²åÈë
+    //è¿™é‡Œè¦æ£€æŸ¥ä¸€ä¸‹ï¼Œé¿å…é‡å¤æ’å…¥
     //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
     snprintf(sql_cmd,SQL_CMD_LEN,"select max(msgid) from groupmsg_tbl where gid=%d;",gid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,pmsgid,&errMsg))
@@ -5745,7 +5745,7 @@ int pnr_groupmsg_dbget_lastmsgid(int gid,int* pmsgid)
 
 /***********************************************************************************
   Function:      pnr_groupmsg_dbdelete_bymsgid
-  Description:  ¸ù¾İmsgidÉ¾³ı¶ÔÓ¦ÏûÏ¢¼ÇÂ¼
+  Description:  æ ¹æ®msgidåˆ é™¤å¯¹åº”æ¶ˆæ¯è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -5768,7 +5768,7 @@ int pnr_groupmsg_dbdelete_bymsgid(int gid,int msgid)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupuser_delbyuid:input err");
         return ERROR;
     }
-    //ÕâÀïÇø·ÖÏÂ£¬ÊÇÈ«²¿É¾³ı»¹ÊÇµ¥¸öÉ¾³ı
+    //è¿™é‡ŒåŒºåˆ†ä¸‹ï¼Œæ˜¯å…¨éƒ¨åˆ é™¤è¿˜æ˜¯å•ä¸ªåˆ é™¤
     //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
     if(msgid == 0)
     {
@@ -5788,13 +5788,13 @@ int pnr_groupmsg_dbdelete_bymsgid(int gid,int msgid)
 }
 /**********************************************************************************
   Function:      pnr_groupmsg_dbget
-  Description:   Êı¾İ¿â²éÑ¯µ¥ÌõÈºÏûÏ¢¼ÇÂ¼
+  Description:   æ•°æ®åº“æŸ¥è¯¢å•æ¡ç¾¤æ¶ˆæ¯è®°å½•
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -5847,7 +5847,7 @@ int32 pnr_groupmsg_dbget(void* obj, int n_columns, char** column_values,char** c
 }
 /***********************************************************************************
   Function:      pnr_groupmsg_dbget_bymsgid
-  Description:  ¸ù¾İmsgid»ñÈ¡¶ÔÓ¦ÏûÏ¢¼ÇÂ¼
+  Description:  æ ¹æ®msgidè·å–å¯¹åº”æ¶ˆæ¯è®°å½•
   Calls:
   Called By:     main
   Input:
@@ -5882,7 +5882,7 @@ int pnr_groupmsg_dbget_bymsgid(int gid,int msgid,struct group_user_msg* pmsg)
 }
 /***********************************************************************************
   Function:      pnr_groupoper_dbget_insert
-  Description:  ¼ÇÂ¼Èº²Ù×÷
+  Description:  è®°å½•ç¾¤æ“ä½œ
   Calls:
   Called By:     main
   Input:
@@ -5937,13 +5937,13 @@ int pnr_groupoper_dbget_insert(int gid,int action,int fromid,int toid,char* gnam
 }
 /**********************************************************************************
   Function:      pnr_netconfig_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÍøÂçÏà¹ØÅäÖÃ²ÎÊı
+  Description:   æ•°æ®åº“æŸ¥è¯¢ç½‘ç»œç›¸å…³é…ç½®å‚æ•°
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -6008,7 +6008,7 @@ int pnr_netconfig_dbget(struct pnrdev_netconn_info* pinfo)
 }
 /***********************************************************************************
   Function:      pnr_logcache_dbinsert
-  Description:  ²åÈë²Ù×÷»º´æĞÅÏ¢ĞÅÏ¢
+  Description:  æ’å…¥æ“ä½œç¼“å­˜ä¿¡æ¯ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -6055,7 +6055,7 @@ int pnr_logcache_dbinsert(int cmd,char* fromid,char* toid,char* msg,char* ext)
 }
 /***********************************************************************************
   Function:      pnr_filelist_dbinsert
-  Description:  ²åÈëpnr file ĞÅÏ¢
+  Description:  æ’å…¥pnr file ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -6114,7 +6114,7 @@ int pnr_filelist_dbinsert(int uindex,int msgid,int filetype,int srcfrom,int size
 }
 /***********************************************************************************
   Function:      pnr_filelist_dbupdate_fileinfo_bymsgid
-  Description:  ¸üĞÂpnr file ĞÅÏ¢
+  Description:  æ›´æ–°pnr file ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -6218,7 +6218,7 @@ int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int 
 }
 /***********************************************************************************
   Function:      pnr_filelist_dbupdate_filename_bymsgid
-  Description:  ¸üĞÂpnr file ÎÄ¼şÃû
+  Description:  æ›´æ–°pnr file æ–‡ä»¶å
   Calls:
   Called By:     main
   Input:
@@ -6254,13 +6254,13 @@ int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char
 }
 /**********************************************************************************
   Function:      pnr_filelist_dbinfo_dbget
-  Description:   Êı¾İ¿â²éÑ¯ÓÃ»§ĞÅÏ¢²Ù×÷
+  Description:   æ•°æ®åº“æŸ¥è¯¢ç”¨æˆ·ä¿¡æ¯æ“ä½œ
   Calls:          
   Called By:     main
   Input:         
   Output:        none
-  Return:        0:µ÷ÓÃ³É¹¦
-                     1:µ÷ÓÃÊ§°Ü
+  Return:        0:è°ƒç”¨æˆåŠŸ
+                     1:è°ƒç”¨å¤±è´¥
   Others: 
   History: 1. Date:2008-10-22
                   Author:Will.Cao
@@ -6331,7 +6331,7 @@ int32 pnr_filelist_dbinfo_dbget(void* obj, int n_columns, char** column_values,c
 }
 /***********************************************************************************
   Function:      pnr_filelist_dbinfo_getbyid
-  Description:  ²åÈëpnr file ĞÅÏ¢
+  Description:  æ’å…¥pnr file ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
@@ -6367,7 +6367,7 @@ int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file
 }
 /***********************************************************************************
   Function:      pnr_filelist_dbinsert
-  Description:  ²åÈëpnr file ĞÅÏ¢
+  Description:  æ’å…¥pnr file ä¿¡æ¯
   Calls:
   Called By:     main
   Input:
