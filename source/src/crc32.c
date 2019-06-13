@@ -64,7 +64,7 @@ void init_crc_table(void)
 	}
 }
 
-/*¼ÆËãbufferµÄcrcĞ£ÑéÂë*/
+/*è®¡ç®—bufferçš„crcæ ¡éªŒç */
 unsigned int crc32(unsigned int crc,unsigned char *buffer, unsigned int size)
 {
 	unsigned int i;
@@ -91,10 +91,10 @@ unsigned short crc16(unsigned char *message, unsigned int len)
 	return crc_reg;
 }
 
-//ÔÚÏßĞ£Ñé¼ÆËãÍøÕ¾
+//åœ¨çº¿æ ¡éªŒè®¡ç®—ç½‘ç«™
 //http://www.ip33.com/crc.html
 
-//crc 16 cmodemËã·¨
+//crc 16 cmodemç®—æ³•
 #define PLOY 0X1021
 unsigned short gen_crc16(const unsigned char *data, unsigned short size)
 {
@@ -113,7 +113,7 @@ unsigned short gen_crc16(const unsigned char *data, unsigned short size)
     }
     return crc;
 }
-const unsigned char chCRCHTalbe[] = // CRC ¸ßÎ»×Ö½ÚÖµ±í
+const unsigned char chCRCHTalbe[] = // CRC é«˜ä½å­—èŠ‚å€¼è¡¨
 {
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
     0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
@@ -140,7 +140,7 @@ const unsigned char chCRCHTalbe[] = // CRC ¸ßÎ»×Ö½ÚÖµ±í
 };
 
 
-const unsigned char chCRCLTalbe[] = // CRC µÍÎ»×Ö½ÚÖµ±í
+const unsigned char chCRCLTalbe[] = // CRC ä½ä½å­—èŠ‚å€¼è¡¨
 {
     0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06, 0x07, 0xC7,
     0x05, 0xC5, 0xC4, 0x04, 0xCC, 0x0C, 0x0D, 0xCD, 0x0F, 0xCF, 0xCE, 0x0E,
@@ -166,21 +166,21 @@ const unsigned char chCRCLTalbe[] = // CRC µÍÎ»×Ö½ÚÖµ±í
     0x41, 0x81, 0x80, 0x40
 };
 /****************************************************************************
-** º¯ÊıÃû³Æ£ºCalculateCRC16
-** º¯Êı¹¦ÄÜ£ºÊı¾İ²É¼¯Æ÷modbus¹æÔ¼CRC16 Ğ£Ñé
-** Èë¿Ú²ÎÊı£ºpchMsg : ³ıÈ¥ÆğÊ¼·ûµÄÊ®Áù½øÖÆÊı×é;
-**           wDataLen: pchMsgµÄ³¤¶È
-** ³ö¿Ú²ÎÊı£º·µ»Ø16Î»CRC
+** å‡½æ•°åç§°ï¼šCalculateCRC16
+** å‡½æ•°åŠŸèƒ½ï¼šæ•°æ®é‡‡é›†å™¨modbusè§„çº¦CRC16 æ ¡éªŒ
+** å…¥å£å‚æ•°ï¼špchMsg : é™¤å»èµ·å§‹ç¬¦çš„åå…­è¿›åˆ¶æ•°ç»„;
+**           wDataLen: pchMsgçš„é•¿åº¦
+** å‡ºå£å‚æ•°ï¼šè¿”å›16ä½CRC
 ****************************************************************************/
 unsigned short CalculateCRC16(unsigned char* pchMsg, unsigned short wDataLen)
 {
-    unsigned char chCRCHi = 0xFF; // ¸ßCRC×Ö½Ú³õÊ¼»¯
-    unsigned char chCRCLo = 0xFF; // µÍCRC×Ö½Ú³õÊ¼»¯
-    unsigned short wIndex; // CRCÑ­»·ÖĞµÄË÷Òı
+    unsigned char chCRCHi = 0xFF; // é«˜CRCå­—èŠ‚åˆå§‹åŒ–
+    unsigned char chCRCLo = 0xFF; // ä½CRCå­—èŠ‚åˆå§‹åŒ–
+    unsigned short wIndex; // CRCå¾ªç¯ä¸­çš„ç´¢å¼•
 
     while (wDataLen--)
     {
-        // ¼ÆËãCRC
+        // è®¡ç®—CRC
         wIndex = chCRCLo ^ *pchMsg++ ;
         chCRCLo = chCRCHi ^ chCRCHTalbe[wIndex];
         chCRCHi = chCRCLTalbe[wIndex] ;
