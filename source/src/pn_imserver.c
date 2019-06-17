@@ -21533,6 +21533,42 @@ int pnr_relogin_push(int index,int curtox_flag,int cur_fnum,struct per_session_d
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      pnr_syspredeal
+  Description:   应用启动预处理
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_syspredeal(void)
+{
+    switch(g_pnrdevtype)
+    {
+        case PNR_DEV_TYPE_ONESPACE:
+            //不必要的系统应用关闭
+            system("/etc/init.d/S27redis stop");//关闭redis-server，port 6379
+            system("/etc/init.d/S60cups stop");//关闭cupsd，port 631
+            system("/etc/init.d/S88shell stop");//关闭shellinabo port 4200
+            system("/opt/python/stop.sh");//关闭gunicorn，port82
+            system("/opt/go/onecgi.sh stop"); //onecgi 应用，避免写onecgilog
+            break;
+        case PNR_DEV_TYPE_X86SERVER:
+        case PNR_DEV_TYPE_RASIPI3:
+        case PNR_DEV_TYPE_EXPRESSOBIN:
+            break;
+        default:
+            break;
+    }
+    return OK;
+}
 char g_simulation_msgretbuf[IM_JSON_MAXLEN+1] = {0};
 int g_simulation_num = 0;
 pthread_t simulation_task[PNR_IMUSER_FRIENDS_MAXNUM+1];
@@ -22149,6 +22185,12 @@ void post_devinfo_upload_task(void *para)
         if(first_flag == TRUE)
         {
             sleep(PNR_REPEAT_TIME_30SEC);
+            //系统预处理，不同的硬件环境中，应用启动前预处理
+            if(pnr_syspredeal() != OK)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pnr_syspredeal failed");
+                exit(1);
+            }
             first_flag = FALSE;
         }
         if (pthread_create(&task_id, NULL, pnr_dev_register_task, NULL) != 0) 
@@ -22633,7 +22675,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
             }
             pthread_join(task_id,&status);
             system("/opt/go/onecgi.sh stop &");
-            system("rm -f /tmp/oneapi.log");
+            system("rm -f /tmp/onecgi.log");
             pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
             memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
             memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);

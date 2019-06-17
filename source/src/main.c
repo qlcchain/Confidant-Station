@@ -454,7 +454,6 @@ int daemon_init(void)
         g_imusr_array.max_user_num,g_imusr_array.cur_user_num,db_ret.buf_len,g_dev_nickname);
     return OK;
 }
-
 /**********************************************************************************
   Function:      test_daemon
   Description:  守护进程，
@@ -854,7 +853,8 @@ int32 main(int argc,char *argv[])
         exit(1);
     }
 
-	if (daemon_init()) {
+	if (daemon_init()) 
+    {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "init failed");
         exit(1);
 	}
