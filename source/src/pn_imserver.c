@@ -17817,6 +17817,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V6,TRUE,im_account_delete_deal},
     {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_enableqlcnode_deal},
     {PNR_IM_CMDTYPE_CHECKQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_checkqlcnode_deal},
+    // 邮箱配置
     {PNR_IM_CMDTYPE_CHECKGMAIL,PNR_API_VERSION_V6,TRUE,im_cmd_checkgmail_deal},
 };
 char * g_pnr_cmdstring[]=
@@ -17896,7 +17897,9 @@ char * g_pnr_cmdstring[]=
     PNR_IMCMD_DELUSER,
     PNR_IMCMD_ENABLEQLCNODE,
     PNR_IMCMD_CHECKQLCNODE,
+    // 邮箱配置
     PNR_IMCMD_CHECKGMAIL,
+    PNR_IMCMD_SAVE_GMAILCOFIG,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -17989,6 +17992,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_CHECKGMAIL) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKGMAIL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SAVE_GMAILCOFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SAVE_GMAILCOFIG;
             }
             else
             {
