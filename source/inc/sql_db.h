@@ -149,5 +149,8 @@ int pnr_userdev_mapping_dbdelte_byusrid(char* usrid);
 int pnr_account_dbdelete_byuserid(char* userid);
 int pnr_userinfo_dbdelete_byuserid(char* usrid);
 int pnr_tox_datafile_dbdelete_bytoxid(char* toxid);
+
+// email 操作
+int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode);
 #endif
 

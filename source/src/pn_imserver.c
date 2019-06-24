@@ -7239,10 +7239,6 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CREATEGROUP;
             }
-            else if(strcasecmp(action_buff,PNR_IMCMD_CHECKGMAIL) == OK)
-            {
-                phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKGMAIL;
-            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -7563,6 +7559,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_IMCMD_SYSDERLYCMD) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDERLYMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_SAVE_EMAILCOFIG;
             }
             else
             {
@@ -15482,9 +15482,10 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+
 /**********************************************************************************
-  Function:      im_cmd_checkgmail_deal
-  Description: IM模块消息获取gmail
+  Function:      im_cmd_save_emailcofig_deal
+  Description: EM模块保存email配置
   Calls:
   Called By:
   Input:
@@ -15497,23 +15498,31 @@ int im_cmd_checkqlcnode_deal(cJSON * params,char* retmsg,int* retmsg_len,
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
+int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    char username[TOX_ID_STR_LEN+1] = {0};
+    struct email_config_mode g_config_mode;
     int result = 0,uindex= 0;
     if(params == NULL)
     {
         return ERROR;
     }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+    memset(&g_config_mode,0,sizeof(g_config_mode));
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Name",username,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Enable",result,0);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getgmail name(%s) enable(%d)",username,result);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Version",g_config_mode.g_version,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",g_config_mode.g_type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",g_config_mode.g_name,EMEIAL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Config",g_config_mode.g_config,EMEIAL_CONFIG_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Userkey",g_config_mode.g_userkey,PNR_USER_PUBKEY_MAXLEN);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail config(%s) type(%d)",g_config_mode.g_config,g_config_mode.g_type);
 
     //参数检查
 
@@ -15531,10 +15540,12 @@ int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
 
-    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_CHECKGMAIL));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_SAVE_EMAILCOFIG));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "Status", cJSON_CreateNumber(1));
-    cJSON_AddItemToObject(ret_params, "Name", cJSON_CreateString("Test"));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_params, "User", cJSON_CreateString(g_config_mode.g_name));
+    cJSON_AddItemToObject(ret_params, "ContactsFile", cJSON_CreateString(""));
+    cJSON_AddItemToObject(ret_params, "ContactsMd5", cJSON_CreateString(""));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -15546,10 +15557,15 @@ int im_cmd_checkgmail_deal(cJSON * params,char* retmsg,int* retmsg_len,
         free(ret_buff);
         return ERROR;
     }
+
+    // 保存到数据库
+    pnr_email_config_dbinsert(*plws_index,g_config_mode);
+
     strcpy(retmsg,ret_buff);
     free(ret_buff);
     return OK;
 }
+
 /**********************************************************************************
   Function:      im_cmd_template_deal
   Description: IM模块消息处理模板函数
@@ -17818,7 +17834,8 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_enableqlcnode_deal},
     {PNR_IM_CMDTYPE_CHECKQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_checkqlcnode_deal},
     // 邮箱配置
-    {PNR_IM_CMDTYPE_CHECKGMAIL,PNR_API_VERSION_V6,TRUE,im_cmd_checkgmail_deal},
+    {PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,PNR_API_VERSION_V6,TRUE,em_cmd_save_emailcofig_deal},
+
 };
 char * g_pnr_cmdstring[]=
 {
@@ -17898,8 +17915,7 @@ char * g_pnr_cmdstring[]=
     PNR_IMCMD_ENABLEQLCNODE,
     PNR_IMCMD_CHECKQLCNODE,
     // 邮箱配置
-    PNR_IMCMD_CHECKGMAIL,
-    PNR_IMCMD_SAVE_GMAILCOFIG,
+    PNR_EMCMD_SAVE_EMAILCOFIG,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -17989,13 +18005,9 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKQLCNODE;
             }
-            else if(strcasecmp(action_buff,PNR_IMCMD_CHECKGMAIL) == OK)
+            else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
             {
-                phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKGMAIL;
-            }
-            else if(strcasecmp(action_buff,PNR_IMCMD_SAVE_GMAILCOFIG) == OK)
-            {
-                phead->im_cmdtype = PNR_IM_CMDTYPE_SAVE_GMAILCOFIG;
+                phead->im_cmdtype = PNR_EM_CMDTYPE_SAVE_EMAILCOFIG;
             }
             else
             {

@@ -11,6 +11,7 @@
 
 sqlite3 *g_db_handle = NULL;
 sqlite3 *g_friendsdb_handle = NULL;
+sqlite3 *g_emaildb_handle = NULL;
 sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1] = {0};
 sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1] = {0};
 sqlite3 *g_groupdb_handle = NULL;
@@ -473,6 +474,16 @@ int sql_db_check(void)
 		unlink(DB_TOP_FILE);
 		return ERROR;
     }
+    if(access(PNR_EMAIL_DB, F_OK)!=0)
+	{ 
+		ret += sql_emialinfodb_init();
+	}
+	else if(sqlite3_open(PNR_EMAIL_DB, &g_emaildb_handle) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite3_open failed");
+		unlink(PNR_EMAIL_DB);
+		return ERROR;
+    }
 	
 	//获取当前数据库版本
 	snprintf(sql_cmd,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_VERSION_KEYWORD);
@@ -671,6 +682,64 @@ int sql_groupinfodb_init(void)
         return ERROR;
     }
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table groupoperateinfo_tbl(gid,action,timestamp,fromId,toId,gname,fromuser,touser,ext);");
+    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	return OK;
+}
+
+/***********************************************************************************
+  Function:      sql_emialinfodb_init
+  Description:  email模块的数据库初始化
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int sql_emialinfodb_init(void)
+{
+    int8* errMsg = NULL;
+    int8 sql_cmd[SQL_CMD_LEN] = {0};
+
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"sql_db_init start");
+    if(sqlite3_open(PNR_EMAIL_DB, &g_emaildb_handle) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_emialinfodb_init failed");
+        return ERROR;
+    }
+	//初始化表
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,emailuser,config,gname,signature,contactsfile,contactsmd5,userkey);");
+    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,action,attach,from,to,cc,subject,userkey);");
+    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailfile_tbl(id integer primary key autoincrement,uindex,timestamp,fileid,emailid,version,type,filename,filepath,fileinfo,userkey);");
+    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailaction_tbl(id integer primary key autoincrement,uindex,timestamp,Action,Info);");
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -6401,3 +6470,72 @@ int pnr_filelist_dbdelete_byid(int uindex,int msgid,int srcfrom)
     return OK;
 }
 
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbinsert
+  Description:  保存邮箱配置
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+   
+    //groupoperateinfo_tbl(gid,action,timestamp,fromId,toId,gname,fromuser,touser,ext);
+    if (pnr_email_config_dbcheckexsit(uindex,config_mode.g_name) != OK) {
+        // 插入数据
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into emailconf_tbl values(%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
+             uindex,(int)time(NULL),config_mode.g_type,config_mode.g_version,config_mode.g_name,config_mode.g_config,"","","",config_mode.g_userkey);
+    } else {
+        snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s');",
+             config_mode.g_config,uindex,config_mode.g_name);
+    }
+	
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbcheck
+  Description:   check邮箱配置是否存在
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbcheckexsit(int uindex,char *gname)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+   
+    //groupoperateinfo_tbl(gid,action,timestamp,fromId,toId,gname,fromuser,touser,ext);
+	snprintf(sql_cmd,SQL_CMD_LEN,"select emailuser from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,gname);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}

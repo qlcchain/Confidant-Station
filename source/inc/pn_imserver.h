@@ -104,8 +104,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_ENABLEQLCNODE,
     PNR_IM_CMDTYPE_CHECKQLCNODE,
     // 邮箱配置
-    PNR_IM_CMDTYPE_CHECKGMAIL,
-    PNR_IM_CMDTYPE_SAVE_GMAILCOFIG,
+    PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -317,7 +316,8 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_DELUSER   "DelUser"
 #define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
-#define PNR_IMCMD_CHECKGMAIL   "CheckGmail"
+// 邮箱配置
+#define PNR_EMCMD_SAVE_EMAILCOFIG "SaveEmailConf"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -384,6 +384,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define DB_TOP_FILE  "/usr/pnrouter/pnrouter.db"
 #define DB_FRIENDLIST_FILE  "/usr/pnrouter/pnrouter_friends.db"
 #define DB_GROUPINFO_FILE  "/usr/pnrouter/pnrouter_group.db"
+#define PNR_EMAIL_DB       "/usr/pnrouter/pnrouter_email.db"
 #define PNR_ADMINUSER_QRCODEFILE  "/www/luci-static/resources/adminuser_qrcode.png"
 #define PNR_P2PID_FILE  "/usr/pnrouter/p2pid.txt"
 #define PNR_DAEMON_TOX_DATAFILE "/usr/pnrouter/data.ini"
@@ -1415,6 +1416,18 @@ enum PNR_QLCNODE_ENABLE_ENUM
     PNR_QLCNODE_ENABLE_NOSOURCE = 1,
     PNR_QLCNODE_ENABLE_NOLIMIT =2,
 
+};
+
+// 邮箱帐号信息结构体
+#define EMEIAL_NAME_LEN  50
+#define EMEIAL_CONFIG_LEN  300
+struct email_config_mode
+{
+    int g_version;
+    int g_type;
+    char g_name[EMEIAL_NAME_LEN+1];
+    char g_config[EMEIAL_CONFIG_LEN+1];
+    char g_userkey[PNR_USER_PUBKEY_MAXLEN+1];
 };
 int im_server_main(void);
 int im_server_init(void);
