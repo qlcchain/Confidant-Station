@@ -15577,6 +15577,163 @@ int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+/**********************************************************************************
+  Function:      em_cmd_pull_emaillist_deal
+  Description:  拉取邮箱列表
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+
+int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    struct email_model emailModel;
+    int type = 0;
+    int startid, boxtype, pullnum;
+    char emailName[EMAIL_NAME_LEN+1] = {0};
+
+    char **dbResult;
+    char *errmsg;
+    int nRow, nColumn, i;
+    int offset=0;
+    int msgnum = 0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Num",pullnum,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Box",boxtype,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailName,EMAIL_NAME_LEN);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pull emaillist emailname =%s type(%d)",emailName,type);
+
+    //参数检查
+    if (strcmp(emailName,"") == 0)
+    {
+        return ERROR;
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+
+    cJSON *pJsonArry = cJSON_CreateArray();
+    cJSON *pJsonsub = NULL;
+    if(pJsonArry == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    
+    // sql
+    snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,from,"
+				"to,subject,userkey,attach,fileid,id from emaillist_tbl where "
+				"uindex=%d and id<%d and user='%s'"
+				"order by id desc limit %d)temp order by id;",
+                *plws_index,startid,emailName,pullnum);
+    
+
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
+    
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_PULL_EMAILLIST));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Box", cJSON_CreateNumber(boxtype));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+   
+    // 查询用户邮箱配置列表
+    if(sqlite3_get_table(g_emaildb_handle, sql_cmd, &dbResult, &nRow,
+        &nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; //字段值从offset开始呀
+        for( i = 0; i < nRow ; i++ )
+        {
+            memset(&emailModel,0,sizeof(emailModel));
+            emailModel.e_id = atoi(dbResult[offset]);
+            emailModel.e_lable = atoi(dbResult[offset+3]);
+            emailModel.e_read = atoi(dbResult[offset+4]);
+            strcpy(emailModel.e_from,dbResult[offset+11]);
+            strcpy(emailModel.e_to,dbResult[offset+12]);
+            strcpy(emailModel.e_subject,dbResult[offset+14]);
+            strcpy(emailModel.e_userkey,dbResult[offset+15]);
+            strcpy(emailModel.e_attachinfo,dbResult[offset+10]);
+            // 此处有问题
+            strcpy(emailModel.e_emailpath,dbResult[offset+7]);
+            msgnum = i;
+
+            pJsonsub = cJSON_CreateObject();
+            if(pJsonsub == NULL)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                cJSON_Delete(ret_root);
+                return ERROR;
+            }
+            cJSON_AddItemToArray(pJsonArry,pJsonsub);
+            cJSON_AddItemToObject(pJsonsub,"Id",cJSON_CreateNumber(emailModel.e_id));
+            cJSON_AddStringToObject(pJsonsub,"Label",emailModel.e_lable);
+            cJSON_AddStringToObject(pJsonsub,"Read",emailModel.e_read);
+            cJSON_AddStringToObject(pJsonsub,"From",emailModel.e_from);
+            cJSON_AddStringToObject(pJsonsub,"To",emailModel.e_to);
+            cJSON_AddStringToObject(pJsonsub,"Subject",emailModel.e_subject);
+            cJSON_AddStringToObject(pJsonsub,"Userkey",emailModel.e_userkey);
+            cJSON_AddStringToObject(pJsonsub,"AttachInfo",emailModel.e_attachinfo);
+            cJSON_AddStringToObject(pJsonsub,"EmailPath",emailModel.e_emailpath);
+
+        }
+    }
+
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(msgnum));
+    cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 
 /**********************************************************************************
   Function:      em_cmd_pull_emailcofig_deal
@@ -15753,7 +15910,7 @@ int em_cmd_del_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-    
+
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailName,EMAIL_NAME_LEN);
@@ -18160,6 +18317,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_PULL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emailcofig_deal},
     {PNR_EM_CMDTYPE_DEL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_del_emailcofig_deal},
     {PNR_EM_CMDTYPE_SET_EMAILSIGN,PNR_API_VERSION_V6,TRUE,em_cmd_set_emailsign_deal},
+    {PNR_EM_CMDTYPE_PULL_EMAILLIST,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emaillist_deal},
 
 };
 char * g_pnr_cmdstring[]=
@@ -18244,6 +18402,7 @@ char * g_pnr_cmdstring[]=
     PNR_EMCMD_PULL_EMAILCONFIG,
     PNR_EMCMD_DEL_EMAILCONFIG,
     PNR_EMCMD_SET_EMAILSIGN,
+    PNR_EMCMD_PULL_EMAILLIST,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,

@@ -108,6 +108,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_EM_CMDTYPE_PULL_EMAILCONFIG,
     PNR_EM_CMDTYPE_DEL_EMAILCONFIG,
     PNR_EM_CMDTYPE_SET_EMAILSIGN,
+    PNR_EM_CMDTYPE_PULL_EMAILLIST,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -324,6 +325,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_PULL_EMAILCONFIG "PullEmailConf"
 #define PNR_EMCMD_DEL_EMAILCONFIG  "DelEmailConf"
 #define PNR_EMCMD_SET_EMAILSIGN     "SetEmailSign"
+#define PNR_EMCMD_PULL_EMAILLIST   "PullMailList"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -1428,6 +1430,7 @@ enum PNR_QLCNODE_ENABLE_ENUM
 #define EMAIL_NAME_LEN  50
 #define EMAIL_SIGN_LEN  100
 #define EMAIL_CONFIG_LEN  300
+#define EMAIL_SUBJECT_LEN  500
 struct email_config_mode
 {
     int g_version;
@@ -1439,6 +1442,20 @@ struct email_config_mode
     char g_contacts_file[EMAIL_SIGN_LEN+1];
     char g_contacts_md5[EMAIL_SIGN_LEN+1];
 };
+// 邮件信息结构体
+struct email_model
+{
+    int e_id;
+    int e_lable;
+    int e_read;
+    char e_from[EMAIL_NAME_LEN+1];
+    char e_to[EMAIL_NAME_LEN+1];
+    char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
+    char e_subject[EMAIL_SUBJECT_LEN+1];
+    char e_attachinfo[EMAIL_SUBJECT_LEN+1];
+    char e_emailpath[PATH_MAX+1];
+};
+
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
