@@ -154,5 +154,7 @@ int pnr_tox_datafile_dbdelete_bytoxid(char* toxid);
 int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode);
 int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode);
 int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count);
+int pnr_email_config_dbdel(int uindex,char *emailName);
+int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
 #endif
 

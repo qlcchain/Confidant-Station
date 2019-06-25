@@ -6561,3 +6561,62 @@ int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count)
     }
     return OK;
 }
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbcheck
+  Description:   check邮箱配置是否存在
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbdel(int uindex,char *emailName)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,emailName);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbupdatesign
+  Description:   修改邮箱配置签名
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set signature='%s' where uindex=%d and emailuser='%s'",emailSign,uindex,emailName);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}

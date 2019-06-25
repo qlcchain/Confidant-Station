@@ -15721,6 +15721,174 @@ int em_cmd_pull_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 
 /**********************************************************************************
+  Function:      em_cmd_del_emailcofig_deal
+  Description: EM模块删除email配置
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_del_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int type;
+    char emailName[EMAIL_NAME_LEN+1] = {0};
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+    
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailName,EMAIL_NAME_LEN);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailname(%s) type(%d)",emailName,type);
+
+    //参数检查
+    if (strcmp(emailName,"") == 0)
+    {
+        return ERROR;
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_DEL_EMAILCONFIG));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+
+    // 删除数据库邮箱配置
+    pnr_email_config_dbdel(*plws_index,emailName);
+
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
+  Function:      em_cmd_set_emailsign_deal
+  Description: EM模块修改emailsign
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_set_emailsign_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int type;
+    char emailName[EMAIL_NAME_LEN+1] = {0};
+    char emailsign[EMAIL_SIGN_LEN+1] = {0};
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailName,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",emailsign,EMAIL_SIGN_LEN);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailname(%s) type(%d)",emailName,type);
+
+    //参数检查
+    if (strcmp(emailName,"") == 0)
+    {
+        return ERROR;
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_SET_EMAILSIGN));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+
+    // 修改 emailsing
+    pnr_email_config_dbupdatesign(*plws_index,emailName,emailsign);
+
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
   Function:      im_cmd_template_deal
   Description: IM模块消息处理模板函数
   Calls:
@@ -17990,6 +18158,8 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     // 邮箱配置
     {PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,PNR_API_VERSION_V6,TRUE,em_cmd_save_emailcofig_deal},
     {PNR_EM_CMDTYPE_PULL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emailcofig_deal},
+    {PNR_EM_CMDTYPE_DEL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_del_emailcofig_deal},
+    {PNR_EM_CMDTYPE_SET_EMAILSIGN,PNR_API_VERSION_V6,TRUE,em_cmd_set_emailsign_deal},
 
 };
 char * g_pnr_cmdstring[]=
@@ -18072,6 +18242,8 @@ char * g_pnr_cmdstring[]=
     // 邮箱配置
     PNR_EMCMD_SAVE_EMAILCOFIG,
     PNR_EMCMD_PULL_EMAILCONFIG,
+    PNR_EMCMD_DEL_EMAILCONFIG,
+    PNR_EMCMD_SET_EMAILSIGN,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -18191,6 +18363,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_DELUSER) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_DELUSER;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_DEL_EMAILCONFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_DEL_EMAILCONFIG;
             }
             else
             {
@@ -18500,6 +18676,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_SAVE_EMAILCOFIG;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_SET_EMAILSIGN) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_SET_EMAILSIGN;
             }
             else
             {
