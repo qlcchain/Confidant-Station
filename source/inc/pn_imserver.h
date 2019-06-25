@@ -105,6 +105,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_CHECKQLCNODE,
     // 邮箱配置
     PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,
+    PNR_EM_CMDTYPE_PULL_EMAILCONFIG,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -318,6 +319,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
 // 邮箱配置
 #define PNR_EMCMD_SAVE_EMAILCOFIG "SaveEmailConf"
+#define PNR_EMCMD_PULL_EMAILCONFIG "PullEmailConf"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -1419,15 +1421,19 @@ enum PNR_QLCNODE_ENABLE_ENUM
 };
 
 // 邮箱帐号信息结构体
-#define EMEIAL_NAME_LEN  50
-#define EMEIAL_CONFIG_LEN  300
+#define EMAIL_NAME_LEN  50
+#define EMAIL_SIGN_LEN  100
+#define EMAIL_CONFIG_LEN  300
 struct email_config_mode
 {
     int g_version;
     int g_type;
-    char g_name[EMEIAL_NAME_LEN+1];
-    char g_config[EMEIAL_CONFIG_LEN+1];
+    char g_name[EMAIL_NAME_LEN+1];
+    char g_config[EMAIL_CONFIG_LEN+1];
     char g_userkey[PNR_USER_PUBKEY_MAXLEN+1];
+    char g_sign[EMAIL_SIGN_LEN+1];
+    char g_contacts_file[EMAIL_SIGN_LEN+1];
+    char g_contacts_md5[EMAIL_SIGN_LEN+1];
 };
 int im_server_main(void);
 int im_server_init(void);

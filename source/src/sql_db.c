@@ -6489,17 +6489,40 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
-   
-    //groupoperateinfo_tbl(gid,action,timestamp,fromId,toId,gname,fromuser,touser,ext);
-    if (pnr_email_config_dbcheckexsit(uindex,config_mode.g_name) != OK) {
-        // 插入数据
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into emailconf_tbl values(%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
+    // 插入数据
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emailconf_tbl values(%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
              uindex,(int)time(NULL),config_mode.g_type,config_mode.g_version,config_mode.g_name,config_mode.g_config,"","","",config_mode.g_userkey);
-    } else {
-        snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s');",
-             config_mode.g_config,uindex,config_mode.g_name);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
     }
-	
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbupdate
+  Description:   修改邮箱配置
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+     // 修改数据
+     snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s');",
+             config_mode.g_config,uindex,config_mode.g_name);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -6524,14 +6547,13 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_email_config_dbcheckexsit(int uindex,char *gname)
+int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
-   
-    //groupoperateinfo_tbl(gid,action,timestamp,fromId,toId,gname,fromuser,touser,ext);
-	snprintf(sql_cmd,SQL_CMD_LEN,"select emailuser from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,gname);
-    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,gname);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,count,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);

@@ -202,6 +202,7 @@ int g_groupnum = 0;
 int g_group_invitee_needack = FALSE;
 extern sqlite3 *g_groupdb_handle;
 extern sqlite3 *g_db_handle;
+extern sqlite3 *g_emaildb_handle;
 extern sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1];
 extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
 extern Tox *qlinkNode;
@@ -15519,8 +15520,8 @@ int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Version",g_config_mode.g_version,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",g_config_mode.g_type,0);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",g_config_mode.g_name,EMEIAL_NAME_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Config",g_config_mode.g_config,EMEIAL_CONFIG_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",g_config_mode.g_name,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Config",g_config_mode.g_config,EMAIL_CONFIG_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Userkey",g_config_mode.g_userkey,PNR_USER_PUBKEY_MAXLEN);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail config(%s) type(%d)",g_config_mode.g_config,g_config_mode.g_type);
 
@@ -15559,8 +15560,161 @@ int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     // 保存到数据库
-    pnr_email_config_dbinsert(*plws_index,g_config_mode);
+    // 检测邮箱配置是否存在
+    int count;
+    pnr_email_config_dbcheckcount(*plws_index,g_config_mode.g_name,&count);
+    if (count > 0)
+    {
+        // 修改 config
+        pnr_email_config_dbupdate(*plws_index,g_config_mode);
+    } 
+    else 
+    {
+        // 添加邮箱配置
+        pnr_email_config_dbinsert(*plws_index,g_config_mode);
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 
+/**********************************************************************************
+  Function:      em_cmd_pull_emailcofig_deal
+  Description:  拉取邮箱配置
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_pull_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    struct email_config_mode g_config_mode;
+    int type = 0;
+
+    char **dbResult;
+    char *errmsg;
+    int nRow, nColumn, i;
+    int offset=0;
+    int msgnum = 0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pull emailconfig type(%d)",type);
+
+    //参数检查
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+
+    cJSON *pJsonArry = cJSON_CreateArray();
+    cJSON *pJsonsub = NULL;
+    if(pJsonArry == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    
+    // sql语句
+    if (type == 0)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN, "select * from emailconf_tbl where uindex =%d;",*plws_index);
+    } else {
+        snprintf(sql_cmd,SQL_CMD_LEN, "select * from emailconf_tbl where uindex =%d and type=%d;",*plws_index,type);
+    }
+
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
+    
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_PULL_EMAILCONFIG));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Type", cJSON_CreateNumber(type));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+   
+    // 查询用户邮箱配置列表
+    if(sqlite3_get_table(g_emaildb_handle, sql_cmd, &dbResult, &nRow,
+        &nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; //字段值从offset开始呀
+        for( i = 0; i < nRow ; i++ )
+        {
+            memset(&g_config_mode,0,sizeof(g_config_mode));
+            g_config_mode.g_type = atoi(dbResult[offset+3]);
+            strcpy(g_config_mode.g_name,dbResult[offset+5]);
+            strcpy(g_config_mode.g_config,dbResult[offset+6]);
+            strcpy(g_config_mode.g_sign,dbResult[offset+7]);
+            strcpy(g_config_mode.g_contacts_file,dbResult[offset+8]);
+            strcpy(g_config_mode.g_contacts_md5,dbResult[offset+9]);
+            strcpy(g_config_mode.g_userkey,dbResult[offset+10]);
+            msgnum = i;
+
+            pJsonsub = cJSON_CreateObject();
+            if(pJsonsub == NULL)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                cJSON_Delete(ret_root);
+                return ERROR;
+            }
+            cJSON_AddItemToArray(pJsonArry,pJsonsub);
+            cJSON_AddItemToObject(pJsonsub,"Type",cJSON_CreateNumber(g_config_mode.g_type));
+            cJSON_AddStringToObject(pJsonsub,"User",g_config_mode.g_name);
+            cJSON_AddStringToObject(pJsonsub,"UserKey",g_config_mode.g_userkey);
+            cJSON_AddStringToObject(pJsonsub,"Conf",g_config_mode.g_config);
+            cJSON_AddStringToObject(pJsonsub,"Sign",g_config_mode.g_sign);
+            cJSON_AddStringToObject(pJsonsub,"ContactsFile",g_config_mode.g_contacts_file);
+            cJSON_AddStringToObject(pJsonsub,"ContactsMd5",g_config_mode.g_contacts_md5);
+
+        }
+    }
+
+    cJSON_AddItemToObject(ret_params, "ConfNum", cJSON_CreateNumber(msgnum));
+    cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    
     strcpy(retmsg,ret_buff);
     free(ret_buff);
     return OK;
@@ -17835,6 +17989,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_CHECKQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_checkqlcnode_deal},
     // 邮箱配置
     {PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,PNR_API_VERSION_V6,TRUE,em_cmd_save_emailcofig_deal},
+    {PNR_EM_CMDTYPE_PULL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emailcofig_deal},
 
 };
 char * g_pnr_cmdstring[]=
@@ -17916,6 +18071,7 @@ char * g_pnr_cmdstring[]=
     PNR_IMCMD_CHECKQLCNODE,
     // 邮箱配置
     PNR_EMCMD_SAVE_EMAILCOFIG,
+    PNR_EMCMD_PULL_EMAILCONFIG,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -18004,10 +18160,6 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_CHECKQLCNODE) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_CHECKQLCNODE;
-            }
-            else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
-            {
-                phead->im_cmdtype = PNR_EM_CMDTYPE_SAVE_EMAILCOFIG;
             }
             else
             {
@@ -18256,6 +18408,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_PULLTMPACCOUNT;
             }
+            else if(strcasecmp(action_buff,PNR_EMCMD_PULL_EMAILCONFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_PULL_EMAILCONFIG;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -18340,6 +18496,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_SYSDERLYCMD) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDERLYMSG;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_SAVE_EMAILCOFIG;
             }
             else
             {
