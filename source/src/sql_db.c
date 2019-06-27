@@ -6502,6 +6502,37 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
 }
 
 /************************************email操作***********************************************
+  Function:      pnr_email_list_dbinsert
+  Description:  保存邮件到节点
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_list_dbinsert(int uindex,struct email_model emailMode,int fileid)
+{
+    int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    // 插入数据
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','%s');",
+             uindex,(int)time(NULL),emailMode.e_lable,emailMode.e_read,emailMode.e_type,emailMode.e_box,fileid,emailMode.e_name,"",emailMode.e_attachinfo,emailMode.e_from,emailMode.e_to,emailMode.e_cc,emailMode.e_subject,emailMode.e_userkey);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
   Function:      pnr_email_config_dbupdate
   Description:   修改邮箱配置
   Calls:

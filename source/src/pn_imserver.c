@@ -16046,6 +16046,103 @@ int em_cmd_set_emailsign_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 
 /**********************************************************************************
+  Function:      em_cmd_bakup_email_deal
+  Description: EM模块备份email到节点
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int type;
+    struct email_model emailModel;
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
+    {
+        return ERROR;
+    }
+
+    memset(&emailModel,0,sizeof(emailModel));
+
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",emailModel.e_type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailModel.e_name,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Email",emailModel.e_emailpath,PATH_MAX);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",emailModel.e_from,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",emailModel.e_to,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Cc",emailModel.e_cc,EMAIL_NAME_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Subject",emailModel.e_subject,EMAIL_SUBJECT_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"AttachName",emailModel.e_attach_name,EMAIL_ATTACH_NAEM_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",emailModel.e_userkey,PNR_USER_PUBKEY_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"AttachInfo",emailModel.e_attachinfo,EMAIL_ATTACH_NAEM_LEN);
+
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailname(%s) type(%d)",emailModel.e_name,emailModel.e_type);
+
+    //参数检查
+    if (strcmp(emailModel.e_name,"") == 0 || strcmp(emailModel.e_userkey,"") == 0)
+    {
+        return ERROR;
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_BAKUPEMAIL));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    //cJSON_AddItemToObject(ret_params, "MailId", cJSON_CreateString(PNR_EMCMD_BAKUPEMAIL));
+    
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+
+    // 上传到节点 
+    
+
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
   Function:      im_cmd_template_deal
   Description: IM模块消息处理模板函数
   Calls:
@@ -18318,6 +18415,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_DEL_EMAILCONFIG,PNR_API_VERSION_V6,TRUE,em_cmd_del_emailcofig_deal},
     {PNR_EM_CMDTYPE_SET_EMAILSIGN,PNR_API_VERSION_V6,TRUE,em_cmd_set_emailsign_deal},
     {PNR_EM_CMDTYPE_PULL_EMAILLIST,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emaillist_deal},
+    {PNR_EM_CMDTYPE_BAKUPEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_bakup_email_deal},
 
 };
 char * g_pnr_cmdstring[]=
@@ -18403,6 +18501,7 @@ char * g_pnr_cmdstring[]=
     PNR_EMCMD_DEL_EMAILCONFIG,
     PNR_EMCMD_SET_EMAILSIGN,
     PNR_EMCMD_PULL_EMAILLIST,
+    PNR_EMCMD_BAKUPEMAIL,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -18469,6 +18568,17 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDDEAL;
             }  
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'b':
+        case 'B':
+            if(strcasecmp(action_buff,PNR_EMCMD_BAKUPEMAIL) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_BAKUPEMAIL;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -18746,6 +18856,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_PULL_EMAILCONFIG) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_PULL_EMAILCONFIG;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_PULL_EMAILLIST) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_PULL_EMAILLIST;
             }
             else
             {
