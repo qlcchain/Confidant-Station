@@ -732,7 +732,7 @@ int sql_emialinfodb_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
-	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailfile_tbl(id integer primary key autoincrement,uindex,timestamp,fileid,emailid,version,type,filename,filepath,fileinfo,userkey);");
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailfile_tbl(id integer primary key autoincrement,uindex,timestamp,fileid,emailid,version,type,filename,filepath,fileinfo,userkey,user);");
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -6593,8 +6593,8 @@ int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count)
     return OK;
 }
 /************************************email操作***********************************************
-  Function:      pnr_email_config_dbcheck
-  Description:   check邮箱配置是否存在
+  Function:      pnr_email_config_dbdel
+  Description:   删除邮箱配置
   Calls:
   Called By:     main
   Input:
@@ -6651,3 +6651,184 @@ int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign)
     }
     return OK;
 }
+
+/************************************email操作***********************************************
+  Function:      pnr_email_list_dbdel
+  Description:   删除邮件
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_list_dbdel(int uindex,int emailid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emaillist_tbl where uindex=%d and id=%d",uindex,emailid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_file_dbdel
+  Description:   删除邮件附件
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_file_dbdel(int uindex,int emailid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emailfile_tbl where uindex=%d and emailid=%d",uindex,emailid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_list_dbdel_emailname
+  Description:   根据emailname删除邮件
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_list_dbdel_emailname(int uindex,char *emailName)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emaillist_tbl where uindex=%d and user='%s'",uindex,emailName);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_file_dbdel_emailname
+  Description:   根据emailname删除邮件附件
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_file_dbdel_emailname(int uindex,char *emailName)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emailfile_tbl where uindex=%d and user='%s'",uindex,emailName);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbupdatelable
+  Description:   修改邮年标签
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbupdatelable(int uindex,int status,int mailid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"update emaillist_tbl set label=%d where uindex=%d and id=%d",status,uindex,mailid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/************************************email操作***********************************************
+  Function:      pnr_email_config_dbupdatelable
+  Description:   修改邮年已读未读
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_config_dbupdateread(int uindex,int status,int mailid)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+	snprintf(sql_cmd,SQL_CMD_LEN,"update emaillist_tbl set read=%d where uindex=%d and id=%d",status,uindex,mailid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+

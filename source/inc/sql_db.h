@@ -157,5 +157,14 @@ int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count);
 int pnr_email_config_dbdel(int uindex,char *emailName);
 int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
 int pnr_email_list_dbinsert(int uindex,struct email_model emailMode,int fileid);
+
+int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
+int pnr_email_list_dbdel(int uindex,int emailid);
+int pnr_email_file_dbdel(int uindex,int emailid);
+int pnr_email_list_dbdel_emailname(int uindex,char *emailName);
+int pnr_email_file_dbdel_emailname(int uindex,char *emailName);
+int pnr_email_config_dbupdatelable(int uindex,int status,int mailid);
+int pnr_email_config_dbupdateread(int uindex,int status,int mailid);
+
 #endif
 
