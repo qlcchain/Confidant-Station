@@ -110,9 +110,6 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_EM_CMDTYPE_SET_EMAILSIGN,
     PNR_EM_CMDTYPE_PULL_EMAILLIST,
     PNR_EM_CMDTYPE_BAKUPEMAIL,
-    PNR_EM_CMDTYPE_DELEMAIL,
-    PNR_EM_CMDTYPE_SET_EMAILLABLE,
-
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -331,9 +328,6 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_SET_EMAILSIGN     "SetEmailSign"
 #define PNR_EMCMD_PULL_EMAILLIST   "PullMailList"
 #define PNR_EMCMD_BAKUPEMAIL    "BakupEmail"
-#define PNR_EMCMD_DELEMAIL      "DelEmail"
-#define PNR_EMCMD_SET_EMAILLABLE "SetEmailLabel"
-
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -1282,6 +1276,8 @@ struct newmsg_notice_params{
     int priority;
     int server_flag;
     int type;
+    int devid;
+    int msgid;
     char from[TOX_ID_STR_LEN+1];
     char to[TOX_ID_STR_LEN+1];
     char title[PNR_USERNAME_MAXLEN+1];
@@ -1505,7 +1501,7 @@ int im_account_qrcode_get_cmddeal(char* pcmd);
 int adminaccount_qrcode_init(void);
 int account_qrcode_show(char* p_sn);
 int insert_lws_msgnode_ring(int id, char *pmsg, int msg_len);
-int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag);
+int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag,int msgid);
 int im_debug_setfunc_deal(char* pcmd);
 int pnr_relogin_push(int index,int curtox_flag,int cur_fnum,struct per_session_data__minimal *cur_pss);
 int pnr_encrypt_show(char* msg,int flag);

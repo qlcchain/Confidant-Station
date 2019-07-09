@@ -149,6 +149,7 @@ static const struct lws_http_mount mount =
 
 //added by willcao
 int g_p2pnet_init_flag = FALSE;//tox p2p网络初始化完成标识
+int g_dev_netid = 0;
 char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1] = {0};
 char g_dev_nickname[PNR_USERNAME_MAXLEN+1] = {0};
 struct im_user_struct g_daemon_tox;
@@ -1821,9 +1822,8 @@ void im_send_msg_deal(int direction)
                                     case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
                                     case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                                        post_newmsg_notice(g_daemon_tox.user_toxid,
-                                            g_imusr_array.usrnode[msg->userid].user_toxid,
-                                            PNR_POSTMSG_PAYLOAD,TRUE);                                    
+                                        post_newmsg_notice(g_daemon_tox.user_toxid,g_imusr_array.usrnode[msg->userid].user_toxid,
+                                            PNR_POSTMSG_PAYLOAD,TRUE,msg->msgid);                                    
                                         break;
                                     default:
                                         break;
@@ -15878,182 +15878,6 @@ int em_cmd_pull_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
 }
 
 /**********************************************************************************
-  Function:      em_cmd_set_emaillable_deal
-  Description: EM模块 修改邮件标签 已读 状态
-  Calls:
-  Called By:
-  Input:
-  Output:        none
-  Return:        0:调用成功
-                 1:调用失败
-  Others:
-
-  History: 1. Date:2018-07-30
-                  Author:Will.Cao
-                  Modification:Initialize
-***********************************************************************************/
-int em_cmd_set_emaillable_deal(cJSON * params,char* retmsg,int* retmsg_len,
-	int* plws_index, struct imcmd_msghead_struct *head)
-{
-    char* tmp_json_buff = NULL;
-    cJSON* tmp_item = NULL;
-    int ret_code = 0;
-    char* ret_buff = NULL;
-    int type,emailid,status,action;
-
-    if(params == NULL)
-    {
-        return ERROR;
-    }
-    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
-    {
-        return ERROR;
-    }
-
-    //解析参数
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailId",emailid,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Status",status,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Action",action,0);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailid(%d) type(%d) status(%d) action(%d)",emailid,type,status,action);
-
-    //参数检查
-    if (type == 0 || emailid == 0)
-    {
-        return ERROR;
-    }
-    
-    //构建响应消息
-    cJSON * ret_root = cJSON_CreateObject();
-    cJSON * ret_params = cJSON_CreateObject();
-    if(ret_root == NULL || ret_params == NULL)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
-        cJSON_Delete(ret_root);
-        return ERROR;
-    }
-    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
-    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
-    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
-
-    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_SET_EMAILLABLE));
-    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "MailId", cJSON_CreateNumber(emailid));
-    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
-    cJSON_AddItemToObject(ret_root, "params", ret_params);
-
-    ret_buff = cJSON_PrintUnformatted(ret_root);
-    cJSON_Delete(ret_root);
-    
-    *retmsg_len = strlen(ret_buff);
-    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
-        free(ret_buff);
-        return ERROR;
-    }
-
-    // 修改邮件标签
-    if (action ==  1) 
-    {
-        pnr_email_config_dbupdatelable(*plws_index,status,emailid);
-    } else { // 已读
-        pnr_email_config_dbupdateread(*plws_index,status,emailid);
-    }
-    
-
-    strcpy(retmsg,ret_buff);
-    free(ret_buff);
-    return OK;
-}
-
-/**********************************************************************************
-  Function:      em_cmd_del_email_deal
-  Description: EM模块删除email邮件
-  Calls:
-  Called By:
-  Input:
-  Output:        none
-  Return:        0:调用成功
-                 1:调用失败
-  Others:
-
-  History: 1. Date:2018-07-30
-                  Author:Will.Cao
-                  Modification:Initialize
-***********************************************************************************/
-int em_cmd_del_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
-	int* plws_index, struct imcmd_msghead_struct *head)
-{
-    char* tmp_json_buff = NULL;
-    cJSON* tmp_item = NULL;
-    int ret_code = 0;
-    char* ret_buff = NULL;
-    int type,emailid;
-
-    if(params == NULL)
-    {
-        return ERROR;
-    }
-    if(!(*plws_index > 0 && *plws_index <= PNR_IMUSER_MAXNUM))
-    {
-        return ERROR;
-    }
-
-    //解析参数
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailId",emailid,0);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailid(%d) type(%d)",emailid,type);
-
-    //参数检查
-    if (type == 0 || emailid == 0)
-    {
-        return ERROR;
-    }
-    
-    //构建响应消息
-    cJSON * ret_root = cJSON_CreateObject();
-    cJSON * ret_params = cJSON_CreateObject();
-    if(ret_root == NULL || ret_params == NULL)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
-        cJSON_Delete(ret_root);
-        return ERROR;
-    }
-    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
-    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
-    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
-    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
-
-    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_DELEMAIL));
-    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "MailId", cJSON_CreateNumber(emailid));
-    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
-    cJSON_AddItemToObject(ret_root, "params", ret_params);
-
-    ret_buff = cJSON_PrintUnformatted(ret_root);
-    cJSON_Delete(ret_root);
-    
-    *retmsg_len = strlen(ret_buff);
-    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
-        free(ret_buff);
-        return ERROR;
-    }
-
-    // 删除数据库邮件 和 文件
-    pnr_email_list_dbdel(*plws_index,emailid);
-    pnr_email_file_dbdel(*plws_index,emailid);
-
-    strcpy(retmsg,ret_buff);
-    free(ret_buff);
-    return OK;
-}
-
-
-/**********************************************************************************
   Function:      em_cmd_del_emailcofig_deal
   Description: EM模块删除email配置
   Calls:
@@ -16130,10 +15954,6 @@ int em_cmd_del_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     // 删除数据库邮箱配置
     pnr_email_config_dbdel(*plws_index,emailName);
-    // 删除邮件
-    pnr_email_list_dbdel_emailname(*plws_index,emailName);
-    // 删除邮件附件
-    pnr_email_file_dbdel_emailname(*plws_index,emailName);
 
     strcpy(retmsg,ret_buff);
     free(ret_buff);
@@ -16321,8 +16141,6 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
-
-
 
 /**********************************************************************************
   Function:      im_cmd_template_deal
@@ -18598,8 +18416,6 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_SET_EMAILSIGN,PNR_API_VERSION_V6,TRUE,em_cmd_set_emailsign_deal},
     {PNR_EM_CMDTYPE_PULL_EMAILLIST,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emaillist_deal},
     {PNR_EM_CMDTYPE_BAKUPEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_bakup_email_deal},
-    {PNR_EM_CMDTYPE_DELEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_del_email_deal},
-    {PNR_EM_CMDTYPE_SET_EMAILLABLE,PNR_API_VERSION_V6,TRUE,em_cmd_set_emaillable_deal},
 
 };
 char * g_pnr_cmdstring[]=
@@ -18686,7 +18502,6 @@ char * g_pnr_cmdstring[]=
     PNR_EMCMD_SET_EMAILSIGN,
     PNR_EMCMD_PULL_EMAILLIST,
     PNR_EMCMD_BAKUPEMAIL,
-    PNR_EMCMD_SET_EMAILLABLE,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -18821,10 +18636,6 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_DEL_EMAILCONFIG) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_DEL_EMAILCONFIG;
-            }
-            else if(strcasecmp(action_buff,PNR_EMCMD_DELEMAIL) == OK)
-            {
-                phead->im_cmdtype = PNR_EM_CMDTYPE_DELEMAIL;
             }
             else
             {
@@ -19142,10 +18953,6 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_SET_EMAILSIGN) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_SET_EMAILSIGN;
-            }
-            else if(strcasecmp(action_buff,PNR_EMCMD_SET_EMAILLABLE) == OK)
-            {
-                phead->im_cmdtype = PNR_EM_CMDTYPE_SET_EMAILLABLE;
             }
             else
             {
@@ -21767,6 +21574,8 @@ static void *pnr_post_newmsg_notice_task(void *para)
     cJSON_AddItemToObject(params, "payload", cJSON_CreateString(pmsg->payload));
     cJSON_AddItemToObject(params, "priority", cJSON_CreateNumber(pmsg->priority));
     cJSON_AddItemToObject(params, "type", cJSON_CreateNumber(pmsg->type));
+    cJSON_AddItemToObject(params, "devid", cJSON_CreateNumber(pmsg->devid));
+    cJSON_AddItemToObject(params, "msgid", cJSON_CreateNumber(pmsg->msgid));
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
     data_len = strlen(post_data);
@@ -21805,7 +21614,7 @@ static void *pnr_post_newmsg_notice_task(void *para)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
+int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag,int msgid)
 {
 	pthread_t task_id = 0;
     struct newmsg_notice_params* pmsg = NULL;
@@ -21825,6 +21634,8 @@ int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag)
     pmsg->priority = PUSHMSG_PRI_LEVER_MIDDLE;
     pmsg->server_flag = server_flag;
     pmsg->type = PUSHMSG_TYPE_NOTICE_NEWMSG;
+    pmsg->devid = g_dev_netid;
+    pmsg->msgid = msgid;
     strcpy(pmsg->from,rid);
     strcpy(pmsg->to,targetid);
     strcpy(pmsg->title,PNR_POSTMSG_TITLE);
@@ -22010,7 +21821,7 @@ int im_debug_pushnewnotice_deal(char* pbuf)
         p_targetid = g_imusr_array.usrnode[user_index].user_toxid;
     }
     
-    post_newmsg_notice(g_daemon_tox.user_toxid,p_targetid,PNR_POSTMSG_PAYLOAD,TRUE);
+    post_newmsg_notice(g_daemon_tox.user_toxid,p_targetid,PNR_POSTMSG_PAYLOAD,TRUE,0);
     return OK;
 }
 /**********************************************************************************
@@ -22900,6 +22711,7 @@ void *pnr_dev_register_task(void *para)
     }
     memset(&resp,0,sizeof(struct pnrdev_register_resp));
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Ret",resp.ret,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Index",resp.index,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Renew",resp.renew_flag,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"PubNetMode",resp.pubnet_mode,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FrpMode",resp.frp_mode,0);
@@ -22915,6 +22727,10 @@ void *pnr_dev_register_task(void *para)
         return NULL;
     }
     g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
+    if(resp.index > 0 && g_dev_netid <= 0)
+    {
+        g_dev_netid = resp.index;
+    }        
     if(resp.frp_mode != netinfo.frp_mode)
     {
         netinfo.frp_mode = resp.frp_mode;
