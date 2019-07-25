@@ -10,7 +10,7 @@
 
 提供分布式隐私通信服务
 
-![1564044819330](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\1564044819330.png)
+![系统架构](files/system.png)
 
 配合APP使用，用户通过TLS加密连接⾄安全路由器，安全路由器通过完全去中⼼化的p2p⽹络连接⾄对端的安全路由器，对端路由器再通过tls连接对端app。信息流在整个传输过程中都是加密的，并且没有任何中⼼化节点，从⽽构架起⼀个完全去中⼼化的私⼈安全⽹络通信通道
 
