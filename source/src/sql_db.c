@@ -411,6 +411,31 @@ int sql_db_sync(int cur_db_version)
         }
         cur_db_version++;
     }
+    if(cur_db_version == DB_VERSION_V9)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into generconf_tbl values('%s',%u);",DB_USER_CAPACITY_KEYWORD,USER_CAPACITY_DEFAULT_VALUE_GIGA);
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"ALTER TABLE user_account_tbl ADD COLUMN capacity;");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"UPDATE user_account_tbl SET capacity=%d;",USER_CAPACITY_DEFAULT_VALUE_GIGA);
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -536,9 +561,9 @@ int sql_adminaccount_init(void)
     {
         return ERROR;
     }
-    //user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime);
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'','','','','','',0);",
-             PNR_USER_TYPE_ADMIN,FALSE,PNR_ADMINUSER_DEFAULT_IDCODE,"",account_sn,PNR_ADMINUSER_PSN_INDEX);
+    //user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime,capacity);
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'','','','','','',0,%d);",
+             PNR_USER_TYPE_ADMIN,FALSE,PNR_ADMINUSER_DEFAULT_IDCODE,"",account_sn,PNR_ADMINUSER_PSN_INDEX,USER_CAPACITY_DEFAULT_VALUE_GIGA);
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
@@ -977,6 +1002,13 @@ int sql_db_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into generconf_tbl values('%s',%u);",DB_USER_CAPACITY_KEYWORD,USER_CAPACITY_DEFAULT_VALUE_GIGA);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
     //初始化全局user_instance表
     snprintf(sql_cmd,SQL_CMD_LEN,"create table user_instance_tbl(userid primary key,"
     	"name,nickname,toxid,pathurl,datafile);");
@@ -996,7 +1028,7 @@ int sql_db_init(void)
     }
     //初始化user_account_tbl
     snprintf(sql_cmd,SQL_CMD_LEN,"create table user_account_tbl(id integer primary key autoincrement,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime);");
+                "userindex,nickname,loginkey,toxid,info,extinfo,pubkey,createtime,capacity);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4066,7 +4098,7 @@ int pnr_account_init_fromdb(void)
     DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_server start!!!get temp account usn %s",g_account_array.temp_user_sn);
     //获取账户信息
 	snprintf(sql, SQL_CMD_LEN, "select type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey,lastactive,createtime from user_account_tbl;");
+                "userindex,nickname,loginkey,toxid,pubkey,lastactive,createtime,capacity from user_account_tbl;");
     if(sqlite3_get_table(g_db_handle, sql, &dbResult, &nRow, &nColumn, &errMsg) == SQLITE_OK)
     {
         offset = nColumn; //字段值从offset开始呀
@@ -4100,6 +4132,7 @@ int pnr_account_init_fromdb(void)
                     }
                     g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
                     g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
+                    g_account_array.account[tmpid].capacity= atoi(dbResult[offset+12]);
                     break;
                 case PNR_USER_TYPE_NORMAL:
                     tmpid = g_account_array.total_user_num+1;
@@ -4126,6 +4159,7 @@ int pnr_account_init_fromdb(void)
                     }    
                     g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
                     g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
+                    g_account_array.account[tmpid].capacity= atoi(dbResult[offset+12]);
                     break;
                 case PNR_USER_TYPE_TEMP:
                     tmpid = g_account_array.total_user_num+1;
@@ -4152,6 +4186,7 @@ int pnr_account_init_fromdb(void)
                     }   
                     g_account_array.account[tmpid].lastactive = atoi(dbResult[offset+10]);
                     g_account_array.account[tmpid].createtime= atoi(dbResult[offset+11]);
+                    g_account_array.account[tmpid].capacity= atoi(dbResult[offset+12]);
                     break;
                 default:
                     break;
@@ -4217,9 +4252,9 @@ int pnr_account_dbinsert(struct pnr_account_struct* p_account)
                 break;
         }
     }
-    //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',0,'','','','','','',0);",
-             p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn);
+    //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime,capacity
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',0,'','','','','','',0,%d);",
+             p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,p_account->capacity);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4455,9 +4490,9 @@ int pnr_account_tmpuser_dbinsert(struct pnr_account_struct* p_account)
     {
         return ERROR;
     }
-	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d);",
+	snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,0,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d,%d);",
              p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,
-             p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL));
+             p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL),p_account->capacity);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4492,10 +4527,10 @@ int pnr_account_dbupdate(struct pnr_account_struct* p_account)
     }
     if(p_account->type == PNR_USER_TYPE_TEMP)
     {
-        //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo
+        //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime,capacity
         snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,%d,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d);",
                  (int)time(NULL),p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,
-                 p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL));
+                 p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL),p_account->capacity);
     }
     else
     {
@@ -4706,6 +4741,7 @@ int32 pnr_usr_account_dbget(void* obj, int n_columns, char** column_values,char*
         strncpy(p_account->user_pubkey,column_values[11],PNR_USER_PUBKEY_MAXLEN);
     } 
     p_account->createtime = atoi(column_values[12]);
+    p_account->capacity = (unsigned int)atoi(column_values[13]);
 	return OK;
 }
 /*****************************************************************************
@@ -4772,7 +4808,7 @@ int pnr_account_get_byusn(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where usersn='%s';",p_account->user_sn);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime,capacity from user_account_tbl where usersn='%s';",p_account->user_sn);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_get_byusn:sqlite cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
@@ -4808,7 +4844,7 @@ int pnr_account_dbget_byuserkey(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where pubkey='%s';",p_account->user_pubkey);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime,capacity from user_account_tbl where pubkey='%s';",p_account->user_pubkey);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4843,7 +4879,7 @@ int pnr_account_dbget_byuserid(struct pnr_account_struct* p_account)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,lastactive,type,active,identifycode,mnemonic,usersn,"
-                "userindex,nickname,loginkey,toxid,pubkey,createtime from user_account_tbl where toxid='%s';",p_account->toxid);
+                "userindex,nickname,loginkey,toxid,pubkey,createtime,capacity from user_account_tbl where toxid='%s';",p_account->toxid);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_account_dbget_byuserid:sqlite cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usr_account_dbget,p_account,&errMsg))
     {
@@ -6824,6 +6860,46 @@ int pnr_email_config_dbupdateread(int uindex,int status,int mailid)
 
 	snprintf(sql_cmd,SQL_CMD_LEN,"update emaillist_tbl set read=%d where uindex=%d and id=%d",status,uindex,mailid);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_user_capacity_dbupdate
+ 功能描述  : 数据库跟新用户磁盘配额信息
+ 输入参数  : null
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月17日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_user_capacity_dbupdate(int index,unsigned int capacity)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    //默认全局配置
+    if(index == 0)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%u where name='%s';",
+            capacity,DB_USER_CAPACITY_KEYWORD);
+    }
+    //单个用户的设置
+    else
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"update user_account_tbl set capacity=%u where userindex=%d;",
+            capacity,index);
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_user_capacity_dbupdate(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);

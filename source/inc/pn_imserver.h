@@ -110,6 +110,9 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_EM_CMDTYPE_SET_EMAILSIGN,
     PNR_EM_CMDTYPE_PULL_EMAILLIST,
     PNR_EM_CMDTYPE_BAKUPEMAIL,
+    //用户磁盘限额配置
+    PNR_IM_CMDTYPE_GETCAPACITY,
+    PNR_IM_CMDTYPE_SETCAPACITY,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -328,6 +331,9 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_SET_EMAILSIGN     "SetEmailSign"
 #define PNR_EMCMD_PULL_EMAILLIST   "PullMailList"
 #define PNR_EMCMD_BAKUPEMAIL    "BakupEmail"
+//用户磁盘限额配置
+#define PNR_IMCMD_GETCAPACITY "GetCapactiy"
+#define PNR_IMCMD_SETCAPACITY "SetCapactiy"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -847,6 +853,7 @@ struct im_user_struct
     unsigned int hashid;
     unsigned int msglog_dbid;
     unsigned int cachelog_dbid;
+    unsigned int user_capacity;
     pthread_t tox_tid;
     int lastmsgid_index;
     long cache_msgid[IM_MSGID_CACHENUM];
@@ -880,6 +887,7 @@ struct im_user_array_struct
 {
     int max_user_num;
     int cur_user_num;
+    unsigned int default_user_capacity;
     struct im_user_struct usrnode[PNR_IMUSER_MAXNUM+1];
 };
 enum PNR_ACCOUNT_STATUS_ENUM
@@ -898,6 +906,7 @@ struct pnr_account_struct
     int active;
     int lastactive;
     int createtime;
+    unsigned int capacity;
     char user_sn[PNR_USN_MAXLEN+1];
     char nickname[PNR_USERNAME_MAXLEN+1];
     char mnemonic[PNR_USERNAME_MAXLEN+1];
@@ -1429,6 +1438,18 @@ enum PNR_QLCNODE_ENABLE_ENUM
     PNR_QLCNODE_ENABLE_NOLIMIT =2,
 
 };
+#define USER_CAPACITY_MIN_VALUE_GIGA    1 //最小磁盘配置限额1G
+#define USER_CAPACITY_MAX_VALUE_GIGA    1024000//1024*1000，磁盘配额限制最大1000T
+#define USER_CAPACITY_DEFAULT_VALUE_GIGA 20480//20T,20*1024
+enum PNR_USER_CAPACITY_CONFIG_ENUM
+{
+    PNR_USER_CAPACITY_CONFIG_OK = 0,
+    PNR_USER_CAPACITY_CONFIG_NOPOWER = 1,
+    PNR_USER_CAPACITY_CONFIG_BADUSER =2,
+    PNR_USER_CAPACITY_CONFIG_BADVALUE =3,
+    PNR_USER_CAPACITY_CONFIG_OTHERS =4,
+    PNR_USER_CAPACITY_CONFIG_BUTT,
+};
 
 // 邮箱帐号信息结构体
 #define EMAIL_NAME_LEN  50
@@ -1522,6 +1543,9 @@ void *self_monitor_thread(void *para);
 int im_debug_pushnewnotice_deal(char* pbuf);
 void post_devinfo_upload_task(void *para);
 int pnr_sysoperation_done(int type);
+int pnr_config_user_capacity(int index,unsigned int capacity);
+int pnr_get_user_capacity(int index,unsigned int* capacity);
+int get_user_volume(int uindex,unsigned int* volume);
 int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
 	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index);
 #endif

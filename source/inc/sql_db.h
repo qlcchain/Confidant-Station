@@ -26,6 +26,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V7=7,
     DB_VERSION_V8=8,
     DB_VERSION_V9=9,
+    DB_VERSION_V10=10,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -38,11 +39,12 @@ enum DB_VERSION_ENUM
 #define DB_PUBNET_IPSTR_KEYWORD "pubnet_ip"
 #define DB_PUBNET_PORT_KEYWORD  "pubnet_port"
 #define DB_PUBNET_SSHPORT_KEYWORD "pubnet_sshport"
+#define DB_USER_CAPACITY_KEYWORD  "user_capacity"
 //默认设备登陆密码，qlcadmin的sha256加密
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V9
+#define DB_CURRENT_VERSION    DB_VERSION_V10
 struct db_string_ret
 {
     int buf_len;
@@ -165,6 +167,6 @@ int pnr_email_list_dbdel_emailname(int uindex,char *emailName);
 int pnr_email_file_dbdel_emailname(int uindex,char *emailName);
 int pnr_email_config_dbupdatelable(int uindex,int status,int mailid);
 int pnr_email_config_dbupdateread(int uindex,int status,int mailid);
-
+int pnr_user_capacity_dbupdate(int index,unsigned int capacity);
 #endif
 

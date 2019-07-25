@@ -7365,6 +7365,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
 				phead->im_cmdtype = PNR_IM_CMDTYPE_VERIFYGROUPPUSH;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GETCAPACITY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETCAPACITY;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -8210,6 +8214,7 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 pnr_create_usersn(PNR_USER_TYPE_NORMAL,g_account_array.normal_user_num,account.user_sn);
                 account.active = FALSE;
                 account.type = PNR_USER_TYPE_NORMAL;
+                account.capacity = g_imusr_array.default_user_capacity;
                 pnr_account_dbinsert(&account);
                 memcpy(&g_account_array.account[g_account_array.total_user_num],&account,sizeof(account));
                 ret_code = PNR_CREATE_NORMALUSER_RETCODE_OK;            
@@ -8560,6 +8565,7 @@ int im_login_identify_deal(cJSON * params,char* retmsg,int* retmsg_len,
                        account.active = TRUE;
                        account.index = src_account.index;
                        account.type = src_account.type;
+                       account.capacity = src_account.capacity;
                        if(strncasecmp(account.toxid,g_imusr_array.usrnode[src_account.index].user_toxid,TOX_ID_STR_LEN) != OK)
                        {
                            ret_code = PNR_LOGINIDENTIFY_RETCODE_BAD_DATAFILE;
@@ -9275,6 +9281,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     g_imusr_array.cur_user_num,g_imusr_array.max_user_num);
                 ret_code = PNR_REGISTER_RETCODE_OTHERS;
             }
+            account.capacity = g_imusr_array.default_user_capacity;
         }
         else
         {
@@ -9291,6 +9298,7 @@ int im_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 ret_code = PNR_REGISTER_RETCODE_USED;
             }
+            account.capacity = src_account.capacity;
 #if 0//暂时屏蔽
             //比对授权码
             else if(strcmp(src_account.identifycode,account.identifycode) != OK)
@@ -10258,6 +10266,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     strncpy(tmp_account.nickname,tmp_account.mnemonic,PNR_USERNAME_MAXLEN);
                 }
                 tmp_account.createtime = atoi(dbResult[offset+14]);
+                tmp_account.capacity = (unsigned int)atoi(dbResult[offset+15]);
 
                 offset += nColumn;
                 pJsonsub = cJSON_CreateObject();
@@ -10286,6 +10295,7 @@ int im_pulluserlist_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 cJSON_AddNumberToObject(pJsonsub,"LastLoginTime",tmp_account.lastactive); 
                 cJSON_AddNumberToObject(pJsonsub,"CreateTime",tmp_account.createtime); 
+                cJSON_AddNumberToObject(pJsonsub,"Capacity",tmp_account.capacity); 
                 if(tmp_account.type == PNR_USER_TYPE_TEMP)
                 {
                     cJSON_AddStringToObject(pJsonsub,"Qrcode",g_account_array.temp_user_qrcode);
@@ -10694,6 +10704,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     g_imusr_array.cur_user_num,g_imusr_array.max_user_num);
                 ret_code = PNR_REGISTER_RETCODE_OTHERS;
             }
+            account.capacity = g_imusr_array.default_user_capacity;
         }
         else
         {
@@ -10710,6 +10721,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 ret_code = PNR_REGISTER_RETCODE_USED;
             }
+            account.capacity = src_account.capacity;
 #if 0//暂时屏蔽
             //比对授权码
             else if(strcmp(src_account.identifycode,account.identifycode) != OK)
@@ -16141,6 +16153,222 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+/**********************************************************************************
+  Function:      im_cmd_get_capacity_deal
+  Description: 获取用户磁盘配额
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_get_capacity_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    int uindex= 0,len = 0;
+    unsigned int capacity = 0,volume = 0;
+    
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
+    if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+    {
+        ret_code = PNR_USER_CAPACITY_CONFIG_NOPOWER;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) no limit to set capacity",*plws_index);
+    }
+    else 
+    {
+        len = strlen(userid);
+        if(len == TOX_ID_STR_LEN)
+        {
+            uindex = get_indexbytoxid(userid);
+            if(uindex < 0)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
+                ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
+            }
+        }
+        else if(len < 4)
+        {
+            //如果没有userid参数或者参数为0，表示是配置默认全局用户配额
+            uindex = 0;
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
+            ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
+            uindex = -1;
+        }
+        if(uindex >= 0)
+        {
+            if((pnr_get_user_capacity(uindex,&capacity) != OK)
+                || (get_user_volume(uindex,&volume) != OK))
+            {
+                ret_code = PNR_USER_CAPACITY_CONFIG_OTHERS;
+            }
+            else
+            {
+                ret_code = PNR_USER_CAPACITY_CONFIG_OK;
+            }
+        }
+    }
+
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETCAPACITY));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "CurVolume", cJSON_CreateNumber(volume));
+    cJSON_AddItemToObject(ret_params, "Capacity", cJSON_CreateNumber(capacity));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      im_cmd_set_capacity_deal
+  Description: 配置用户磁盘配额
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_cmd_set_capacity_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    int capacity = 0,uindex= 0,len = 0;
+    
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Capacity",capacity,0);
+    if(*plws_index != PNR_ADMINUSER_PSN_INDEX)
+    {
+        ret_code = PNR_USER_CAPACITY_CONFIG_NOPOWER;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) no limit to set capacity",*plws_index);
+    }
+    else if(capacity != 0 && (capacity < USER_CAPACITY_MIN_VALUE_GIGA || capacity > USER_CAPACITY_MAX_VALUE_GIGA))
+    {
+        ret_code = PNR_USER_CAPACITY_CONFIG_BADVALUE;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad capacity value(%d)",capacity);
+    }
+    else 
+    {
+        len = strlen(userid);
+        if(len == TOX_ID_STR_LEN)
+        {
+            uindex = get_indexbytoxid(userid);
+            if(uindex < 0)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
+                ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
+            }
+        }
+        else if(len < 4)
+        {
+            //如果没有userid参数或者参数为0，表示是配置默认全局用户配额
+            uindex = 0;
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
+            ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
+            uindex = -1;
+        }
+        if(uindex >= 0)
+        {
+            if(pnr_config_user_capacity(uindex,(unsigned int)capacity) != OK)
+            {
+                ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
+            }
+            else
+            {
+                ret_code = PNR_USER_CAPACITY_CONFIG_OK;
+            }
+        }
+    }
+
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SETCAPACITY));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 
 /**********************************************************************************
   Function:      im_cmd_template_deal
@@ -18416,7 +18644,9 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_SET_EMAILSIGN,PNR_API_VERSION_V6,TRUE,em_cmd_set_emailsign_deal},
     {PNR_EM_CMDTYPE_PULL_EMAILLIST,PNR_API_VERSION_V6,TRUE,em_cmd_pull_emaillist_deal},
     {PNR_EM_CMDTYPE_BAKUPEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_bakup_email_deal},
-
+    //用户磁盘限额配置
+    {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
+    {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
 };
 char * g_pnr_cmdstring[]=
 {
@@ -18953,6 +19183,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_SET_EMAILSIGN) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_SET_EMAILSIGN;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SETCAPACITY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SETCAPACITY;
             }
             else
             {
@@ -23451,6 +23685,126 @@ int pnr_sysoperation_done(int type)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad type(%d)",type);
         return ERROR;
     }
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_config_user_capacity
+ 功能描述  : pnr 配置用户磁盘配额
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_config_user_capacity(int index,unsigned int capacity)
+{
+    if((index < 0 || index > PNR_IMUSER_MAXNUM)
+        || (capacity != 0 && (capacity < USER_CAPACITY_MIN_VALUE_GIGA || capacity > USER_CAPACITY_MAX_VALUE_GIGA)))
+    {
+        return ERROR;
+    }
+    if(index == 0 && g_imusr_array.default_user_capacity != index)
+    {
+        if( pnr_user_capacity_dbupdate(index,capacity)!= OK)
+        {
+            return ERROR;
+        }
+        g_imusr_array.default_user_capacity = capacity;
+    }
+    else if(capacity != g_imusr_array.usrnode[index].user_capacity)
+    {
+        if( pnr_user_capacity_dbupdate(index,capacity)!= OK)
+        {
+            return ERROR;
+        }
+        g_imusr_array.usrnode[index].user_capacity = capacity;
+    }
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_get_user_capacity
+ 功能描述  : pnr 获取用户磁盘配额
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_get_user_capacity(int index,unsigned int* capacity)
+{
+    if(index < 0 || index > PNR_IMUSER_MAXNUM)
+    {
+        return ERROR;
+    }
+    if(index == 0)
+    {
+        *capacity = g_imusr_array.default_user_capacity;
+    }
+    else
+    {
+        *capacity = g_imusr_array.usrnode[index].user_capacity;
+    }
+    return OK;
+}
+/**********************************************************************************
+  Function:      get_user_volume
+  Description:  获取用户磁盘容量
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int get_user_volume(int uindex,unsigned int* volume)
+{
+    char cmd[CMD_MAXLEN] = {0};
+    char recv[CMD_MAXLEN] = {0};
+    FILE *fp = NULL;
+
+    if(uindex < 0 || uindex > PNR_IMUSER_MAXNUM || volume == NULL)
+    {
+        return ERROR;
+    }
+    if(uindex == 0)
+    {
+        snprintf(cmd,CMD_MAXLEN,"du -h -s -m %s",DAEMON_PNR_USERDATA_DIR);
+    }
+    else
+    {
+        snprintf(cmd,CMD_MAXLEN,"du -h -s -m %s/user%d",DAEMON_PNR_USERDATA_DIR,uindex);
+    }
+    if (!(fp = popen(cmd, "r"))) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_user_volume cmd(%s) failed",cmd);
+        return ERROR;
+    }
+    if (fgets(recv,CMD_MAXLEN,fp) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_user_volume cmd =%s ret failed",cmd);
+        pclose(fp);
+        return ERROR;
+    }  
+    pclose(fp); 
+    *volume = (unsigned int)atoi(recv);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_user_volume:get user(%d) volume(%u)",uindex,*volume);
     return OK;
 }
 
