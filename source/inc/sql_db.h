@@ -153,20 +153,24 @@ int pnr_userinfo_dbdelete_byuserid(char* usrid);
 int pnr_tox_datafile_dbdelete_bytoxid(char* toxid);
 
 // email 操作
+int pnr_emconfig_uindex_dbget_byuser(char *gname,int *uindex);
+int pnr_emconfig_num_dbget_byuindex(int uindex,int *count);
 int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode);
 int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode);
-int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count);
+int pnr_email_config_dbcheckcount(int uindex,char *gname,int *count);
 int pnr_email_config_dbdel(int uindex,char *emailName);
 int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
-int pnr_email_list_dbinsert(int uindex,struct email_model emailMode,int fileid);
-
+int pnr_email_list_dbinsert(struct email_model* emailMode);
+int pnr_emailfile_dbdelete_byid(int uindex,int mailid);
+int pnr_emaillist_dbdelete_byid(int uindex,int mailid);
 int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
-int pnr_email_list_dbdel(int uindex,int emailid);
 int pnr_email_file_dbdel(int uindex,int emailid);
 int pnr_email_list_dbdel_emailname(int uindex,char *emailName);
 int pnr_email_file_dbdel_emailname(int uindex,char *emailName);
+int pnr_email_ukey_dbget_byemname(char* em_name,char* ukey,int* found_flag);
 int pnr_email_config_dbupdatelable(int uindex,int status,int mailid);
 int pnr_email_config_dbupdateread(int uindex,int status,int mailid);
 int pnr_user_capacity_dbupdate(int index,unsigned int capacity);
+int sql_emaillinfodb_init(void);
 #endif
 

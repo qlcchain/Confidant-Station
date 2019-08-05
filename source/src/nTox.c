@@ -812,8 +812,8 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	if (filename) {
 		if (*index == 0) {
             //tox发送文件只能根据附带的文件命来判定是那种文件类型
-            if(strncmp(filename, "group", 5) == OK){
-                ptmp=filename+5;
+            if(strncmp((char*)filename, "group", 5) == OK){
+                ptmp=(char*)filename+5;
                 gid =atoi(ptmp);
                 if(gid< 0|| gid >= PNR_GROUP_MAXNUM)
                 {
@@ -821,7 +821,7 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
                     return;
                 }
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"get gid(%d) ptmp(%s)",gid,ptmp);
-                ptmp = strchr(filename,':');
+                ptmp = strchr((char*)filename,':');
                 if(ptmp == NULL)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad filename(%s)",filename);
@@ -830,20 +830,20 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 				realfilename = ptmp + 1;
 				snprintf(filepath, sizeof(filepath), "%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
             }
-			else if(strncmp(filename, "a:", 2) == OK){
-				realfilename = filename + 2;
+			else if(strncmp((char*)filename, "a:", 2) == OK){
+				realfilename = (char*)filename + 2;
 				snprintf(filepath, sizeof(filepath), "%s%s%s",DAEMON_PNR_USERDATA_DIR,PNR_FILECACHE_DIR,realfilename);
             }
-			else if (strncmp(filename, "u:", 2) == OK) {
-				realfilename = filename + 2;
+			else if (strncmp((char*)filename, "u:", 2) == OK) {
+				realfilename = (char*)filename + 2;
 				snprintf(filepath, sizeof(filepath), "%su/%s", 
 	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);
 			} else {
-				realfilename = filename;
+				realfilename = (char*)filename;
 				snprintf(filepath, sizeof(filepath), "%ss/%s", 
 	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);				
 			}
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"###rec filename(%s),filepath(%s)",filename,filepath);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"###rec filename(%s),filepath(%s)",(char*)filename,filepath);
 		} else {
 			snprintf(filepath, sizeof(filepath), "%sr/%s", 
             	g_imusr_array.usrnode[dirindex].userdata_pathurl, filename);

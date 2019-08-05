@@ -110,6 +110,8 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_EM_CMDTYPE_SET_EMAILSIGN,
     PNR_EM_CMDTYPE_PULL_EMAILLIST,
     PNR_EM_CMDTYPE_BAKUPEMAIL,
+    PNR_EM_CMDTYPE_DELEMAIL,
+    PNR_EM_CMDTYPE_CHECKMAILUKEY,
     //用户磁盘限额配置
     PNR_IM_CMDTYPE_GETCAPACITY,
     PNR_IM_CMDTYPE_SETCAPACITY,
@@ -220,6 +222,7 @@ enum PNR_FILE_SRCFROM_ENUM
     PNR_FILE_SRCFROM_AVATAR = 4,
     PNR_FILE_SRCFROM_GROUPSEND = 5,
     PNR_FILE_SRCFROM_GROUPRECV = 6,
+    PNR_FILE_SRCFROM_MAILBAKUP = 7,
     PNR_FILE_SRCFROM_BUTT,
 };
 struct pnr_file_dbinfo_struct
@@ -331,6 +334,8 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_SET_EMAILSIGN     "SetEmailSign"
 #define PNR_EMCMD_PULL_EMAILLIST   "PullMailList"
 #define PNR_EMCMD_BAKUPEMAIL    "BakupEmail"
+#define PNR_EMCMD_DELEMAIL    "DelEmail"
+#define PNR_EMCMD_CHECKMAILUKEY    "CheckmailUkey"
 //用户磁盘限额配置
 #define PNR_IMCMD_GETCAPACITY "GetCapactiy"
 #define PNR_IMCMD_SETCAPACITY "SetCapactiy"
@@ -391,6 +396,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_AVATAR_FULLDIR "/media/pnrouter/userdata/avatar/"
 #define PNR_FILECACHE_FULLDIR "/media/pnrouter/userdata/cache/"
 #define PNR_SYSWARNING_LOG    "/media/pnrouter/syswarning.log"
+#define PNR_EMAIL_DB       "/media/pnrouter/pnrouter_email.db"
 #else
 #define PNR_DB_USERFILE_HEAD     "/user"
 #define DAEMON_PNR_TOP_DIR "/usr/pnrouter/"
@@ -777,7 +783,9 @@ enum IM_MSGTYPE_ENUM
 	PNR_IM_MSGTYPE_SYSTEM = 3,
 	PNR_IM_MSGTYPE_MEDIA = 4,
 	PNR_IM_MSGTYPE_FILE = 5,
-	PNR_IM_MSGTYPE_AVATAR = 6
+	PNR_IM_MSGTYPE_AVATAR = 6,
+	PNR_IM_MSGTYPE_EMAILFILE = 7,
+    PNR_IM_MSGTYPE_EMAILATTACH = 8
 };
 #define PNR_IM_MSGTYPE_FILEALL   0xF0//包含IMAGE，AUDIO，MEDIA，FILE
 #define PNR_IM_MSGTYPE_ALL   0xF1//包含IMAGE，AUDIO，MEDIA，FILE TEXT
@@ -1224,6 +1232,9 @@ struct im_user_msg_sendfile {
         case PNR_FILE_SRCFROM_GROUPRECV:\
             snprintf(filepath,PNR_FILEPATH_MAXLEN,"/%sg%d/U%03dS%02dF%u",PNR_GROUP_DATA_PATH,gid,uid,PNR_FILE_SRCFROM_GROUPSEND,fid);\
             break;\
+        case PNR_FILE_SRCFROM_MAILBAKUP:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/mail/U%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
         default:\
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad srcfrom(%d)",srcfrom);\
             break;\
@@ -1436,7 +1447,6 @@ enum PNR_QLCNODE_ENABLE_ENUM
     PNR_QLCNODE_ENABLE_OK = 0,
     PNR_QLCNODE_ENABLE_NOSOURCE = 1,
     PNR_QLCNODE_ENABLE_NOLIMIT =2,
-
 };
 #define USER_CAPACITY_MIN_VALUE_GIGA    1 //最小磁盘配置限额1G
 #define USER_CAPACITY_MAX_VALUE_GIGA    1024000//1024*1000，磁盘配额限制最大1000T
@@ -1455,8 +1465,41 @@ enum PNR_USER_CAPACITY_CONFIG_ENUM
 #define EMAIL_NAME_LEN  50
 #define EMAIL_SIGN_LEN  100
 #define EMAIL_CONFIG_LEN  300
-#define EMAIL_SUBJECT_LEN  500
-#define EMAIL_ATTACH_NAEM_LEN  1024
+#define EMAIL_INFO_MAXLEN 1024
+#define EMAIL_UKEY_MAXNUM 30
+#define EMAIL_USERS_CACHE_MAXLEN 1500
+#define EMAIL_CONFIG_MAXNUM 5
+#define EM_CACHE_SEPARATION_CHAR ','
+struct em_user_pkey_mapping
+{
+    int usernum;
+    int pkeynum;
+    char user_aray[EMAIL_UKEY_MAXNUM][EMAIL_NAME_LEN+1];
+    char pkey_aray[EMAIL_UKEY_MAXNUM][PNR_USER_PUBKEY_MAXLEN+1];
+};
+enum EM_CHECKUKEY_RETCODE
+{
+    EM_CHECKUKEY_RET_OK = 0,
+    EM_CHECKUKEY_RET_BADPARAMS,
+    EM_CHECKUKEY_RET_NOTFOUND,
+    EM_CHECKUKEY_RET_BUTT
+};
+enum EM_CONFIG_SET_RETCODE
+{
+    EM_CONFIG_SET_RET_OK = 0,
+    EM_CONFIG_SET_RET_OVER,
+    EM_CONFIG_SET_RET_REPEAT,
+    EM_CONFIG_SET_RET_OTHERS,
+    EM_CONFIG_SET_RET_BUTT
+};
+enum EMAIL_TYPE_ENUM
+{
+    EMAIL_TYPE_QQ_ENTERPRISE = 1,
+    EMAIL_TYPE_QQ_PERSON,
+    EMAIL_TYPE_163_PERON,
+    EMAIL_TYPE_GMAIL,
+    EMAIL_TYPE_BUTT
+};
 struct email_config_mode
 {
     int g_version;
@@ -1471,21 +1514,17 @@ struct email_config_mode
 // 邮件信息结构体
 struct email_model
 {
-    int e_id;
+    int e_mailid;
+    int e_uid;
     int e_lable;
     int e_read;
     int e_box;
-    char e_from[EMAIL_NAME_LEN+1];
-    char e_to[EMAIL_NAME_LEN+1];
-    char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
-    char e_subject[EMAIL_SUBJECT_LEN+1];
-    char e_attachinfo[EMAIL_ATTACH_NAEM_LEN+1];
-    char e_emailpath[PATH_MAX+1];
-
     int e_type;
-    char e_attach_name[EMAIL_ATTACH_NAEM_LEN+1];
-    char e_cc[EMAIL_NAME_LEN+1];
-    char e_name[EMAIL_NAME_LEN+1];
+    int e_fileid;
+    char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
+    char e_mailinfo[EMAIL_INFO_MAXLEN+1];
+    char e_emailpath[PNR_FILEPATH_MAXLEN+1];
+    char e_user[EMAIL_NAME_LEN+1];
 };
 // 邮件节点信息结构体
 // struct email_node_model
@@ -1530,8 +1569,8 @@ int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* 
 int im_simulation_setfunc_deal(char* pcmd);
 int im_group_fileinfo_analyze(char* fileinfo,struct group_fileinfo_struct* pfinfo);
 int post_devinfo_upload_once(void* param);
-void post_devinfo_upload_task(void *para);
-void post_newmsgs_loop_task(void *para);
+void* post_devinfo_upload_task(void *para);
+void* post_newmsgs_loop_task(void *para);
 int pnr_post_attach_touser(char* uid);
 int pnr_router_node_friend_init(void);
 int get_rnodefidbytoxid(char* p_toxid);
@@ -1541,7 +1580,6 @@ void *pnr_dev_register_task(void *para);
 int pnr_rnode_debugmsg_send(char* pcmd);
 void *self_monitor_thread(void *para);
 int im_debug_pushnewnotice_deal(char* pbuf);
-void post_devinfo_upload_task(void *para);
 int pnr_sysoperation_done(int type);
 int pnr_config_user_capacity(int index,unsigned int capacity);
 int pnr_get_user_capacity(int index,unsigned int* capacity);

@@ -501,7 +501,7 @@ int sql_db_check(void)
     }
     if(access(PNR_EMAIL_DB, F_OK)!=0)
 	{ 
-		ret += sql_emialinfodb_init();
+		ret += sql_emaillinfodb_init();
 	}
 	else if(sqlite3_open(PNR_EMAIL_DB, &g_emaildb_handle) != OK)
     {
@@ -717,7 +717,7 @@ int sql_groupinfodb_init(void)
 }
 
 /***********************************************************************************
-  Function:      sql_emialinfodb_init
+  Function:      sql_emaillinfodb_init
   Description:  email模块的数据库初始化
   Calls:
   Called By:     main
@@ -731,7 +731,7 @@ int sql_groupinfodb_init(void)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int sql_emialinfodb_init(void)
+int sql_emaillinfodb_init(void)
 {
     int8* errMsg = NULL;
     int8 sql_cmd[SQL_CMD_LEN] = {0};
@@ -739,33 +739,33 @@ int sql_emialinfodb_init(void)
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"sql_db_init start");
     if(sqlite3_open(PNR_EMAIL_DB, &g_emaildb_handle) != OK)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_emialinfodb_init failed");
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_emaillinfodb_init failed");
         return ERROR;
     }
 	//初始化表
-	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,emailuser,config,gname,signature,contactsfile,contactsmd5,userkey);");
-    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
     }
-	snprintf(sql_cmd,SQL_CMD_LEN,"create table emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,action,attach,from,to,cc,subject,userkey);");
-    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo);");
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
     }
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailfile_tbl(id integer primary key autoincrement,uindex,timestamp,fileid,emailid,version,type,filename,filepath,fileinfo,userkey,user);");
-    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
     }
 	snprintf(sql_cmd,SQL_CMD_LEN,"create table emailaction_tbl(id integer primary key autoincrement,uindex,timestamp,Action,Info);");
-    if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
@@ -4528,7 +4528,7 @@ int pnr_account_dbupdate(struct pnr_account_struct* p_account)
     if(p_account->type == PNR_USER_TYPE_TEMP)
     {
         //id,lastactive,type,active,identifycode,mnemonic,usersn,userindex,nickname,loginkey,toxid,pubkey,info,extinfo,createtime,capacity
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,%d,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','','','%s',%d);",
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into user_account_tbl values(null,%d,%d,%d,'%s','%s','%s',%d,'%s','%s','%s','%s','','',%d,%d);",
                  (int)time(NULL),p_account->type,p_account->active,p_account->identifycode,p_account->mnemonic,p_account->user_sn,
                  p_account->index,p_account->nickname,p_account->loginkey,p_account->toxid,p_account->user_pubkey,(int)time(NULL),p_account->capacity);
     }
@@ -6526,7 +6526,8 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
     // 插入数据
-    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emailconf_tbl values(%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
+    //table emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emailconf_tbl values(null,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
              uindex,(int)time(NULL),config_mode.g_type,config_mode.g_version,config_mode.g_name,config_mode.g_config,"","","",config_mode.g_userkey);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -6536,7 +6537,6 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
     }
     return OK;
 }
-
 /************************************email操作***********************************************
   Function:      pnr_email_list_dbinsert
   Description:  保存邮件到节点
@@ -6552,13 +6552,89 @@ int pnr_email_config_dbinsert(int uindex,struct email_config_mode config_mode)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_email_list_dbinsert(int uindex,struct email_model emailMode,int fileid)
+int pnr_email_list_dbinsert(struct email_model* emailMode)
 {
     int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
+    if(emailMode == NULL)
+    {
+        return ERROR;
+    }
     // 插入数据
-    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','%s');",
-             uindex,(int)time(NULL),emailMode.e_lable,emailMode.e_read,emailMode.e_type,emailMode.e_box,fileid,emailMode.e_name,"",emailMode.e_attachinfo,emailMode.e_from,emailMode.e_to,emailMode.e_cc,emailMode.e_subject,emailMode.e_userkey);
+    //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(null,%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s');",
+             emailMode->e_uid,(int)time(NULL),emailMode->e_lable,emailMode->e_read,emailMode->e_type,emailMode->e_box,
+             emailMode->e_fileid,emailMode->e_user,emailMode->e_emailpath,emailMode->e_userkey,emailMode->e_mailinfo);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    //获取id
+    snprintf(sql_cmd,SQL_CMD_LEN,"select id from emaillist_tbl where uindex=%d and fileid=%d;",emailMode->e_uid,emailMode->e_fileid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,&(emailMode->e_mailid),&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_email_list_dbinsert get e_mailid failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/************************************email操作***********************************************
+  Function:      pnr_emaillist_dbdelete_byid
+  Description:  删除emaillist数据库记录
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emaillist_dbdelete_byid(int uindex,int mailid)
+{
+    int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    // 插入数据
+    //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from emaillist_tbl where uindex=%d and id=%d",uindex,mailid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/************************************email操作***********************************************
+  Function:      pnr_emailfile_dbdelete_byid
+  Description:  删除emailfile数据库记录
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emailfile_dbdelete_byid(int uindex,int mailid)
+{
+    int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    // 插入数据
+    //emailfile_tbl(id integer primary key autoincrement,uindex,timestamp,fileid,emailid,version,type,filename,filepath,fileinfo,userkey,user)
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from emailfile_tbl where uindex=%d and emailid=%d",uindex,mailid);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -6588,6 +6664,7 @@ int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode)
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
      // 修改数据
+     //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
      snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s');",
              config_mode.g_config,uindex,config_mode.g_name);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
@@ -6614,11 +6691,12 @@ int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count)
+int pnr_email_config_dbcheckcount(int uindex,char *gname,int *count)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
 
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
 	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,gname);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,count,&errMsg))
     {
@@ -6626,6 +6704,69 @@ int pnr_email_config_dbcheckcount(int uindex,char *gname,void *count)
         sqlite3_free(errMsg);
         return ERROR;
     }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_config_dbcheckcount(%s) count(%d)",sql_cmd,*count);
+    return OK;
+}
+/************************************email操作***********************************************
+  Function:      pnr_emconfig_num_dbget_byuindex
+  Description:   check邮箱配置个数擦汗寻
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emconfig_num_dbget_byuindex(int uindex,int *count)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emailconf_tbl where uindex=%d",uindex);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_num_dbget_byuindex(%s) count(%d)",sql_cmd,*count);
+    return OK;
+}
+/************************************email操作***********************************************
+  Function:      pnr_emconfig_uindex_dbget_byuser
+  Description:   check邮箱配置是否存在
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emconfig_uindex_dbget_byuser(char *gname,int *uindex)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+	snprintf(sql_cmd,SQL_CMD_LEN,"select uindex from emailconf_tbl where emailuser='%s'",gname);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,uindex,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_uindex_dbget_byuser(%s) count(%d)",sql_cmd,*uindex);
     return OK;
 }
 /************************************email操作***********************************************
@@ -6647,7 +6788,7 @@ int pnr_email_config_dbdel(int uindex,char *emailName)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
-
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
 	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emailconf_tbl where uindex=%d and emailuser='%s'",uindex,emailName);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -6677,7 +6818,7 @@ int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
-
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
 	snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set signature='%s' where uindex=%d and emailuser='%s'",emailSign,uindex,emailName);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -6687,37 +6828,6 @@ int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign)
     }
     return OK;
 }
-
-/************************************email操作***********************************************
-  Function:      pnr_email_list_dbdel
-  Description:   删除邮件
-  Calls:
-  Called By:     main
-  Input:
-  Output:
-  Return:
-  Others:
-
-  History:
-  History: 1. Date:2015-10-08
-                  Author:Will.Cao
-                  Modification:Initialize
-***********************************************************************************/
-int pnr_email_list_dbdel(int uindex,int emailid)
-{
-	int8* errMsg = NULL;
-	char sql_cmd[SQL_CMD_LEN] = {0};
-
-	snprintf(sql_cmd,SQL_CMD_LEN,"delete from emaillist_tbl where uindex=%d and id=%d",uindex,emailid);
-    if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-        sqlite3_free(errMsg);
-        return ERROR;
-    }
-    return OK;
-}
-
 /************************************email操作***********************************************
   Function:      pnr_email_file_dbdel
   Description:   删除邮件附件
@@ -6865,6 +6975,50 @@ int pnr_email_config_dbupdateread(int uindex,int status,int mailid)
         sqlite3_free(errMsg);
         return ERROR;
     }
+    return OK;
+}
+/***********************************************************************************
+  Function:      pnr_email_ukey_dbget_byemname
+  Description:  根据用户邮箱名查找用户公钥
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_email_ukey_dbget_byemname(char* em_name,char* ukey,int* found_flag)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    struct db_string_ret db_ret;
+    
+    if(em_name == NULL || ukey == NULL || found_flag == NULL)
+    {
+        return ERROR;
+    }
+    db_ret.buf_len = PNR_USER_PUBKEY_MAXLEN;
+    db_ret.pbuf = ukey;
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+    snprintf(sql_cmd,SQL_CMD_LEN,"select userkey from emailconf_tbl where emailuser='%s';",em_name);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_ukey_dbget_byemname:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_singstr_result,&db_ret,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get dev_loginkey failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }    
+    if(strlen(ukey) <= 0)
+    {
+        *found_flag = FALSE;
+        return ERROR;
+    }
+    *found_flag = TRUE;
     return OK;
 }
 /*****************************************************************************
