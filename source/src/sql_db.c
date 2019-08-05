@@ -6613,6 +6613,41 @@ int pnr_emaillist_dbdelete_byid(int uindex,int mailid)
     return OK;
 }
 /************************************email操作***********************************************
+  Function:      pnr_emlist_mailnum_dbget_byuser
+  Description:   根据用户账户名查询当前备份邮件数量
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emlist_mailnum_dbget_byuser(char *gname,int *p_count)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(gname == NULL || p_count == NULL)
+    {
+        return ERROR;
+    }
+    //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
+	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emaillist_tbl where user='%s'",gname);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,p_count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emlist_mailnum_dbget_byuser(%s) count(%d)",sql_cmd,*p_count);
+    return OK;
+}
+/************************************email操作***********************************************
   Function:      pnr_emailfile_dbdelete_byid
   Description:  删除emailfile数据库记录
   Calls:
@@ -6766,7 +6801,7 @@ int pnr_emconfig_uindex_dbget_byuser(char *gname,int *uindex)
         sqlite3_free(errMsg);
         return ERROR;
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_uindex_dbget_byuser(%s) count(%d)",sql_cmd,*uindex);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_uindex_dbget_byuser(%s) uindex(%d)",sql_cmd,*uindex);
     return OK;
 }
 /************************************email操作***********************************************

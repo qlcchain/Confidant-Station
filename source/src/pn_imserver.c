@@ -15639,7 +15639,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* ret_buff = NULL;
     struct email_model emailModel;
     int type = 0;
-    int startid, boxtype, pullnum;
+    int startid,  pullnum;
     char emailName[EMAIL_NAME_LEN+1] = {0};
 
     char **dbResult;
@@ -15662,7 +15662,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Num",pullnum,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Box",boxtype,0);
+    //CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Box",boxtype,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailName,EMAIL_NAME_LEN);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pull emaillist emailname =%s type(%d)",emailName,type);
 
@@ -15704,7 +15704,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_PULL_EMAILLIST));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "Box", cJSON_CreateNumber(boxtype));
+    //cJSON_AddItemToObject(ret_params, "Box", cJSON_CreateNumber(boxtype));
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
    
     // 查询用户邮箱配置列表
@@ -16537,6 +16537,93 @@ int em_cmd_check_emailukey_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+/**********************************************************************************
+  Function:      em_cmd_get_bakmailsnum_deal
+  Description: 获取当前邮箱账户备份的邮件个数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_get_bakmailsnum_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char em_user[EMAIL_NAME_LEN+1] = {0};
+    char* ret_buff = NULL;
+    int mailsnum = 0,uindex= -1;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",em_user,TOX_ID_STR_LEN);
+
+    //参数检查
+    if(strlen(em_user) <= 0)
+    {
+        ret_code = EM_BAKMAILSNUM_GET_RET_BADPARAMS;
+    }
+    else
+    {
+        //查询该邮箱账户是否从属与该用户
+        pnr_emconfig_uindex_dbget_byuser(em_user,&uindex);
+        if(uindex <= 0)
+        {
+            ret_code = EM_BAKMAILSNUM_GET_RET_NOFOUND;
+        }
+        else if(uindex != *plws_index)
+        {
+            ret_code = EM_BAKMAILSNUM_GET_RET_NOPRIM;
+        }
+        else
+        {
+            pnr_emlist_mailnum_dbget_byuser(em_user,&mailsnum);
+            ret_code = EM_BAKMAILSNUM_GET_RET_OK;
+        }
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_GETBAKMAILSNUM));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(mailsnum));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
 /**********************************************************************************
   Function:      im_cmd_get_capacity_deal
   Description: 获取用户磁盘配额
@@ -19030,6 +19117,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_BAKUPEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_bakup_email_deal},
     {PNR_EM_CMDTYPE_DELEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_del_email_deal},
     {PNR_EM_CMDTYPE_CHECKMAILUKEY,PNR_API_VERSION_V6,TRUE,em_cmd_check_emailukey_deal},
+    {PNR_EM_CMDTYPE_GETBAKEMAILNUM,PNR_API_VERSION_V6,TRUE,em_cmd_get_bakmailsnum_deal},
     //用户磁盘限额配置
     {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
     {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
@@ -19194,6 +19282,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             if(strcasecmp(action_buff,PNR_EMCMD_BAKUPEMAIL) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_BAKUPEMAIL;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_GETBAKMAILSNUM) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_GETBAKEMAILNUM;
             }
             else
             {
