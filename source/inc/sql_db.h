@@ -168,6 +168,7 @@ int pnr_email_config_dbupdatesign(int uindex,char *emailName,char *emailSign);
 int pnr_email_file_dbdel(int uindex,int emailid);
 int pnr_email_list_dbdel_emailname(int uindex,char *emailName);
 int pnr_email_file_dbdel_emailname(int uindex,char *emailName);
+int pnr_emaillist_dbnumget_byuuid(struct email_model* emailMode,int* p_count);
 int pnr_email_ukey_dbget_byemname(char* em_name,char* ukey,int* found_flag);
 int pnr_email_config_dbupdatelable(int uindex,int status,int mailid);
 int pnr_email_config_dbupdateread(int uindex,int status,int mailid);

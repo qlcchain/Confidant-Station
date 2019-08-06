@@ -1188,6 +1188,13 @@ enum PNR_REBOOT_RETURN_ENUM
     PNR_REBOOT_RETURN_OTHERERR,
     PNR_REBOOT_RETURN_BUTT,
 };
+enum PNR_SAVEMAIL_RETURN_ENUM
+{
+    PNR_SAVEMAIL_RET_OK,
+    PNR_SAVEMAIL_RET_REPEAT,
+    PNR_SAVEMAIL_RET_OTHERERR,
+    PNR_SAVEMAIL_RET_BUTT
+};
 #define WS_SENDFILE_HEADLEN    952
 #define WS_FILELIST_V1  1 //这个版本新增的ver字段，添加了节点上文件保存真实名称与用户看见的逻辑名称区分
 #define WS_FILELIST_VERSION WS_FILELIST_V1
@@ -1472,6 +1479,7 @@ enum PNR_USER_CAPACITY_CONFIG_ENUM
 #define EMAIL_USERS_CACHE_MAXLEN 1500
 #define EMAIL_CONFIG_MAXNUM 5
 #define EM_CACHE_SEPARATION_CHAR ','
+#define EM_LISTPULL_DEFNUM    10
 struct em_user_pkey_mapping
 {
     int usernum;
@@ -1531,6 +1539,7 @@ struct email_model
     int e_box;
     int e_type;
     int e_fileid;
+    int e_uuid;
     char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
     char e_mailinfo[EMAIL_INFO_MAXLEN+1];
     char e_emailpath[PNR_FILEPATH_MAXLEN+1];

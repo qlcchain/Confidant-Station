@@ -14861,162 +14861,152 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 *plws_index = uindex;
             }
         }
-        uindex = get_indexbytoxid(account.toxid);
-        if(uindex <= 0)
+        //普通账户，未激活得也可以删除
+        if(strlen(account.toxid) == 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s)",account.toxid);
-            ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
-        }
-        else if(uindex == PNR_ADMINUSER_PSN_INDEX)
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s) adminuser",account.toxid);
-            ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
-        }
-        else
-        {
-            pthread_mutex_lock(&g_pnruser_lock[uindex]);
-            if(g_imusr_array.usrnode[uindex].user_onlinestatus == TRUE)
+            pnr_account_get_byusn(&account);
+            if(account.type == PNR_USER_TYPE_NORMAL && account.active == FALSE)
             {
-                //如果该用户在线，推送消息，通知用户logout
-                if(g_imusr_array.usrnode[uindex].user_online_type == USER_ONLINE_TYPE_LWS)
-                {
-                    pnr_relogin_pushbylws(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
-                }
-                else
-                {
-                    pnr_relogin_pushbytox(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
-                }
-            }
-            //接着停止对应的tox实例
-            if(g_imusr_array.usrnode[uindex].init_flag == TRUE)
-            {
-                //不通过pthread_cancel
-                g_imusr_array.usrnode[uindex].tox_status = PNR_TOX_STATUS_TRYTOEXIT;
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"set user(%d) tox_status(%d)",uindex,g_imusr_array.usrnode[uindex].tox_status);
-            }
-            //检查该用户是不是当前有群主身份，如果有，要对应解散该群组
-            for(gid = 0;gid <PNR_GROUP_MAXNUM;gid++)
-            {
-                if(uindex == g_grouplist[gid].ownerid)
-                {
-                    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"user(%d:%s) gid(%d) dissovle",uindex,account.toxid,gid);
-                    memset(&group_sysmsg,0,sizeof(group_sysmsg));
-                    pthread_mutex_lock(&g_grouplock[gid]);
-                    group_sysmsg.gid= gid;
-                    strcpy(group_sysmsg.group_hid,g_grouplist[gid].group_hid);
-                    group_sysmsg.from_uid = uindex;
-                    strcpy(group_sysmsg.from_user,account.toxid);
-                    group_sysmsg.type = GROUP_SYSMSG_SELFOUT;
-                    strcpy(group_sysmsg.msgpay,g_grouplist[gid].group_name);
-                    for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
-                    {
-                        if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
-                        {
-                            group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
-                            strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
-                            im_pushmsg_callback(g_grouplist[gid].user[i].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
-                        }
-                    }
-                    pthread_mutex_unlock(&g_grouplock[gid]);
-                    pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_GOWNERDEL,uindex,uindex,g_grouplist[gid].group_name,account.toxid,account.toxid,"del owner user ,dissolve group");
-                    pnr_group_dissolve(gid);
-                }
-            }
-            //删除该用户数据
-            pnr_usr_instance_dbdelete_bytoxid(account.toxid);
-            pnr_friend_delete_bytoxid(account.toxid);
-            pnr_userdev_mapping_dbdelte_byusrid(account.toxid);
-            pnr_account_dbdelete_byuserid(account.toxid);
-            pnr_userinfo_dbdelete_byuserid(account.toxid);
-            pnr_tox_datafile_dbdelete_bytoxid(account.toxid);
-            if(g_msglogdb_handle[uindex] != NULL)
-            {
-                sqlite3_close(g_msglogdb_handle[uindex]);
-                g_msglogdb_handle[uindex] = NULL;
-            }
-            if(g_msgcachedb_handle[uindex] == NULL)
-            {
-                sqlite3_close(g_msgcachedb_handle[uindex]);
-                g_msgcachedb_handle[uindex] = NULL;
-            }
-            if(strlen(g_imusr_array.usrnode[uindex].userdata_pathurl) > strlen(DAEMON_PNR_USERDATA_DIR))
-            {
-                snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userdata_pathurl);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system1(%s)",cmd);
-                system(cmd);
-            }
-            if(strlen(g_imusr_array.usrnode[uindex].userinfo_pathurl) > strlen(DAEMON_PNR_USERINFO_DIR))
-            {
-                memset(cmd,0,CMD_MAXLEN);
-                snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userinfo_pathurl);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system2(%s)",cmd);
-                system(cmd);
-            }
-            i = 0;
-            while(g_imusr_array.usrnode[uindex].tox_status != PNR_TOX_STATUS_EXITED)
-            {
-                sleep(1);
-                i++;
-                if(i > 5)
-                {
-                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox not exit",uindex);
-                    break;
-                }
-            }
-#if 0
-            g_imusr_array.usrnode[uindex].init_flag = FALSE;
-            g_imusr_array.usrnode[uindex].appactive_flag = FALSE;
-            g_imusr_array.usrnode[uindex].user_index = 0;
-            g_imusr_array.usrnode[uindex].user_onlinestatus = FALSE;
-            g_imusr_array.usrnode[uindex].user_online_type = FALSE;
-            g_imusr_array.usrnode[uindex].friendnum = 0;
-            g_imusr_array.usrnode[uindex].heartbeat_count = 0;
-            g_imusr_array.usrnode[uindex].appid = 0;
-            g_imusr_array.usrnode[uindex].hashid = 0;
-            g_imusr_array.usrnode[uindex].msglog_dbid = 0;
-            g_imusr_array.usrnode[uindex].cachelog_dbid = 0;
-            g_imusr_array.usrnode[uindex].tox_tid = 0;
-            g_imusr_array.usrnode[uindex].lastmsgid_index = 0;
-            g_imusr_array.usrnode[uindex].ptox_handle = NULL;
-            g_imusr_array.usrnode[uindex].pss = NULL;
-            memset(&g_imusr_array.usrnode[uindex].cache_msgid,0,sizeof(long)*IM_MSGID_CACHENUM);
-            memset(&g_imusr_array.usrnode[uindex].u_hashstr,0,PNR_USER_HASHID_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].user_toxid,0,TOX_ID_STR_LEN);
-            memset(&g_imusr_array.usrnode[uindex].user_name,0,PNR_USERNAME_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].user_nickname,0,PNR_USERNAME_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].userdata_pathurl,0,PNR_FILEPATH_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].userinfo_pathurl,0,PNR_FILEPATH_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].userinfo_fullurl,0,PNR_FILEPATH_MAXLEN);
-            memset(&g_imusr_array.usrnode[uindex].friends,0,sizeof(struct im_friends_struct)*(PNR_IMUSER_FRIENDS_MAXNUM+1));
-            memset(&g_imusr_array.usrnode[uindex].file,0,sizeof(struct im_sendfile_struct)*PNR_MAX_SENDFILE_NUM);
-#else
-            if(i < 5)
-            {
-                g_imusr_array.usrnode[uindex].init_flag = FALSE;
-                g_imusr_array.usrnode[uindex].appactive_flag = FALSE;
-                g_imusr_array.usrnode[uindex].user_onlinestatus = FALSE;
-                g_imusr_array.usrnode[uindex].user_online_type = FALSE;
-                g_imusr_array.usrnode[uindex].friendnum = 0;
-                g_imusr_array.usrnode[uindex].heartbeat_count = 0;
-                g_imusr_array.usrnode[uindex].appid = 0;
-                g_imusr_array.usrnode[uindex].ptox_handle = NULL;
-                memset(&g_imusr_array.usrnode[uindex].cache_msgid,0,sizeof(long)*IM_MSGID_CACHENUM);
-                memset(&g_imusr_array.usrnode[uindex].u_hashstr,0,PNR_USER_HASHID_MAXLEN);
-                memset(&g_imusr_array.usrnode[uindex].user_toxid,0,TOX_ID_STR_LEN);
-                memset(&g_imusr_array.usrnode[uindex].user_name,0,PNR_USERNAME_MAXLEN);
-                memset(&g_imusr_array.usrnode[uindex].user_nickname,0,PNR_USERNAME_MAXLEN);
-                memset(&g_imusr_array.usrnode[uindex].user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"use(%d:%s) delete ok",uindex,account.toxid);
+                pnr_normal_account_dbdelete_byusn(account.user_sn);
+                ret_code = PNR_ACCOUNT_DELETE_RETURN_OK;
             }
             else
             {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox_status(%d) not exit",uindex,g_imusr_array.usrnode[uindex].tox_status);
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user sn(%s) active(%d) type(%d) delete failed",
+                    account.user_sn,account.active,account.type);
+                ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
             }
-#endif
-            g_imusr_array.cur_user_num --;
-            pthread_mutex_unlock(&g_pnruser_lock[uindex]);
-            ret_code = PNR_ACCOUNT_DELETE_RETURN_OK;
+        }
+        else
+        {
+            uindex = get_indexbytoxid(account.toxid);
+            if(uindex <= 0)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s)",account.toxid);
+                ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
+            }
+            else if(uindex == PNR_ADMINUSER_PSN_INDEX)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s) adminuser",account.toxid);
+                ret_code = PNR_ACCOUNT_DELETE_RETURN_BADUSER;
+            }
+            else
+            {
+                pthread_mutex_lock(&g_pnruser_lock[uindex]);
+                if(g_imusr_array.usrnode[uindex].user_onlinestatus == TRUE)
+                {
+                    //如果该用户在线，推送消息，通知用户logout
+                    if(g_imusr_array.usrnode[uindex].user_online_type == USER_ONLINE_TYPE_LWS)
+                    {
+                        pnr_relogin_pushbylws(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
+                    }
+                    else
+                    {
+                        pnr_relogin_pushbytox(uindex,PNR_PUSHLOGOUT_REASON_DELUSER);
+                    }
+                }
+                //接着停止对应的tox实例
+                if(g_imusr_array.usrnode[uindex].init_flag == TRUE)
+                {
+                    //不通过pthread_cancel
+                    g_imusr_array.usrnode[uindex].tox_status = PNR_TOX_STATUS_TRYTOEXIT;
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"set user(%d) tox_status(%d)",uindex,g_imusr_array.usrnode[uindex].tox_status);
+                }
+                //检查该用户是不是当前有群主身份，如果有，要对应解散该群组
+                for(gid = 0;gid <PNR_GROUP_MAXNUM;gid++)
+                {
+                    if(uindex == g_grouplist[gid].ownerid)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"user(%d:%s) gid(%d) dissovle",uindex,account.toxid,gid);
+                        memset(&group_sysmsg,0,sizeof(group_sysmsg));
+                        pthread_mutex_lock(&g_grouplock[gid]);
+                        group_sysmsg.gid= gid;
+                        strcpy(group_sysmsg.group_hid,g_grouplist[gid].group_hid);
+                        group_sysmsg.from_uid = uindex;
+                        strcpy(group_sysmsg.from_user,account.toxid);
+                        group_sysmsg.type = GROUP_SYSMSG_SELFOUT;
+                        strcpy(group_sysmsg.msgpay,g_grouplist[gid].group_name);
+                        for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
+                        {
+                            if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                            {
+                                group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
+                                strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
+                                im_pushmsg_callback(g_grouplist[gid].user[i].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
+                            }
+                        }
+                        pthread_mutex_unlock(&g_grouplock[gid]);
+                        pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_GOWNERDEL,uindex,uindex,g_grouplist[gid].group_name,account.toxid,account.toxid,"del owner user ,dissolve group");
+                        pnr_group_dissolve(gid);
+                    }
+                }
+                //删除该用户数据
+                pnr_usr_instance_dbdelete_bytoxid(account.toxid);
+                pnr_friend_delete_bytoxid(account.toxid);
+                pnr_userdev_mapping_dbdelte_byusrid(account.toxid);
+                pnr_account_dbdelete_byuserid(account.toxid);
+                pnr_userinfo_dbdelete_byuserid(account.toxid);
+                pnr_tox_datafile_dbdelete_bytoxid(account.toxid);
+                if(g_msglogdb_handle[uindex] != NULL)
+                {
+                    sqlite3_close(g_msglogdb_handle[uindex]);
+                    g_msglogdb_handle[uindex] = NULL;
+                }
+                if(g_msgcachedb_handle[uindex] == NULL)
+                {
+                    sqlite3_close(g_msgcachedb_handle[uindex]);
+                    g_msgcachedb_handle[uindex] = NULL;
+                }
+                if(strlen(g_imusr_array.usrnode[uindex].userdata_pathurl) > strlen(DAEMON_PNR_USERDATA_DIR))
+                {
+                    snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userdata_pathurl);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system1(%s)",cmd);
+                    system(cmd);
+                }
+                if(strlen(g_imusr_array.usrnode[uindex].userinfo_pathurl) > strlen(DAEMON_PNR_USERINFO_DIR))
+                {
+                    memset(cmd,0,CMD_MAXLEN);
+                    snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userinfo_pathurl);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system2(%s)",cmd);
+                    system(cmd);
+                }
+                i = 0;
+                while(g_imusr_array.usrnode[uindex].tox_status != PNR_TOX_STATUS_EXITED)
+                {
+                    sleep(1);
+                    i++;
+                    if(i > 5)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox not exit",uindex);
+                        break;
+                    }
+                }
+                if(i < 5)
+                {
+                    g_imusr_array.usrnode[uindex].init_flag = FALSE;
+                    g_imusr_array.usrnode[uindex].appactive_flag = FALSE;
+                    g_imusr_array.usrnode[uindex].user_onlinestatus = FALSE;
+                    g_imusr_array.usrnode[uindex].user_online_type = FALSE;
+                    g_imusr_array.usrnode[uindex].friendnum = 0;
+                    g_imusr_array.usrnode[uindex].heartbeat_count = 0;
+                    g_imusr_array.usrnode[uindex].appid = 0;
+                    g_imusr_array.usrnode[uindex].ptox_handle = NULL;
+                    memset(&g_imusr_array.usrnode[uindex].cache_msgid,0,sizeof(long)*IM_MSGID_CACHENUM);
+                    memset(&g_imusr_array.usrnode[uindex].u_hashstr,0,PNR_USER_HASHID_MAXLEN);
+                    memset(&g_imusr_array.usrnode[uindex].user_toxid,0,TOX_ID_STR_LEN);
+                    memset(&g_imusr_array.usrnode[uindex].user_name,0,PNR_USERNAME_MAXLEN);
+                    memset(&g_imusr_array.usrnode[uindex].user_nickname,0,PNR_USERNAME_MAXLEN);
+                    memset(&g_imusr_array.usrnode[uindex].user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"use(%d:%s) delete ok",uindex,account.toxid);
+                }
+                else
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox_status(%d) not exit",uindex,g_imusr_array.usrnode[uindex].tox_status);
+                }
+                g_imusr_array.cur_user_num --;
+                pthread_mutex_unlock(&g_pnruser_lock[uindex]);
+                ret_code = PNR_ACCOUNT_DELETE_RETURN_OK;
+            }
         }
     }
     
@@ -15641,7 +15631,6 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int type = 0;
     int startid,  pullnum;
     char emailName[EMAIL_NAME_LEN+1] = {0};
-
     char **dbResult;
     char *errmsg;
     int nRow, nColumn, i;
@@ -15693,8 +15682,16 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     
     // sql
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
-    snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
-				"uindex=%d and id<%d and user='%s' order by id desc limit %d)temp order by id;",*plws_index,startid,emailName,pullnum);
+    if(startid > 0 && pullnum > 0)
+    {
+        snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
+    				"uindex=%d and id<%d and user='%s' order by id desc limit %d)temp order by id;",*plws_index,startid,emailName,pullnum);
+    }
+    else
+    {
+        snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
+				"uindex=%d and user='%s' order by id desc limit %d)temp order by id;",*plws_index,emailName,EM_LISTPULL_DEFNUM);
+    }
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
     
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
@@ -16095,7 +16092,7 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    int ret_code = 0,filesize = 0;
+    int ret_code = PNR_SAVEMAIL_RET_OK,filesize = 0,count = 0;
     char* ret_buff = NULL;
 	char filemd5[PNR_MD5_VALUE_MAXLEN+1] = {0};
     struct email_model emailModel;
@@ -16108,18 +16105,16 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         return ERROR;
     }
-
     memset(&emailModel,0,sizeof(emailModel));
-
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",emailModel.e_type,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",emailModel.e_fileid,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileSize",filesize,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",emailModel.e_uuid,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileMd5",filemd5,PNR_MD5_VALUE_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailModel.e_user,EMAIL_NAME_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",emailModel.e_userkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",emailModel.e_mailinfo,EMAIL_INFO_MAXLEN);
-
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailname(%s) type(%d)",emailModel.e_user,emailModel.e_type);
     //参数检查
     if (strcmp(emailModel.e_user,"") == 0 || strcmp(emailModel.e_userkey,"") == 0)
@@ -16127,14 +16122,21 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     emailModel.e_uid = *plws_index;
-    //获取对应文件路径
-    PNR_REAL_FILEPATH_GET(emailModel.e_emailpath,*plws_index,PNR_FILE_SRCFROM_MAILBAKUP,htonl(emailModel.e_fileid),0,(char*)"");
-    if(pnr_email_list_dbinsert(&emailModel) != OK)
+    pnr_emaillist_dbnumget_byuuid(&emailModel,&count);
+    if(count > 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_list_dbinsert failed");
-        return ERROR;
+        ret_code = PNR_SAVEMAIL_RET_REPEAT;
     }
-
+    else
+    {
+        //获取对应文件路径
+        PNR_REAL_FILEPATH_GET(emailModel.e_emailpath,*plws_index,PNR_FILE_SRCFROM_MAILBAKUP,htonl(emailModel.e_fileid),0,(char*)"");
+        if(pnr_email_list_dbinsert(&emailModel) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_list_dbinsert failed");
+            ret_code = PNR_SAVEMAIL_RET_OTHERERR;
+        }
+    }
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
@@ -16151,8 +16153,11 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_BAKUPEMAIL));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
-    cJSON_AddItemToObject(ret_params, "MailId", cJSON_CreateNumber(emailModel.e_mailid));
-    cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(emailModel.e_emailpath));
+    if(ret_code == PNR_SAVEMAIL_RET_OK)
+    {
+        cJSON_AddItemToObject(ret_params, "MailId", cJSON_CreateNumber(emailModel.e_mailid));
+        cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(emailModel.e_emailpath));
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -16318,21 +16323,23 @@ int em_users_cache_anaylse(char* users_cache,struct em_user_pkey_mapping* p_ukey
 {
     char* p_head = NULL;
     char* p_tail = NULL;
+    char* p_end = NULL;
     int tmplen = 0;
     if(users_cache == NULL || p_ukeys == NULL)
     {
         return ERROR;
     }
     p_head = users_cache;
-    while(p_head != NULL)
+    p_end = p_head+strlen(users_cache);
+    while(p_head != NULL && p_head < p_end)
     {
         p_tail = strchr(p_head,EM_CACHE_SEPARATION_CHAR);
         if(p_tail)
         {
             tmplen = p_tail - p_head;
-            if(tmplen == 0)
+            if(tmplen <= 0)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"repeat separation");
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"repeat separation(%s)",p_head);
             }
             else if(tmplen > EMAIL_NAME_LEN)
             {
@@ -16352,7 +16359,8 @@ int em_users_cache_anaylse(char* users_cache,struct em_user_pkey_mapping* p_ukey
                     return ERROR;
                 }
             }
-            p_head = (p_tail++);
+            p_tail++;
+            p_head = p_tail;
         }
         else
         {
@@ -20567,6 +20575,8 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 		case PNR_IM_MSGTYPE_AUDIO:
 		case PNR_IM_MSGTYPE_MEDIA:
         case PNR_IM_MSGTYPE_AVATAR:
+        case PNR_IM_MSGTYPE_EMAILFILE:
+        case PNR_IM_MSGTYPE_EMAILATTACH:
 			pss->sfile = 1;
 			pss->type = ntohl(*action);
 			memcpy(pss->buf, pmsg, msg_len);
@@ -21012,6 +21022,7 @@ int im_server_init(void)
     char user_rpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char user_spath[PNR_FILEPATH_MAXLEN+1] = {0};
 	char user_upath[PNR_FILEPATH_MAXLEN+1] = {0};
+	char user_mailpath[PNR_FILEPATH_MAXLEN+1] = {0};
     memset(&g_daemon_tox,0,sizeof(g_daemon_tox));
     memset(&g_imusr_array,0,sizeof(g_imusr_array));
 
@@ -21053,23 +21064,26 @@ int im_server_init(void)
             snprintf(user_spath,PNR_FILEPATH_MAXLEN,"%ss",g_imusr_array.usrnode[i].userdata_pathurl);
             snprintf(user_rpath,PNR_FILEPATH_MAXLEN,"%sr",g_imusr_array.usrnode[i].userdata_pathurl);
             snprintf(user_upath,PNR_FILEPATH_MAXLEN,"%su",g_imusr_array.usrnode[i].userdata_pathurl);
-
+            snprintf(user_mailpath,PNR_FILEPATH_MAXLEN,"%smail",g_imusr_array.usrnode[i].userdata_pathurl);
 			if(access(user_spath,F_OK) != OK)
             {
      			snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_spath);
 			    system(cmd);   
             }
-
 			if(access(user_rpath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_rpath);
                 system(cmd);   
             }
-
 			if(access(user_upath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_upath);
                 system(cmd);   
+            }
+            if(access(user_mailpath,F_OK) != OK)
+            {
+                snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_mailpath);
+                system(cmd);
             }
 		}
 		

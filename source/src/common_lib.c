@@ -1046,7 +1046,7 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
     }
     if (fgets(recv,CMD_MAXLEN,fp) <= 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd =%s ret failed",cmd);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd =(%s) ret failed",cmd);
         pclose(fp);
         return ERROR;
     }  

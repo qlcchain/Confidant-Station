@@ -4923,6 +4923,40 @@ int pnr_account_dbdelete_byuserid(char* userid)
     }
     return OK;
 }
+/*****************************************************************************
+ 函 数 名  : pnr_normal_account_dbdelete_byusn
+ 功能描述  : 根据usersn删除普通账户
+ 输入参数  : account
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月17日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_normal_account_dbdelete_byusn(char* usn)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(usn == NULL)
+    {
+        return ERROR;
+    }
+	snprintf(sql_cmd, SQL_CMD_LEN, "delete from user_account_tbl where usersn='%s';",usn);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
 /**********************************************************************************
   Function:      pnr_userinfo_dbget
   Description:   数据库查询用户信息操作
@@ -6563,7 +6597,7 @@ int pnr_email_list_dbinsert(struct email_model* emailMode)
     // 插入数据
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
     snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(null,%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s');",
-             emailMode->e_uid,(int)time(NULL),emailMode->e_lable,emailMode->e_read,emailMode->e_type,emailMode->e_box,
+             emailMode->e_uid,(int)time(NULL),emailMode->e_lable,emailMode->e_read,emailMode->e_type,emailMode->e_uuid,
              emailMode->e_fileid,emailMode->e_user,emailMode->e_emailpath,emailMode->e_userkey,emailMode->e_mailinfo);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -6581,6 +6615,42 @@ int pnr_email_list_dbinsert(struct email_model* emailMode)
     }
     return OK;
 }
+/************************************email操作***********************************************
+  Function:      pnr_emaillist_dbnumget_byuuid
+  Description:  检查是否邮件是否已经备份过
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emaillist_dbnumget_byuuid(struct email_model* emailMode,int* p_count)
+{
+    int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    if(emailMode == NULL)
+    {
+        return ERROR;
+    }
+    // 插入数据
+    //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emaillist_tbl where uindex=%d and box=%d",
+             emailMode->e_uid,emailMode->e_uuid);
+    if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,p_count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_emaillist_dbcheck_byuuid get count failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
 /************************************email操作***********************************************
   Function:      pnr_emaillist_dbdelete_byid
   Description:  删除emaillist数据库记录
