@@ -16582,7 +16582,7 @@ int em_cmd_get_bakmailsnum_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",em_user,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",em_user,EMAIL_NAME_LEN);
 
     //参数检查
     if(strlen(em_user) <= 0)
