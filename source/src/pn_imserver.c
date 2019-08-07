@@ -14830,37 +14830,40 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    char fromid[TOX_ID_STR_LEN+1] = {0};
     char cmd[CMD_MAXLEN+1] = {0};
     int uindex= 0,gid = 0,i = 0;
     struct pnr_account_struct account;
+    struct pnr_account_struct from_account;
     struct group_sys_msg group_sysmsg;
     if(params == NULL)
     {
         return ERROR;
     }
     memset(&account,0,sizeof(account));
+    memset(&from_account,0,sizeof(from_account));
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",fromid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",from_account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",account.toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sn",account.user_sn,PNR_USN_MAXLEN);
 
     //参数检查
-    if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+    if(*plws_index == 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) need(%s)",fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid);
+        uindex = get_indexbytoxid(from_account.toxid);
+        if(uindex)
+        {
+            *plws_index = uindex;
+        }
+    }
+    pnr_account_dbget_byuserid(&from_account);
+    if(from_account.type != PNR_USER_TYPE_ADMIN)
+    //if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) type(%d)",from_account.toxid,from_account.type);
         ret_code = PNR_ACCOUNT_DELETE_RETURN_NOOWNER;
     }
     else
     {
-        if(*plws_index == 0)
-        {
-            uindex = get_indexbytoxid(fromid);
-            if(uindex)
-            {
-                *plws_index = uindex;
-            }
-        }
         //普通账户，未激活得也可以删除
         if(strlen(account.toxid) == 0)
         {
@@ -15026,7 +15029,7 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_DELUSER));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-    cJSON_AddItemToObject(ret_params, "From", cJSON_CreateString(fromid));
+    cJSON_AddItemToObject(ret_params, "From", cJSON_CreateString(from_account.toxid));
     cJSON_AddItemToObject(ret_params, "To", cJSON_CreateString(account.toxid));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
@@ -15722,7 +15725,6 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
             strcpy(emailModel.e_emailpath,dbResult[offset+7]);
             strcpy(emailModel.e_userkey,dbResult[offset+8]);
             strcpy(emailModel.e_mailinfo,dbResult[offset+9]);
-
             pJsonsub = cJSON_CreateObject();
             if(pJsonsub == NULL)
             {
@@ -15737,6 +15739,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
             cJSON_AddStringToObject(pJsonsub,"Userkey",emailModel.e_userkey);
             cJSON_AddStringToObject(pJsonsub,"MailInfo",emailModel.e_mailinfo);
             cJSON_AddStringToObject(pJsonsub,"EmailPath",emailModel.e_emailpath);
+            offset += nColumn;
         }
         msgnum = i;
         sqlite3_free_table(dbResult);
@@ -15864,7 +15867,6 @@ int em_cmd_pull_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
             strcpy(g_config_mode.g_contacts_md5,dbResult[offset+9]);
             strcpy(g_config_mode.g_userkey,dbResult[offset+10]);
             msgnum = i;
-
             pJsonsub = cJSON_CreateObject();
             if(pJsonsub == NULL)
             {
@@ -15880,7 +15882,7 @@ int em_cmd_pull_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
             cJSON_AddStringToObject(pJsonsub,"Sign",g_config_mode.g_sign);
             cJSON_AddStringToObject(pJsonsub,"ContactsFile",g_config_mode.g_contacts_file);
             cJSON_AddStringToObject(pJsonsub,"ContactsMd5",g_config_mode.g_contacts_md5);
-
+            offset += nColumn;
         }
     }
 
@@ -16095,6 +16097,8 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int ret_code = PNR_SAVEMAIL_RET_OK,filesize = 0,count = 0;
     char* ret_buff = NULL;
 	char filemd5[PNR_MD5_VALUE_MAXLEN+1] = {0};
+    char fileid_str[PNR_USER_HASHID_MAXLEN] = {0};
+    char uuid_str[PNR_USER_HASHID_MAXLEN] = {0};
     struct email_model emailModel;
 
     if(params == NULL)
@@ -16108,14 +16112,17 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     memset(&emailModel,0,sizeof(emailModel));
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",emailModel.e_type,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",emailModel.e_fileid,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileSize",filesize,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",emailModel.e_uuid,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileMd5",filemd5,PNR_MD5_VALUE_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",fileid_str,PNR_USER_HASHID_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",uuid_str,PNR_USER_HASHID_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailModel.e_user,EMAIL_NAME_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",emailModel.e_userkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",emailModel.e_mailinfo,EMAIL_INFO_MAXLEN);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail emailname(%s) type(%d)",emailModel.e_user,emailModel.e_type);
+    emailModel.e_fileid = (uint32)atoll(fileid_str);
+    emailModel.e_uuid= (uint32)atoll(uuid_str);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"em_cmd_bakup_email_deal: emailname(%s) type(%d) Fileid(%u) uuid(%u)",
+        emailModel.e_user,emailModel.e_type,emailModel.e_fileid,emailModel.e_uuid);
     //参数检查
     if (strcmp(emailModel.e_user,"") == 0 || strcmp(emailModel.e_userkey,"") == 0)
     {
@@ -16130,7 +16137,7 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //获取对应文件路径
-        PNR_REAL_FILEPATH_GET(emailModel.e_emailpath,*plws_index,PNR_FILE_SRCFROM_MAILBAKUP,htonl(emailModel.e_fileid),0,(char*)"");
+        PNR_REAL_FILEPATH_GET(emailModel.e_emailpath,*plws_index,PNR_FILE_SRCFROM_MAILBAKUP,emailModel.e_fileid,0,(char*)"");
         if(pnr_email_list_dbinsert(&emailModel) != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_list_dbinsert failed");
@@ -16569,7 +16576,7 @@ int em_cmd_get_bakmailsnum_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int ret_code = 0;
     char em_user[EMAIL_NAME_LEN+1] = {0};
     char* ret_buff = NULL;
-    int mailsnum = 0,uindex= -1;
+    int mailsnum = 0,uindex= 0;
     if(params == NULL)
     {
         return ERROR;
@@ -16631,7 +16638,6 @@ int em_cmd_get_bakmailsnum_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
-
 /**********************************************************************************
   Function:      im_cmd_get_capacity_deal
   Description: 获取用户磁盘配额

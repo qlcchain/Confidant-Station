@@ -1538,8 +1538,8 @@ struct email_model
     int e_read;
     int e_box;
     int e_type;
-    int e_fileid;
-    int e_uuid;
+    uint32_t e_fileid;
+    uint32_t e_uuid;
     char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
     char e_mailinfo[EMAIL_INFO_MAXLEN+1];
     char e_emailpath[PNR_FILEPATH_MAXLEN+1];
