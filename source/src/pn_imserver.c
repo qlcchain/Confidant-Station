@@ -7999,7 +7999,7 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileFrom", filefrom, 0);
     if(head->api_version >= PNR_API_VERSION_V5)
     {
-        CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FilePath", filefrom, 0);
+        CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FilePath", filepath, PNR_FILEPATH_MAXLEN);
     }
 
     index = get_indexbytoxid(file_info.touser_toxid);
@@ -8025,6 +8025,10 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         snprintf(file_info.fullfilename, UPLOAD_FILENAME_MAXLEN, "%s%sg%d/%s", 
            DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid, file_info.filename);
     } 
+    else if(fileowner == PNR_FILE_MAILBAKUP){
+        snprintf(file_info.fullfilename, UPLOAD_FILENAME_MAXLEN, "%smail/%s", 
+        	g_imusr_array.usrnode[index].userdata_pathurl, file_info.filename);
+    }
     else if (fileowner == PNR_FILE_OWNER_SELF) {
     	snprintf(file_info.fullfilename, UPLOAD_FILENAME_MAXLEN, "%ss/%s", 
         	g_imusr_array.usrnode[index].userdata_pathurl, file_info.filename);
