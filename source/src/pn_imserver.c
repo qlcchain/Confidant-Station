@@ -209,6 +209,8 @@ extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
 extern Tox *qlinkNode;
 extern char g_dev_hwaddr_full[MACSTR_MAX_LEN];
 extern char g_dev1_hwaddr_full[MACSTR_MAX_LEN];
+extern char g_dev_hwaddr[MACSTR_MAX_LEN];
+extern char g_dev1_hwaddr[MACSTR_MAX_LEN];
 extern int g_debug_level;
 extern pthread_mutex_t g_toxmsg_cache_lock[PNR_IMUSER_MAXNUM+1];
 int CreatedP2PNetwork_new(int user_index);
@@ -23349,8 +23351,25 @@ int pnr_devinfo_get(struct pnrdev_register_info* pinfo)
     memset(pinfo,0,sizeof(struct pnrdev_register_info));
     pinfo->dev_type = g_pnrdevtype;
     strcpy(pinfo->rid,g_daemon_tox.user_toxid);
-    get_hwaddr_byname(DEV_ETH0_KEYNAME,fullmac,pinfo->eth0_mac);
-    get_hwaddr_byname(DEV_ETH1_KEYNAME,fullmac,pinfo->eth1_mac);
+    if(strlen(g_dev_hwaddr) < MAC_LEN)
+    {
+        get_hwaddr_byname(DEV_ETH0_KEYNAME,fullmac,pinfo->eth0_mac);
+    }
+    else
+    {
+        strcpy(pinfo->eth0_mac,g_dev_hwaddr);
+    }
+    if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
+    {
+        if(strlen(g_dev1_hwaddr) < MAC_LEN)
+        {
+            get_hwaddr_byname(DEV_ETH1_KEYNAME,fullmac,pinfo->eth1_mac);
+        }
+        else
+        {
+            strcpy(pinfo->eth1_mac,g_dev1_hwaddr);
+        }
+    }
     get_localip_byname(DEV_ETH0_KEYNAME,pinfo->eth0_localip);
     get_localip_byname(DEV_ETH1_KEYNAME,pinfo->eth1_localip);
     snprintf(pinfo->version,PNR_QRCODE_MAXLEN,"%s.%s.%s:%s",
@@ -24107,7 +24126,6 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
     }
     return OK;
 }
-extern char g_dev_hwaddr[MACSTR_MAX_LEN];
 /*****************************************************************************
  函 数 名  : self_monitor_thread
  功能描述  : 自我监测任务

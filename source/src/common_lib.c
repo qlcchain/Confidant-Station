@@ -1034,10 +1034,14 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
     {
         return ERROR;
     }
+#if 0
 #ifdef DEV_ONESPACE
     snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"ether\" | awk '{print $2}'",devname);
 #else
     snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"HWaddr\" | awk '{print $5}'",devname);
+#endif
+#else
+    snprintf(cmd,CMD_MAXLEN,"cat /sys/class/net/%s/address",devname);
 #endif
     if (!(fp = popen(cmd, "r"))) 
     {
@@ -1046,7 +1050,7 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
     }
     if (fgets(recv,CMD_MAXLEN,fp) <= 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd =(%s) ret failed",cmd);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd(%s) ret failed",cmd);
         pclose(fp);
         return ERROR;
     }  
@@ -1112,11 +1116,19 @@ int pnr_create_usersn(int user_type,int user_index,char* p_usn)
     if(g_dev_hwaddr[0] == '\0')
     {
         get_hwaddr_byname(DEV_ETH0_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
+#if 0
         //这里是虚拟机测试用
         if(g_dev_hwaddr[0] == '\0')
         {
             get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
         }
+#else
+        if(strlen(g_dev_hwaddr) < MAC_LEN)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_create_usersn:get dev(%s) hwaddr failed",DEV_ETH0_KEYNAME);
+            return ERROR;
+        }
+#endif
     }
     timestamp = (int)time(NULL);
     snprintf(p_usn,PNR_USN_MAXLEN+1,"%02d%06X%s%012X",user_type,user_index,g_dev_hwaddr,timestamp);
@@ -1711,11 +1723,19 @@ int dev_hwaddr_init(void)
         {
             get_hwaddr_byname(DEV_ETH1_KEYNAME,g_dev1_hwaddr_full,g_dev1_hwaddr);
         }
+#if 0
         //这里是虚拟机测试用
         if(g_dev_hwaddr[0] == '\0')
         {
             get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
         }
+#else
+        if(strlen(g_dev_hwaddr) < MAC_LEN)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"dev_hwaddr_init:get dev(%s) hwaddr failed",DEV_ETH0_KEYNAME);
+            return ERROR;
+        }
+#endif
     }
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {

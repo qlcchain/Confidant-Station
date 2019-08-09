@@ -758,6 +758,7 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 {
 	int *index = (int *)user_data;
 	int i = 0;
+    char tmp_filename[PNR_FILENAME_MAXLEN+1] = {0};
 	File_Rcv *rcv = &file_rcv[*index][0];
 	char filepath[512] = {0};
 	int dirindex = 0;
@@ -829,6 +830,14 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
                 }
 				realfilename = ptmp + 1;
 				snprintf(filepath, sizeof(filepath), "%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
+            }
+            //添加邮件备份文件处理
+            else if(strncmp((char*)filename, "em:", 3) == OK){
+				realfilename = (char*)filename + 3;
+                snprintf(tmp_filename,PNR_FILENAME_MAXLEN,"U%03dS%02d%s",dirindex,PNR_FILE_SRCFROM_MAILBAKUP,realfilename);
+				snprintf(filepath, sizeof(filepath), "%smail/%s", 
+	            	g_imusr_array.usrnode[dirindex].userdata_pathurl,tmp_filename);
+                realfilename = tmp_filename;
             }
 			else if(strncmp((char*)filename, "a:", 2) == OK){
 				realfilename = (char*)filename + 2;
