@@ -11239,18 +11239,19 @@ int im_group_usermap_analyze(char* fidlist,char* fkeylist,struct gpuser_maplist*
         {
             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_usermap_analyze:get user(%d:%s)",value_len,tmp);
             strncpy(plist->gpuser[usernum].userid,tmp,((value_len >=TOX_ID_STR_LEN)?TOX_ID_STR_LEN:value_len));
+            plist->gpuser[usernum].userid[TOX_ID_STR_LEN]='\0';
             plist->gpuser[usernum].uindex = get_indexbytoxid(plist->gpuser[usernum].userid);
             if(plist->gpuser[usernum].uindex == 0)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_usermap_analyze:user(%s) not found",plist->gpuser[usernum].userid);
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_usermap_analyze:get user(%s) not found",plist->gpuser[usernum].userid);
                 return ERROR;
             }
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_usermap_analyze:check user(%d:%d)",usernum,plist->gpuser[usernum].uindex);
             usernum++;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_usermap_analyze:get user(%d:%d)",usernum,plist->gpuser[usernum].uindex);
         }
         else
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_usermap_analyze:user(%s) len error",tmp);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_usermap_analyze:get user(%s) len error",tmp);
             return ERROR;
         }
         if(tmp_end < value_end && tmp_end != NULL)
