@@ -152,12 +152,10 @@ def running_status_update(module):
     else:
         log(2,"running_status_update:bad module(%s)" % module)
         return
-    posturl="wget "+updateinfo_url+"?"+post+" -q --no-check-certificate"
-    log(1,"get post(%s)" % posturl)
-    f = os.popen(posturl)
-    result = f.read()
-    f.close()
-    log(1,"updateinfo return(%s)" % result)
+    posturl="wget "+updateinfo_url+"?"+post+" -q -O "+update_json+" --no-check-certificate"
+    os.system(posturl)
+    result = get_file_content(update_json)
+    log(1,"get post(%s) result(%s)" % (posturl,result))
 
 def upgrade_module(module):
     mac = get_sysmac()
@@ -179,11 +177,11 @@ def upgrade_module(module):
         return 
 
     #print("wget %s?%s -O %s --no-check-certificate" % (upgrade_url, post, update_json))
-    upgrade_request = "wget "+upgrade_url+"?"+post+" --no-check-certificate -q -O "+update_json
-    log(1,"upgrade_module(%d %s)" %(module,upgrade_request))
+    upgrade_request = "wget "+upgrade_url+"?"+post+" -q -O "+update_json+" --no-check-certificate"
     os.system(upgrade_request)
     #os.system("wget %s?%s -q -O %s --no-check-certificate" % (upgrade_url, post, update_json))
     result = get_file_content(update_json)
+    log(1,"upgrade_module(%d %s)" %(module,upgrade_request))
     #print result
 
     try:
@@ -230,7 +228,7 @@ def upgrade_module(module):
         return
 
     os.system("cd /tmp/;rm -fr %s upgrade" % (jret["FileName"]))
-    os.system("cd /tmp/;wget %s -q --no-check-certificate -s" % jret["FileUrl"])
+    os.system("cd /tmp/;wget %s -q --no-check-certificate" % jret["FileUrl"])
     
     if not os.path.exists("/tmp/" + jret["FileName"]):
         log(2,"download pkg %s err" % jret["FileName"])
