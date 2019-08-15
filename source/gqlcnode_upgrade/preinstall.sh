@@ -1,8 +1,8 @@
 #！/bin/sh
-gqlcnodepath = /root/gqlcnode/
+gqlcnodepath=/root/gqlcnode/
 
-if [ ! -d "$gqlcnodepath"]; then 
-	mkdir -p "$gqlcnodepath"
+if [ ! -d $gqlcnodepath ]; then 
+	mkdir -p $gqlcnodepath
 fi
  
 killall gqlc-confidant

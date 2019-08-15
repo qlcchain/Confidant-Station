@@ -14,7 +14,7 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.0.1"
+cur_version = "0.1.2"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json  &"
 gqlcnode_disalbe_cmd = "killall gqlc-confidant"
 def log(type,content):
@@ -50,8 +50,8 @@ def md5(file):
             if not data:
                 break
             md5_value.update(data)
-
     return md5_value.hexdigest()
+
 def judgeprocess(processname):
     pl = psutil.pids()
     for pid in pl:
@@ -61,7 +61,7 @@ def judgeprocess(processname):
 
 def gqlcnode_enable(enable):
     #检测程序是否运行
-    rstatus = judgeprocess("gqlc-confidant")
+    rstatus = judgeprocess('gqlc-confidant')
     #使能
     if enable == 1:
         if rstatus == 1:
@@ -160,9 +160,11 @@ def running_status_update(module):
 def upgrade_module(module):
     mac = get_sysmac()
     if module == 1:
+        upgrade_path = "/tmp/upgrade" 
         ver = commands.getoutput("pnr_server --version|grep version|awk -F':' '{print $2}'")
         post = "dev=2\&module=1\&version=" + ver +"\&mac="+mac
     elif module ==3:
+        upgrade_path = "/tmp/gqlcnode_upgrade" 
         if os.access("/root/gqlcnode/gqlc-confidant", os.F_OK):
             f = os.popen("/root/gqlcnode/gqlc-confidant version|grep version|awk -F':' '{print $2}'")
             ver = f.read()
@@ -227,7 +229,7 @@ def upgrade_module(module):
         log(2,"no newversion")
         return
 
-    os.system("cd /tmp/;rm -fr %s upgrade" % (jret["FileName"]))
+    os.system("cd /tmp/;rm -fr %s %s" % (jret["FileName"],upgrade_path))
     os.system("cd /tmp/;wget %s -q --no-check-certificate" % jret["FileUrl"])
     
     if not os.path.exists("/tmp/" + jret["FileName"]):
@@ -236,28 +238,24 @@ def upgrade_module(module):
 
     if cmp(md5("/tmp/" + jret["FileName"]), jret["FileMd5"]) == 0:
         os.system("cd /tmp/;tar -xf " + jret["FileName"])
-        
-        if os.path.exists("/tmp/upgrade/preinstall.sh"):
-            os.system("chmod a+x /tmp/upgrade/preinstall.sh")
-            os.system("/tmp/upgrade/preinstall.sh")
+        if os.path.exists("%s/preinstall.sh" %(upgrade_path)):
+            os.system("chmod a+x %s/preinstall.sh" %(upgrade_path))
+            os.system("%s/preinstall.sh" %(upgrade_path))
         else:
             log(2,"there is no preinstall script")
-            return
-        
-        if os.path.exists("/tmp/upgrade/install.sh"):
-            os.system("chmod a+x /tmp/upgrade/install.sh")
-            os.system("/tmp/upgrade/install.sh")
+            return            
+        if os.path.exists("%s/install.sh" %(upgrade_path)):
+            os.system("chmod a+x %s/install.sh" %(upgrade_path))
+            os.system("%s/install.sh" %(upgrade_path))
         else:
             log(2,"there is no install script")
-            return
-        
-        if os.path.exists("/tmp/upgrade/postinstall.sh"):
-            os.system("chmod a+x /tmp/upgrade/postinstall.sh")
-            os.system("/tmp/upgrade/postinstall.sh")
+            return            
+        if os.path.exists("%s/postinstall.sh" %(upgrade_path)):
+            os.system("chmod a+x %s/postinstall.sh" %(upgrade_path))
+            os.system("%s/postinstall.sh" %(upgrade_path))
         else:
             log(2,"there is no postinstall script")
-            return
-        
+            return                       
         log(1,"upgrade to %s success" % jret["NewVersion"])
     else:
         log(2,"md5 not match %s" % jret["FileMd5"])
