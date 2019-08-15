@@ -15726,7 +15726,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
             emailModel.e_lable = atoi(dbResult[offset+1]);
             emailModel.e_read = atoi(dbResult[offset+2]);
             emailModel.e_type = atoi(dbResult[offset+3]);
-            emailModel.e_box = atoi(dbResult[offset+4]);
+            //emailModel.e_box = atoi(dbResult[offset+4]);
             emailModel.e_fileid = atoi(dbResult[offset+5]);
             strcpy(emailModel.e_user,dbResult[offset+6]);
             strcpy(emailModel.e_emailpath,dbResult[offset+7]);
@@ -16105,7 +16105,6 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* ret_buff = NULL;
 	char filemd5[PNR_MD5_VALUE_MAXLEN+1] = {0};
     char fileid_str[PNR_USER_HASHID_MAXLEN] = {0};
-    char uuid_str[PNR_USER_HASHID_MAXLEN] = {0};
     struct email_model emailModel;
 
     if(params == NULL)
@@ -16122,13 +16121,12 @@ int em_cmd_bakup_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileSize",filesize,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileMd5",filemd5,PNR_MD5_VALUE_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",fileid_str,PNR_USER_HASHID_MAXLEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",uuid_str,PNR_USER_HASHID_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",emailModel.e_uuid,VERSION_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailModel.e_user,EMAIL_NAME_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",emailModel.e_userkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",emailModel.e_mailinfo,EMAIL_INFO_MAXLEN);
     emailModel.e_fileid = (uint32)atoll(fileid_str);
-    emailModel.e_uuid= (uint32)atoll(uuid_str);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"em_cmd_bakup_email_deal: emailname(%s) type(%d) Fileid(%u) uuid(%u)",
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"em_cmd_bakup_email_deal: emailname(%s) type(%d) Fileid(%u) uuid(%s)",
         emailModel.e_user,emailModel.e_type,emailModel.e_fileid,emailModel.e_uuid);
     //参数检查
     if (strcmp(emailModel.e_user,"") == 0 || strcmp(emailModel.e_userkey,"") == 0)

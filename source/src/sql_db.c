@@ -6596,7 +6596,7 @@ int pnr_email_list_dbinsert(struct email_model* emailMode)
     }
     // 插入数据
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
-    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(null,%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s');",
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into emaillist_tbl values(null,%d,%d,%d,%d,%d,'%s',%d,'%s','%s','%s','%s');",
              emailMode->e_uid,(int)time(NULL),emailMode->e_lable,emailMode->e_read,emailMode->e_type,emailMode->e_uuid,
              emailMode->e_fileid,emailMode->e_user,emailMode->e_emailpath,emailMode->e_userkey,emailMode->e_mailinfo);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
@@ -6640,7 +6640,7 @@ int pnr_emaillist_dbnumget_byuuid(struct email_model* emailMode,int* p_count)
     }
     // 插入数据
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
-    snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emaillist_tbl where uindex=%d and box=%d",
+    snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emaillist_tbl where uindex=%d and box='%s'",
              emailMode->e_uid,emailMode->e_uuid);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,dbget_int_result,p_count,&errMsg))
     {
