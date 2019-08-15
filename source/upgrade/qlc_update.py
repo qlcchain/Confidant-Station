@@ -14,7 +14,7 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.3"
+cur_version = "0.1.4"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json  &"
 gqlcnode_disalbe_cmd = "killall gqlc-confidant"
 def log(type,content):
@@ -53,11 +53,15 @@ def md5(file):
     return md5_value.hexdigest()
 
 def judgeprocess(processname):
-    pl = psutil.pids()
-    for pid in pl:
-        if psutil.Process(pid).name() == processname:
+    try:
+        process = len(os.popen('ps aux | grep "' + processname + '" | grep -v grep').readlines())
+        if process >= 1:
             return 1
-    return 0
+        else:
+            return 0
+    except:
+        log(2,"Check process ERROR!!!")
+        return 0
 
 def gqlcnode_enable(enable):
     #检测程序是否运行
@@ -94,9 +98,13 @@ def gqlcnode_enable(enable):
 
 def gqlc_capacity_get():
     if os.access("/sata/home", os.F_OK):
-        f = os.popen("du -h -s -m /sata/home/gqlcnode/")
-        capacity = filter(str.isdigit,f.read())
-        f.close()
+        if os.access("/sata/home/gqlcnode/", os.F_OK):
+            f = os.popen("du -h -s -m /sata/home/gqlcnode/")
+            capacity = int(filter(str.isdigit,f.read()))
+            f.close()
+        else:
+            os.system("mkdir -p /sata/home/gqlcnode/")
+            capacity=0    
     else:
         capacity=0
     return capacity
