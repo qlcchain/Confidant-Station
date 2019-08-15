@@ -14,7 +14,7 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.4"
+cur_version = "0.1.5"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json  &"
 gqlcnode_disalbe_cmd = "killall gqlc-confidant"
 def log(type,content):
@@ -72,7 +72,7 @@ def gqlcnode_enable(enable):
             log(1,"gqlcnode already running")
             return
         #检测是不是有足够的磁盘空间
-        f2 = os.popen("df -h /sata|sed 1d|cut -d ' ' -f 8")
+        f2 = os.popen("df -h /sata|sed 1d|awk '{print $2}'")
         capacity = int(filter(str.isdigit,f2.read()))
         f2.close()
         log(1,"get capacity(%d)" % capacity)
