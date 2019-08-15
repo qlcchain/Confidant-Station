@@ -14,7 +14,7 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.2"
+cur_version = "0.1.3"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json  &"
 gqlcnode_disalbe_cmd = "killall gqlc-confidant"
 def log(type,content):
@@ -93,9 +93,12 @@ def gqlcnode_enable(enable):
         log(2,"bad enable flag(%d)" % enable)
 
 def gqlc_capacity_get():
-    f = os.popen("du -h -s -m /sata/home/gqlcnode/")
-    capacity = filter(str.isdigit,f.read())
-    f.close()
+    if os.access("/sata/home", os.F_OK):
+        f = os.popen("du -h -s -m /sata/home/gqlcnode/")
+        capacity = filter(str.isdigit,f.read())
+        f.close()
+    else:
+        capacity=0
     return capacity
 
 def gqlc_status_check():
