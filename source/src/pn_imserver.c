@@ -15639,7 +15639,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* ret_buff = NULL;
     struct email_model emailModel;
     int type = 0;
-    int startid,  pullnum;
+    int startid = 0,  pullnum = 0;
     char emailName[EMAIL_NAME_LEN+1] = {0};
     char **dbResult;
     char *errmsg;
@@ -15647,7 +15647,7 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int offset=0;
     int msgnum = 0;
     char sql_cmd[SQL_CMD_LEN] = {0};
-
+    char tmp_cmd[CMD_MAXLEN+1] = {0};
 
     if(params == NULL)
     {
@@ -15692,23 +15692,27 @@ int em_cmd_pull_emaillist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     
     // sql
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
-    if(startid > 0 && pullnum > 0)
+    snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
+                    "uindex=%d and user='%s'",*plws_index,emailName);
+    if(startid > 0)
     {
-        snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
-    				"uindex=%d and id<%d and user='%s' order by id desc limit %d)temp order by id;",*plws_index,startid,emailName,pullnum);
+        memset(tmp_cmd,0,CMD_MAXLEN);
+        snprintf(tmp_cmd,CMD_MAXLEN," and id>%d",startid);
+        strcat(sql_cmd,tmp_cmd);
     }
-    else
+    if(pullnum == 0)
     {
-        snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,label,read,type,box,fileid,user,mailpath,userkey,mailinfo from emaillist_tbl where "
-				"uindex=%d and user='%s' order by id desc limit %d)temp order by id;",*plws_index,emailName,EM_LISTPULL_DEFNUM);
+        pullnum = EM_LISTPULL_DEFNUM;
     }
+    memset(tmp_cmd,0,CMD_MAXLEN);
+    snprintf(tmp_cmd,CMD_MAXLEN," order by id desc limit %d)temp order by id;",pullnum);
+    strcat(sql_cmd,tmp_cmd);
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
     
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
-
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_PULL_EMAILLIST));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     //cJSON_AddItemToObject(ret_params, "Box", cJSON_CreateNumber(boxtype));
@@ -16274,7 +16278,7 @@ int em_cmd_del_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail MailId(%d) type(%d)",mailid,type);
     //参数检查
-    if (type < EMAIL_TYPE_QQ_ENTERPRISE || type >= EMAIL_TYPE_BUTT)
+    if (type < EMAIL_TYPE_QQ_ENTERPRISE || type > EMAIL_TYPE_OTHERS)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad type(%d)",type);
         return ERROR;
