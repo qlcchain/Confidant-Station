@@ -6638,7 +6638,6 @@ int pnr_emaillist_dbnumget_byuuid(struct email_model* emailMode,int* p_count)
     {
         return ERROR;
     }
-    // 插入数据
     //emaillist_tbl(id integer primary key autoincrement,uindex,timestamp,label,read,type,box,fileid,user,mailpath,userkey,mailinfo)
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from emaillist_tbl where uindex=%d and box='%s'",
              emailMode->e_uid,emailMode->e_uuid);
@@ -6770,7 +6769,7 @@ int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode)
 	char sql_cmd[SQL_CMD_LEN] = {0};
      // 修改数据
      //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
-     snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s');",
+     snprintf(sql_cmd,SQL_CMD_LEN,"update emailconf_tbl set config='%s' where uindex=%d and emailuser='%s';",
              config_mode.g_config,uindex,config_mode.g_name);
     if(sqlite3_exec(g_emaildb_handle,sql_cmd,0,0,&errMsg))
     {
@@ -6780,7 +6779,6 @@ int pnr_email_config_dbupdate(int uindex,struct email_config_mode config_mode)
     }
     return OK;
 }
-
 /************************************email操作***********************************************
   Function:      pnr_email_config_dbcheck
   Description:   check邮箱配置是否存在

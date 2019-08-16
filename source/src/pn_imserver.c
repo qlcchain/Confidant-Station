@@ -16644,6 +16644,91 @@ int em_cmd_get_bakmailsnum_deal(cJSON * params,char* retmsg,int* retmsg_len,
     return OK;
 }
 /**********************************************************************************
+  Function:      em_cmd_check_bakmails_deal
+  Description: 用户查询当前邮件是否备份过
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_check_bakmails_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    int count = 0,result = FALSE;
+    struct email_model emailModel;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    memset(&emailModel,0,sizeof(emailModel));
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uuid",emailModel.e_uuid,VERSION_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",emailModel.e_user,EMAIL_NAME_LEN);
+
+    //参数检查
+    if (strcmp(emailModel.e_user,"") == 0 || strcmp(emailModel.e_uuid,"") == 0)
+    {
+        ret_code = PNR_SAVEMAIL_RET_REPEAT;
+    }
+    else
+    {
+        emailModel.e_uid = *plws_index;
+        pnr_emaillist_dbnumget_byuuid(&emailModel,&count);
+        ret_code = PNR_SAVEMAIL_RET_OK;
+        if(count > 0)
+        {
+            result = TRUE;
+        }
+        else
+        {
+            result = FALSE;
+        }
+    }
+   
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_CHCEKBAKMAILS));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_params, "Result", cJSON_CreateNumber(result));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
   Function:      im_cmd_get_capacity_deal
   Description: 获取用户磁盘配额
   Calls:
@@ -19137,6 +19222,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_DELEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_del_email_deal},
     {PNR_EM_CMDTYPE_CHECKMAILUKEY,PNR_API_VERSION_V6,TRUE,em_cmd_check_emailukey_deal},
     {PNR_EM_CMDTYPE_GETBAKEMAILNUM,PNR_API_VERSION_V6,TRUE,em_cmd_get_bakmailsnum_deal},
+    {PNR_EM_CMDTYPE_CHECKBAKEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_check_bakmails_deal},
     //用户磁盘限额配置
     {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
     {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
@@ -19305,6 +19391,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_EMCMD_GETBAKMAILSNUM) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_GETBAKEMAILNUM;
+            }
+            else if(strcasecmp(action_buff,PNR_EMCMD_CHCEKBAKMAILS) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_CHECKBAKEMAIL;
             }
             else
             {
@@ -20372,7 +20462,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
         return;
     }
 
-    if ((pfile->porperty_flag != TRUE) && (action != PNR_IM_MSGTYPE_AVATAR) && (strlen(pfile->srckey) < PNR_USN_MAXLEN))
+    if ((pfile->porperty_flag == FALSE) && (action != PNR_IM_MSGTYPE_AVATAR) && (strlen(pfile->srckey) < PNR_USN_MAXLEN))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "action(%d) porperty_flag(%d) srckey(%s)-dstkey(%s) error", action,pfile->porperty_flag,pfile->srckey, pfile->dstkey);
         return;
