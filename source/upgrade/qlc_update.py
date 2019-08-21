@@ -14,9 +14,11 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.6"
+cur_version = "0.1.7"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json >/dev/null 2>&1 &"
 gqlcnode_disalbe_cmd = "killall gqlc-confidant"
+gqlcmode_get_cmd = "cat /root/gqlcnode/gqlcflag"
+
 def log(type,content):
     try:
         with open(update_log, 'a+') as f:
@@ -63,13 +65,43 @@ def judgeprocess(processname):
         log(2,"Check process ERROR!!!")
         return 0
 
+def gqlcmode_get():
+    if os.access("/root/gqlcnode/gqlcflag", os.F_OK) == True:
+        f = os.popen(gqlcmode_get_cmd)
+        gqlcmode = int(filter(str.isdigit,f.read()))
+        f.close()
+    else:
+        gqlcmode = -1
+    return gqlcmode
+
+def gqlcmode_set(mode):
+    if mode != 0 and mode != 1 :
+        log(2,"bad mode(%d)",mode)
+        return
+    setcmd = "echo " + str(mode) + " > /root/gqlcnode/gqlcflag"
+    if os.access("/root/gqlcnode/gqlcflag", os.F_OK) == True:
+        f = os.popen(gqlcmode_get_cmd)
+        gqlcmode = int(filter(str.isdigit,f.read()))
+        f.close()
+        if gqlcmode != mode:
+            os.system("rm -f /root/gqlcnode/gqlcflag")
+            os.system(setcmd)
+    else:
+        os.system(setcmd)
+    return 
+
 def gqlcnode_enable(enable):
     #检测程序是否运行
     rstatus = judgeprocess('gqlc-confidant')
+    #检测运行模式
+    gqlcmode = gqlcmode_get()
     #使能
     if enable == 1:
         if rstatus == 1:
             log(1,"gqlcnode already running")
+            return
+        elif gqlcmode == 0:
+            log(1,"gqlcnode switch off")
             return
         #检测是不是有足够的磁盘空间
         f2 = os.popen("df -h /sata|sed 1d|awk '{print $2}'")
@@ -116,34 +148,40 @@ def gqlc_status_check():
 
     #检测程序是否运行
     rstatus = judgeprocess("gqlc-confidant")
+    gqlcmode = gqlcmode_get()
     if rstatus == 0:
         if os.access("/sata/home/gqlcnode/", os.F_OK):
-            gqlcnode_enable(1)
+            if gqlcmode == 1:
+                gqlcnode_enable(1)
+                rstatus = 1
+            else:
+                rstatus = 3
         else:
             rstatus = 2 #这里是没有足够的磁盘空间
     #log(1,"get running status(%d)" % rstatus)
-    f2 = os.popen("curl --request POST --url http://127.0.0.1:9735/ -s --header 'content-type: application/json'   --data '{\"jsonrpc\": \"2.0\",\"id\": 3,\"method\": \"ledger_blocksCount\", \"params\": []}'")
-    result = f2.read()
-    f2.close()
-    #log(1,"get post result(%s)" % result)
-    #print result
+    if rstatus == 1:
+        f2 = os.popen("curl --request POST --url http://127.0.0.1:9735/ -s --header 'content-type: application/json'   --data '{\"jsonrpc\": \"2.0\",\"id\": 3,\"method\": \"ledger_blocksCount\", \"params\": []}'")
+        result = f2.read()
+        f2.close()
+        #log(1,"get post result(%s)" % result)
+        #print result
 
-    try:
-        jret = json.loads(result)
-    except Exception, e:
-        log(2,"load json err(%s)" % result)
-        rstatus = 2
-        return rstatus,count,unchecked
-    if not jret:
-        log(2,"parse json err(%s)" % result)
-        rstatus = 2
-        return rstatus,count,unchecked
-    if "result" not in jret:
-        log(2,"no result found")
-        rstatus = 2
-        return rstatus,count,unchecked
-    count = jret["result"]["count"]
-    unchecked = jret["result"]["unchecked"]
+        try:
+            jret = json.loads(result)
+        except Exception, e:
+            log(2,"gqlc_status_checkload json err(%s)" % result)
+            rstatus = 2
+            return rstatus,count,unchecked
+        if not jret:
+            log(2,"parse json err(%s)" % result)
+            rstatus = 2
+            return rstatus,count,unchecked
+        if "result" not in jret:
+            log(2,"no result found")
+            rstatus = 2
+            return rstatus,count,unchecked
+        count = jret["result"]["count"]
+        unchecked = jret["result"]["unchecked"]
     return rstatus,count,unchecked
 
 def get_sysmac():
@@ -167,6 +205,31 @@ def running_status_update(module):
     os.system(posturl)
     result = get_file_content(update_json)
     log(1,"get post(%s) result(%s)" % (posturl,result))
+    try:
+        jret = json.loads(result)
+    except Exception, e:
+        log(2,"load json err1(%s)" % result)
+        return
+
+    if not jret:
+        log(2,"parse json err2(%s)" % result)
+        return
+
+    if "Ret" not in jret:
+        log(2,"no Ret found")
+        return
+
+    if jret["Ret"] != 0:
+        if "Info" in jret:
+            log(2,jret["Info"])
+        return
+    gqclmode = gqlcmode_get()
+    newmode = jret["GqlcMode"]
+    if newmode ==0 or newmode ==1:
+        if newmode != gqclmode:
+            gqlcmode_set(newmode)
+            gqlcnode_enable(newmode)
+    return
 
 def upgrade_module(module):
     mac = get_sysmac()
@@ -200,7 +263,7 @@ def upgrade_module(module):
     try:
         jret = json.loads(result)
     except Exception, e:
-        log(2,"load json err(%s)" % result)
+        log(2,"upgrade load json err(%s)" % result)
         return
 
     if not jret:
