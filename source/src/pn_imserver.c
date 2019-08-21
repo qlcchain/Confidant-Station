@@ -19966,7 +19966,8 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
                 if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toxid(%s)",toxid);
-                    return ERROR;
+                    retcode = PNR_RETCODE_ERR_BADUSERID;
+                    goto errbreak;
                 }
                 *plws_index = uindex;
             }

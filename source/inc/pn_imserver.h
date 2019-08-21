@@ -379,6 +379,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define IM_MSG_MAGIC	0x0dadc0de
 #define PNR_RETCODE_ERR_BADSIGN      0xE1
 #define PNR_RETCODE_ERR_TIMEOUT      0xE2
+#define PNR_RETCODE_ERR_BADUSERID    0xE3
 #ifdef DEV_ONESPACE
 #define PNR_DB_USERFILE_HEAD     "/media"
 #define DAEMON_PNR_TOP_DIR "/media/pnrouter/"
