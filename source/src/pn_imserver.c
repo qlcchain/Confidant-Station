@@ -469,44 +469,27 @@ int pnr_gettoxid_byhashid(char* hash_id,char* tox_id)
 *****************************************************************************/
 int pnr_checkrepeat_bymsgid(int index,long msgid,int* repeat_flag)
 {
-    long last_cachemsgid = 0;
-    int i = 0,last_cacheid = 0;
+    int i = 0,last_cacheid = 0;;
     if(index <0 || index >= PNR_IMUSER_MAXNUM || msgid == 0)
     {
         return FALSE;
     }
-    last_cacheid = g_imusr_array.usrnode[index].lastmsgid_index;
-    if(last_cacheid < 0 || last_cacheid >= IM_MSGID_CACHENUM)
+    for(i=0;i<IM_MSGID_CACHENUM;i++)
     {
-        return FALSE;
-    }
-    last_cachemsgid = g_imusr_array.usrnode[index].cache_msgid[last_cacheid];
-    if(msgid == last_cachemsgid)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_checkrepeat_bymsgid:user(%d) rec repeatmsg(%ld)",index,msgid);
-        *repeat_flag = TRUE;
-        return TRUE;
-    }
-    else if(msgid < last_cachemsgid)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_checkrepeat_bymsgid:user(%d) rec repeatmsg(%ld) lastcacheid(%ld)",index,msgid,last_cachemsgid);
-        for(i=0;i<IM_MSGID_CACHENUM;i++)
+        if(msgid == g_imusr_array.usrnode[index].cache_msgid[i])
         {
-            if(msgid == g_imusr_array.usrnode[index].cache_msgid[i])
-            {
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_checkrepeat_bymsgid:user(%d) rec repeatmsg(%ld)",index,msgid);
-                *repeat_flag = TRUE;
-                return TRUE;
-            }
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_checkrepeat_bymsgid:user(%d) rec repeatmsg(%ld)",index,msgid);
+            *repeat_flag = TRUE;
+            return TRUE;
         }
     }
     //把新的缓存id入队列
+    last_cacheid = g_imusr_array.usrnode[index].lastmsgid_index;
     last_cacheid = ((last_cacheid+1)% IM_MSGID_CACHENUM);
     g_imusr_array.usrnode[index].cache_msgid[last_cacheid] = msgid;
     g_imusr_array.usrnode[index].lastmsgid_index = last_cacheid;
     return FALSE;
 }
-
 /*****************************************************************************
  函 数 名  : pnr_check_update_devinfo_bytoxid
  功能描述  : 检查并更新用户所属dev信息
@@ -20851,6 +20834,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             //这里需要反向一下
             if(friend.result == OK)
             {
+                index = get_indexbytoxid(friend.touser_toxid);
                 pnr_friend_dbinsert(friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
                 im_nodelist_addfriend(id,friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
                 pnr_check_update_devinfo_bytoxid(index,friend.fromuser_toxid,devinfo.user_toxid,devinfo.user_devname);
