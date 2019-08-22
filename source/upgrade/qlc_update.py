@@ -14,9 +14,8 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.7"
+cur_version = "0.1.8"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json >/dev/null 2>&1 &"
-gqlcnode_disalbe_cmd = "killall gqlc-confidant"
 gqlcmode_get_cmd = "cat /root/gqlcnode/gqlcflag"
 
 def log(type,content):
@@ -54,15 +53,26 @@ def md5(file):
             md5_value.update(data)
     return md5_value.hexdigest()
 
-def judgeprocess(processname):
+def getpidbyprocessname(pname):
+    pid = -1
+    if pname == "":
+        log(2,"bad null pname")
+        return pid
+    cmd = "ps aux |grep " + pname + " | grep -v grep | awk '{print $2}'"
+    #log(1,"get pid cmd(%s)" % cmd)
     try:
-        process = len(os.popen('ps aux | grep "' + processname + '" | grep -v grep').readlines())
-        if process >= 1:
-            return 1
-        else:
-            return 0
-    except:
-        log(2,"Check process ERROR!!!")
+        f = os.popen(cmd)
+        pid = int(filter(str.isdigit,f.read()))
+        f.close()
+    except Exception, e:
+        return 0
+    return pid
+
+def judgeprocess(processname):
+    pid = getpidbyprocessname(processname)
+    if pid > 0:
+        return 1
+    else:
         return 0
 
 def gqlcmode_get():
@@ -92,12 +102,12 @@ def gqlcmode_set(mode):
 
 def gqlcnode_enable(enable):
     #检测程序是否运行
-    rstatus = judgeprocess('gqlc-confidant')
+    pid = getpidbyprocessname('gqlc-confidant')
     #检测运行模式
     gqlcmode = gqlcmode_get()
     #使能
     if enable == 1:
-        if rstatus == 1:
+        if pid > 0:
             log(1,"gqlcnode already running")
             return
         elif gqlcmode == 0:
@@ -120,10 +130,11 @@ def gqlcnode_enable(enable):
 
     #关闭
     elif enable == 0:
-        if rstatus == 0:
+        if pid <= 0:
             return
+        gqlcnode_disalbe_cmd = "kill -9 " + str(pid)
         os.system(gqlcnode_disalbe_cmd)
-        log(1,"disable gqlcnode ok")
+        log(1,"disable gqlcnode cmd(%s)" % gqlcnode_disalbe_cmd)
         return
     else:
         log(2,"bad enable flag(%d)" % enable)
