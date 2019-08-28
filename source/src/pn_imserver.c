@@ -199,8 +199,15 @@ char *g_qrcode_head[] = {
 struct group_info g_grouplist[PNR_GROUP_MAXNUM+1];
 pthread_mutex_t g_grouplock[PNR_GROUP_MAXNUM+1];
 pthread_mutex_t g_grouptoplock = PTHREAD_MUTEX_INITIALIZER;
+struct pnr_postmsgs_cache g_group_pushmsgs_cache;
 int g_groupnum = 0;
 int g_group_invitee_needack = FALSE;
+int g_post_usernum = 0;
+char g_post_userstring[PNR_POST_USERSTR_MAXLEN+1] = {0};
+pthread_mutex_t g_postlock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_postcachelock = PTHREAD_MUTEX_INITIALIZER;
+int g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
+int g_udpdebug_flag = FALSE;
 extern sqlite3 *g_groupdb_handle;
 extern sqlite3 *g_db_handle;
 extern sqlite3 *g_emaildb_handle;
@@ -1798,6 +1805,7 @@ void im_send_msg_deal(int direction)
                         {
                             if(g_noticepost_enable == TRUE && msg->notice_flag == FALSE)
                             {
+                                msg->notice_flag = TRUE;
                                 switch(msg->type)
                                 {
                                     //case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
@@ -1805,15 +1813,16 @@ void im_send_msg_deal(int direction)
                                     case PNR_IM_CMDTYPE_PUSHMSG:
                                     case PNR_IM_CMDTYPE_PUSHFILE:
                                     case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
-                                    case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
                                         post_newmsg_notice(g_daemon_tox.user_toxid,g_imusr_array.usrnode[msg->userid].user_toxid,
                                             PNR_POSTMSG_PAYLOAD,TRUE,msg->msgid);                                    
                                         break;
+                                    case PNR_IM_CMDTYPE_GROUPMSGPUSH:
+                                        pnr_postmsgs_cache_save(msg->msgid,g_imusr_array.usrnode[msg->userid].user_toxid,&g_group_pushmsgs_cache);
+                                        break;
                                     default:
                                         break;
                                 }
-                                msg->notice_flag = TRUE;
                             }
 							if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
 								pnr_msgcache_dbdelete_nolock(msg);
@@ -1829,6 +1838,13 @@ void im_send_msg_deal(int direction)
 		}
 		pthread_mutex_unlock(&lws_cache_msglock[i]);
 	}
+    pthread_mutex_lock(&g_postcachelock);
+    if(g_group_pushmsgs_cache.num > 0)
+    {
+        pnr_postmsgs_cache_send(TRUE,PUSHMSG_TYPE_NOTICE_NEWMSG,g_daemon_tox.user_toxid,PNR_POSTMSG_PAYLOAD,&g_group_pushmsgs_cache);
+        memset(&g_group_pushmsgs_cache,0,sizeof(struct pnr_postmsgs_cache));
+    }
+    pthread_mutex_unlock(&g_postcachelock);
     if(g_msglist_debugswitch == TRUE)
     {
         end_time = (int)time(NULL);
@@ -10915,11 +10931,12 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
     char user_toxid[TOX_ID_STR_LEN+1] = {0};
+    char user_mails[CMD_MAXLEN+1] = {0};
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,findex = 0;
     if(params == NULL)
     {
         return ERROR;
@@ -11030,6 +11047,16 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
                 else
                 {
                     cJSON_AddStringToObject(pJsonsub,"RouteName", g_imusr_array.usrnode[index].friends[i].user_devname);
+                    //同一个
+                    findex = get_indexbytoxid(g_imusr_array.usrnode[index].friends[i].user_toxid);
+                    if(findex > 0)
+                    {
+                        memset(user_mails,0,CMD_MAXLEN);
+                        if(pnr_emconfig_mails_dbget_byuindex(findex,user_mails) == OK)
+                        {
+                            cJSON_AddStringToObject(pJsonsub,"Mails", user_mails);
+                        }
+                    }
                 }
                 /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"get friend(%d:%s:%s:%s:%s)",
                         i,g_imusr_array.usrnode[index].friends[i].user_nickname,
@@ -16931,7 +16958,159 @@ int im_cmd_set_capacity_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+/**********************************************************************************
+  Function:      em_mailsnotice_anaylse
+  Description: 发邮件提醒的邮件列表解析
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
 
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_mailsnotice_anaylse(int mailid,char* mailsto,struct pnr_postmsgs_cache* pcache)
+{
+    char* pmail = NULL;
+    char* ptmp = NULL;
+    int tmplen = 0,uindex = 0;
+    char mailuser[EMAIL_NAME_LEN+1] = {0};
+    char mailid_str[IPSTR_MAX_LEN+1] = {0};
+    if(mailsto == NULL || pcache == NULL)
+    {
+        return ERROR;
+    }
+    pnr_itoa(mailid,mailid_str);
+    pmail = mailsto;
+    while(pmail)
+    {
+        memset(mailuser,0,EMAIL_NAME_LEN+1);
+        uindex = 0;
+        ptmp = strchr(pmail,',');
+        if(ptmp == NULL)
+        {
+            tmplen = strlen(pmail);
+        }
+        else
+        {
+            tmplen = ptmp - pmail;
+        }
+        tmplen = (tmplen >= EMAIL_NAME_LEN)?EMAIL_NAME_LEN:tmplen;
+        strncpy(mailuser,pmail,tmplen);
+        pnr_emconfig_uindex_dbget_byuser(mailuser,&uindex);
+        if(uindex)
+        {
+            if(pcache->num > 0)
+            {
+                strcat(pcache->msgid_cache,",");
+                strcat(pcache->tos,",");
+            }
+            strcat(pcache->msgid_cache,mailid_str);
+            strcat(pcache->tos,g_imusr_array.usrnode[uindex].user_toxid);
+            pcache->num ++;
+        }
+        if(ptmp == NULL)
+        {
+            break;
+        }
+        pmail = ptmp+1;
+    }
+    return OK;
+}
+/**********************************************************************************
+  Function:      em_cmd_mailsendnotice_deal
+  Description: IM模块消息邮件发送提醒函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int em_cmd_mailsendnotice_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    char* ret_buff = NULL;
+    char mailsto[CMD_MAXLEN+1] = {0};
+    struct pnr_postmsgs_cache* pcache = NULL;
+    int noticenum = 0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailsTo",mailsto,CMD_MAXLEN);
+
+    //参数检查
+    if(strlen(mailsto) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_mailsendnotice_deal:mailsto (%s)",mailsto);
+        ret_code = PNR_GROUPQUIT_RETCODE_BADPARAMS;
+    }
+    else 
+    {
+        pcache = (struct pnr_postmsgs_cache*)malloc(sizeof(struct pnr_postmsgs_cache));
+        if(pcache == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_mailsendnotice_deal:mailsto (%s)",mailsto);
+            ret_code = PNR_GROUPQUIT_RETCODE_BADPARAMS;
+        }
+        else
+        {
+            memset(pcache,0,sizeof(struct pnr_postmsgs_cache));
+            if(em_mailsnotice_anaylse((int)(head->msgid),mailsto,pcache) == OK && pcache->num > 0)
+            {
+                pnr_postmsgs_cache_send(TRUE,PUSHMSG_TYPE_NOTICE_NEWMAIL,g_daemon_tox.user_toxid,PNR_NEWMAILNOTICE_PAYLOAD,pcache);
+                noticenum = pcache->num;
+            }
+            free(pcache);
+        }
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_EMCMD_MAILNOTICE));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(g_imusr_array.usrnode[*plws_index].user_toxid));
+    cJSON_AddItemToObject(ret_params, "NoticeNum", cJSON_CreateNumber(noticenum));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 /**********************************************************************************
   Function:      im_cmd_template_deal
   Description: IM模块消息处理模板函数
@@ -19210,6 +19389,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_EM_CMDTYPE_CHECKMAILUKEY,PNR_API_VERSION_V6,TRUE,em_cmd_check_emailukey_deal},
     {PNR_EM_CMDTYPE_GETBAKEMAILNUM,PNR_API_VERSION_V6,TRUE,em_cmd_get_bakmailsnum_deal},
     {PNR_EM_CMDTYPE_CHECKBAKEMAIL,PNR_API_VERSION_V6,TRUE,em_cmd_check_bakmails_deal},
+    {PNR_EM_CMDTYPE_MAILNOTICE,PNR_API_VERSION_V6,TRUE,em_cmd_mailsendnotice_deal},
     //用户磁盘限额配置
     {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
     {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
@@ -19594,6 +19774,17 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             else if(strcasecmp(action_buff,PNR_IMCMD_LOGOUT) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_LOGOUT;
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
+            }
+            break;
+        case 'm':
+        case 'M':
+            if(strcasecmp(action_buff,PNR_EMCMD_MAILNOTICE) == OK)
+            {
+                phead->im_cmdtype = PNR_EM_CMDTYPE_MAILNOTICE;
             }
             else
             {
@@ -21115,7 +21306,7 @@ int im_server_init(void)
 	char user_mailpath[PNR_FILEPATH_MAXLEN+1] = {0};
     memset(&g_daemon_tox,0,sizeof(g_daemon_tox));
     memset(&g_imusr_array,0,sizeof(g_imusr_array));
-
+    memset(&g_group_pushmsgs_cache,0,sizeof(g_group_pushmsgs_cache));
     if(access(PNR_AVATAR_FULLDIR,F_OK) != OK)
     {
         snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",PNR_AVATAR_FULLDIR);
@@ -22295,11 +22486,6 @@ int pnr_encrypt_show(char* msg,int flag)
     }
     return OK;
 }
-int g_post_usernum = 0;
-char g_post_userstring[PNR_POST_USERSTR_MAXLEN+1] = {0};
-pthread_mutex_t g_postlock = PTHREAD_MUTEX_INITIALIZER;
-int g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
-int g_udpdebug_flag = FALSE;
 /**********************************************************************************
   Function:      pnr_post_attach_touser
   Description:   post_newmsg用户添加
@@ -22367,20 +22553,20 @@ static void *pnr_post_newmsg_notice_task(void *para)
     struct newmsg_notice_params* pmsg = (struct newmsg_notice_params*)para;
     char* post_data = NULL;
     char* rec_buff = NULL;
-    int data_len = 0;
+    int data_len = 0,ret = 0;
     cJSON * params = NULL;
-    char server_url[URL_MAX_LEN] = {0};
+    char* p_server_url = NULL;
     if(pmsg == NULL)
     {
         return NULL;
     }
     if(pmsg->server_flag == FALSE)
     {
-        strcpy(server_url,PAPUSHMSG_DEVELOP_HTTPS_SERVER);
+        p_server_url = PAPUSHMSG_DEVELOP_HTTPS_SERVER;
     }
     else
     {
-        strcpy(server_url,PAPUSHMSG_PRODUCT_HTTPS_SERVER);
+        p_server_url = PAPUSHMSG_PRODUCT_HTTPS_SERVER;
     }
     rec_buff = malloc(BUF_LINE_MAX_LEN+1);
     if(rec_buff == NULL)
@@ -22411,25 +22597,199 @@ static void *pnr_post_newmsg_notice_task(void *para)
     cJSON_Delete(params);
     data_len = strlen(post_data);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsg_notice_task:post_data(%s)",post_data);
-    https_post(server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSG_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
+    ret = https_post(p_server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSG_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     free(pmsg);
     free(post_data);
+    if(ret > OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",rec_buff);
+    }
+    free(rec_buff);
+    return NULL;
+}
+/**********************************************************************************
+  Function:      pnr_post_newmsgs_cachesend_task
+  Description:   新消息提醒推送任务
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+static void *pnr_post_newmsgs_cachesend_task(void *para)
+{
+    struct newmsgs_notice_params* pmsg = (struct newmsgs_notice_params*)para;
+    char* post_data = NULL;
+    char* rec_buff = NULL;
+    int data_len = 0,ret = 0;
+    cJSON * params = NULL;
+    char* p_server_url = NULL;
+    if(pmsg == NULL)
+    {
+        return NULL;
+    }
+    if(pmsg->type == PUSHMSG_TYPE_NOTICE_NEWMAIL)
+    {
+        sleep(30);
+    }
+    if(pmsg->server_flag == FALSE)
+    {
+        p_server_url = PAPUSHMSG_DEVELOP_HTTPS_SERVER;
+    }
+    else
+    {
+        p_server_url = PAPUSHMSG_PRODUCT_HTTPS_SERVER;
+    }
+    rec_buff = malloc(BUF_LINE_MAX_LEN+1);
+    if(rec_buff == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rec_buff malloc err");
+        free(pmsg);
+        return NULL;
+    }
+    memset(rec_buff,0,BUF_LINE_MAX_LEN);
     params = cJSON_CreateObject();
     if(params == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
+        free(pmsg);
         free(rec_buff);
         return NULL;
     }
-    cJSON_AddItemToObject(params, "replay", cJSON_CreateString(rec_buff));
+    cJSON_AddItemToObject(params, "priority", cJSON_CreateNumber(pmsg->priority));
+    cJSON_AddItemToObject(params, "type", cJSON_CreateNumber(pmsg->type));
+    cJSON_AddItemToObject(params, "devid", cJSON_CreateNumber(pmsg->devid));
+    cJSON_AddItemToObject(params, "num", cJSON_CreateNumber(pmsg->to_num));
+    cJSON_AddItemToObject(params, "from", cJSON_CreateString(pmsg->from));
+    cJSON_AddItemToObject(params, "title", cJSON_CreateString(pmsg->title));
+    cJSON_AddItemToObject(params, "dev", cJSON_CreateString(pmsg->dev));
+    cJSON_AddItemToObject(params, "payload", cJSON_CreateString(pmsg->payload));
+    cJSON_AddItemToObject(params, "msgids", cJSON_CreateString(pmsg->msgids));
+    cJSON_AddItemToObject(params, "tos", cJSON_CreateString(pmsg->tos));
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",post_data);
+    data_len = strlen(post_data);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_cachesend_task:post_data(%s)",post_data);
+    ret = https_post(p_server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSGS_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
+    free(pmsg);
     free(post_data);
+    if(ret > OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",rec_buff);
+    }
     free(rec_buff);
     return NULL;
 }
 
+/**********************************************************************************
+  Function:      pnr_postmsgs_cache_save
+  Description:   新消息提醒缓存
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+int pnr_postmsgs_cache_save(int msgid,char* uid,struct pnr_postmsgs_cache* pcache)
+{
+    char msgid_string[PNR_USN_MAXLEN] = {0};
+    if(uid == NULL || pcache == NULL || msgid <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_post_msg_cache:bad input");
+        return ERROR;
+    }
+    else
+    {
+        pthread_mutex_lock(&g_postcachelock);
+        if(pcache->num >= 0 && pcache->num < PNR_POST_USER_MAXNUM)
+        {
+            pnr_itoa(msgid,msgid_string);
+            if(pcache->num == 0)
+            {
+                strcpy(pcache->tos,uid);
+                strcpy(pcache->msgid_cache,msgid_string);
+            }
+            else
+            {
+                strcat(pcache->tos,",");
+                strcat(pcache->tos,uid);
+                strcat(pcache->msgid_cache,",");
+                strcat(pcache->msgid_cache,msgid_string);
+            }
+            pcache->num++;
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"postcache(%d) over",pcache->num);
+        }
+        pthread_mutex_unlock(&g_postcachelock);
+    }
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : pnr_postmsgs_cache_send
+ 功能描述  : 推送新消息提醒
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int pnr_postmsgs_cache_send(int server_flag,int msgtype,char* rid,char* msgpay,struct pnr_postmsgs_cache* pcache)
+{
+	pthread_t task_id = 0;
+    struct newmsgs_notice_params* pmsg = NULL;
+
+    if(rid == NULL || pcache == NULL ||(strlen(rid) != TOX_ID_STR_LEN))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_postmsgs_cache_send input err");
+        return ERROR;
+    }
+
+    pmsg = (struct newmsgs_notice_params*)malloc(sizeof(struct newmsgs_notice_params));
+    if(pmsg == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_postmsgs_cache_send malloc failed");
+        memset(pcache,0,sizeof(struct pnr_postmsgs_cache));
+        return ERROR;
+    }
+    memset(pmsg,0,sizeof(struct newmsgs_notice_params));
+    pmsg->priority = PUSHMSG_PRI_LEVER_MIDDLE;
+    pmsg->server_flag = server_flag;
+    pmsg->type = msgtype;
+    pmsg->devid = g_dev_netid;
+    pmsg->to_num = pcache->num;
+    strcpy(pmsg->from,rid);
+    strcpy(pmsg->msgids,pcache->msgid_cache);
+    strcpy(pmsg->tos,pcache->tos);
+    strcpy(pmsg->title,PNR_POSTMSG_TITLE);
+    strcpy(pmsg->dev,g_dev_nickname);
+    strcpy(pmsg->payload,msgpay);
+    if (pthread_create(&task_id, NULL, pnr_post_newmsgs_cachesend_task, pmsg) != 0) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pnr_postmsgs_cache_send imuser_heartbeat_daemon failed");
+        return ERROR;
+    }
+    return OK;
+}
 /*****************************************************************************
  函 数 名  : post_newmsg_notice
  功能描述  : 推送新消息提醒
@@ -22499,20 +22859,20 @@ static void *pnr_post_newmsgs_notice_once(void *para)
     struct newmsgs_notice_params* pmsg = (struct newmsgs_notice_params*)para;
     char* post_data = NULL;
     char rec_buff[BUF_LINE_MAX_LEN] = {0};
-    int data_len = 0;
+    int data_len = 0,ret = 0;
     cJSON * params = NULL;
-    char server_url[URL_MAX_LEN] = {0};
+    char* p_server_url = {0};
     if(pmsg == NULL)
     {
         return NULL;
     }
     if(pmsg->server_flag == FALSE)
     {
-        strcpy(server_url,PAPUSHMSG_DEVELOP_HTTPS_SERVER);
+        p_server_url = PAPUSHMSG_DEVELOP_HTTPS_SERVER;
     }
     else
     {
-        strcpy(server_url,PAPUSHMSG_PRODUCT_HTTPS_SERVER);
+        p_server_url = PAPUSHMSG_PRODUCT_HTTPS_SERVER;
     }
     params = cJSON_CreateObject();
     if(params == NULL)
@@ -22534,20 +22894,13 @@ static void *pnr_post_newmsgs_notice_once(void *para)
     cJSON_Delete(params);
     data_len = strlen(post_data);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_notice_once:post_data(%s)",post_data);
-    https_post(server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSGS_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
+    ret = https_post(p_server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSGS_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     free(pmsg);
     free(post_data);
-    params = cJSON_CreateObject();
-    if(params == NULL)
+    if(ret > 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
-        return NULL;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_notice_once:rec(%s)",rec_buff);
     }
-    cJSON_AddItemToObject(params, "replay", cJSON_CreateString(rec_buff));
-    post_data = cJSON_PrintUnformatted_noescape(params);
-    cJSON_Delete(params);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_notice_once:rec(%s)",post_data);
-    free(post_data);
     return NULL;
 }
 

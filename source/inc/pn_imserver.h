@@ -114,6 +114,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_EM_CMDTYPE_CHECKMAILUKEY,
     PNR_EM_CMDTYPE_GETBAKEMAILNUM,
     PNR_EM_CMDTYPE_CHECKBAKEMAIL,
+    PNR_EM_CMDTYPE_MAILNOTICE,
     //用户磁盘限额配置
     PNR_IM_CMDTYPE_GETCAPACITY,
     PNR_IM_CMDTYPE_SETCAPACITY,
@@ -342,6 +343,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_CHECKMAILUKEY    "CheckmailUkey"
 #define PNR_EMCMD_GETBAKMAILSNUM    "BakMailsNum"
 #define PNR_EMCMD_CHCEKBAKMAILS    "BakMailsCheck"
+#define PNR_EMCMD_MAILNOTICE    "MailSendNotice"
 
 //用户磁盘限额配置
 #define PNR_IMCMD_GETCAPACITY "GetCapactiy"
@@ -1300,9 +1302,11 @@ enum PUSHMSG_TYPE_ENUM
     PUSHMSG_TYPE_NOTICE_NEWMSG = 1,
     PUSHMSG_TYPE_SYSTEMINFO = 2,
     PUSHMSG_TYPE_CRETICALINFO = 3,
+    PUSHMSG_TYPE_NOTICE_NEWMAIL = 4,
 };
 #define PNR_POSTMSG_TITLE "Confidant"
 #define PNR_POSTMSG_PAYLOAD  "You Have new Messages"
+#define PNR_NEWMAILNOTICE_PAYLOAD  "You Have new Mails"
 #define PNR_POST_USER_MAXNUM 100
 #define PNR_POST_USERSTR_MAXLEN  10000
 #define PNR_POST_MSGS_VER1  1
@@ -1326,11 +1330,19 @@ struct newmsgs_notice_params{
     int type;
     int to_num;
     int version;
+    int devid;
     char from[TOX_ID_STR_LEN+1];
     char title[PNR_USERNAME_MAXLEN+1];
     char dev[PNR_USERNAME_MAXLEN+1];
+    char msgids[CMD_MAXLEN+1];
     char tos[PNR_POST_USERSTR_MAXLEN+1];
     char payload[CMD_MAXLEN+1];
+};
+struct pnr_postmsgs_cache
+{
+    int num;
+    char msgid_cache[CMD_MAXLEN+1];
+    char tos[PNR_POST_USERSTR_MAXLEN+1];
 };
 
 //磁盘统计信息
@@ -1477,7 +1489,7 @@ enum PNR_USER_CAPACITY_CONFIG_ENUM
 };
 
 // 邮箱帐号信息结构体
-#define EMAIL_NAME_LEN  50
+#define EMAIL_NAME_LEN  100
 #define EMAIL_SIGN_LEN  100
 #define EMAIL_CONFIG_LEN  300
 #define EMAIL_INFO_MAXLEN 4096
@@ -1568,7 +1580,6 @@ struct email_model
 //     char e_emailpath[PATH_MAX+1];
 //     char e_attach_name[PATH_MAX+1];
 // };
-
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
@@ -1614,4 +1625,6 @@ int pnr_get_user_capacity(int index,unsigned int* capacity);
 int get_user_volume(int uindex,unsigned int* volume);
 int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
 	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index);
+int pnr_postmsgs_cache_save(int msgid,char* uid,struct pnr_postmsgs_cache* pcache);
+int pnr_postmsgs_cache_send(int server_flag,int msgtype,char* rid,char* msgpay,struct pnr_postmsgs_cache* pcache);
 #endif

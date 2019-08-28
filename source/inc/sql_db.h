@@ -173,6 +173,7 @@ int pnr_email_ukey_dbget_byemname(char* em_name,char* ukey,int* found_flag);
 int pnr_email_config_dbupdatelable(int uindex,int status,int mailid);
 int pnr_email_config_dbupdateread(int uindex,int status,int mailid);
 int pnr_user_capacity_dbupdate(int index,unsigned int capacity);
+int pnr_emconfig_mails_dbget_byuindex(int uindex,char* pmails);
 int sql_emaillinfodb_init(void);
 #endif
 

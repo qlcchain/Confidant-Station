@@ -6842,6 +6842,60 @@ int pnr_emconfig_num_dbget_byuindex(int uindex,int *count)
     return OK;
 }
 /************************************email操作***********************************************
+  Function:      pnr_emconfig_mails_dbget_byuindex
+  Description:   获取邮箱配置
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_emconfig_mails_dbget_byuindex(int uindex,char* pmails)
+{
+	int8* errMsg = NULL;
+	char sql_cmd[SQL_CMD_LEN] = {0};
+    char **dbResult; 
+    char *errmsg;
+    int nRow, nColumn, i = 0;
+    int offset=0;   
+    if(pmails == NULL || uindex < 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        return ERROR;
+    }
+    //emailconf_tbl(id integer primary key autoincrement,uindex,timestamp,type,version,emailuser,config,signature,contactsfile,contactsmd5,userkey);");
+	snprintf(sql_cmd,SQL_CMD_LEN,"select emailuser from emailconf_tbl where uindex=%d",uindex);
+    if(sqlite3_get_table(g_emaildb_handle, sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; //字段值从offset开始呀
+        for( i = 0; i < nRow ; i++ )
+        {         
+            if(i > 0)
+            {
+                strcat(pmails,",");
+            }
+            strcat(pmails,dbResult[offset]);
+            offset += nColumn;
+        }
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get nRow(%d) nColumn(%d)",nRow,nColumn);
+        sqlite3_free_table(dbResult);
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_num_dbget_byuindex(%s) count(%s)",sql_cmd,pmails);
+    return OK;
+}
+
+/************************************email操作***********************************************
   Function:      pnr_emconfig_uindex_dbget_byuser
   Description:   check邮箱配置是否存在
   Calls:

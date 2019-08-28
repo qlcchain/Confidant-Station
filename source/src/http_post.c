@@ -252,7 +252,7 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 		return -1;
 	}
     memset(sdata,0,ssize+1);
-    //这里必须加锁，否则会coerdump
+    //这里必须加锁，否则会coredump
     pthread_mutex_lock(&g_postlock);
 	// 1、建立TCP连接
 	sockfd = client_connect_tcp(host, port);
