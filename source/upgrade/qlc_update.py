@@ -14,9 +14,12 @@ updateinfo_url = "https://pprouter.online:9001/v1/upgrade/ModuleRstausUpdate"
 #updateinfo_url = "https://47.244.138.61:9001/v1/upgrade/ModuleRstausUpdate"
 update_log = "/tmp/qlc_update.log"
 update_json = "/tmp/qlc_update.json"
-cur_version = "0.1.8"
+cur_version = "0.1.9"
 gqlcnode_enable_cmd = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/sata/home/gqlcnode/qlc.json >/dev/null 2>&1 &"
+gqlcnode_enable_cmd1 = "nohup /root/gqlcnode/gqlc-confidant --configParams=\"rpc.rpcEnabled=true\" --config=/root/gqlcnode/qlc.json >/dev/null 2>&1 &"
 gqlcmode_get_cmd = "cat /root/gqlcnode/gqlcflag"
+get_disknum_cmd = "cat /tmp/disk.info |grep name |wc -l"
+get_freevalumn_cmd = "df -h -m|grep overlayfs| sed 1d|awk '{print $4}'"
 
 def log(type,content):
     try:
@@ -75,6 +78,24 @@ def judgeprocess(processname):
     else:
         return 0
 
+def freedisk_check():
+    diskok=0
+    f = os.popen(get_disknum_cmd)
+    disknum=int(filter(str.isdigit,f.read()))
+    f.close()
+    if disknum == 0:
+        f2 = os.popen(get_freevalumn_cmd)
+        volumn=int(filter(str.isdigit,f2.read()))
+        f2.close()
+        log(1,"get free capacity(%d)" % volumn)
+        if volumn > 800:
+            diskok = 1
+        else:
+            return diskok
+    else:
+        diskok = 2
+    return diskok
+
 def gqlcmode_get():
     if os.access("/root/gqlcnode/gqlcflag", os.F_OK) == True:
         f = os.popen(gqlcmode_get_cmd)
@@ -114,19 +135,20 @@ def gqlcnode_enable(enable):
             log(1,"gqlcnode switch off")
             return
         #检测是不是有足够的磁盘空间
-        f2 = os.popen("df -h /sata|sed 1d|awk '{print $2}'")
-        capacity = int(filter(str.isdigit,f2.read()))
-        f2.close()
-        log(1,"get capacity(%d)" % capacity)
-        if capacity == 0:
-            log(2,"enable gqlcnode failed:no disk")
-            return      
+        diskcheck = freedisk_check()
         #检测目录
-        if os.access("/sata/home/gqlcnode/", os.F_OK) != True:
-            os.system("mkdir -p /sata/home/gqlcnode/")
-        #使能
-        os.system(gqlcnode_enable_cmd)
-        log(1,"enable gqlcnode ok")
+        if diskcheck == 2:
+            if os.access("/sata/home/gqlcnode/", os.F_OK) != True:
+                os.system("mkdir -p /sata/home/gqlcnode/")
+            #使能
+            os.system(gqlcnode_enable_cmd)
+            log(1,"enable gqlcnode ok")
+        elif diskcheck == 1:
+             #使能
+            os.system(gqlcnode_enable_cmd1)
+            log(1,"enable gqlcnode1 ok")
+        else:
+            log(2,"enable gqlcnode failed: no disk")
 
     #关闭
     elif enable == 0:
@@ -139,8 +161,8 @@ def gqlcnode_enable(enable):
     else:
         log(2,"bad enable flag(%d)" % enable)
 
-def gqlc_capacity_get():
-    if os.access("/sata/home", os.F_OK):
+def gqlc_capacity_get(disktype):
+    if disktype == 2:
         if os.access("/sata/home/gqlcnode/", os.F_OK):
             f = os.popen("du -h -s -m /sata/home/gqlcnode/")
             capacity = int(filter(str.isdigit,f.read()))
@@ -148,6 +170,10 @@ def gqlc_capacity_get():
         else:
             os.system("mkdir -p /sata/home/gqlcnode/")
             capacity=0    
+    elif disktype == 1:
+        f = os.popen("du -h -s -m /root/gqlcnode/")
+        capacity = int(filter(str.isdigit,f.read()))
+        f.close()
     else:
         capacity=0
     return capacity
@@ -160,8 +186,9 @@ def gqlc_status_check():
     #检测程序是否运行
     rstatus = judgeprocess("gqlc-confidant")
     gqlcmode = gqlcmode_get()
+    diskcheck = freedisk_check()
     if rstatus == 0:
-        if os.access("/sata/home/gqlcnode/", os.F_OK):
+        if diskcheck > 0:
             if gqlcmode == 1:
                 gqlcnode_enable(1)
                 rstatus = 1
@@ -205,8 +232,9 @@ def get_sysmac():
 
 def running_status_update(module):
     if module==3:
-        capacity = gqlc_capacity_get()
+        diskcheck = freedisk_check()
         status,count,unchecked = gqlc_status_check()
+        capacity = gqlc_capacity_get(diskcheck)
         mac = get_sysmac()
         post = "dev=2\&status=" + str(status) + "\&module=" + str(module)  + "\&count=" + str(count) + "\&unchecked=" + str(unchecked) + "\&capacity=" + str(capacity) + "\&mac=" + mac       
     else:

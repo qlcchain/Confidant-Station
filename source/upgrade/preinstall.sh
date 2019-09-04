@@ -1,4 +1,7 @@
 #！/bin/sh
+#delete last upgrade file
+rm -rf /tmp/upgrade/
+rm -rf ppr_*.tar.bz2
 
 killall process_monitor.sh pnr_server
 #check qlc_update.py

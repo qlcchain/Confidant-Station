@@ -1,5 +1,8 @@
 #！/bin/sh
 gqlcnodepath=/root/gqlcnode/
+#delete last upgrade file
+rm -rf /tmp/gqlcnode_upgrade/
+rm -rf gqlcnode_*.tar.bz2
 
 if [ ! -d $gqlcnodepath ]; then 
 	mkdir -p $gqlcnodepath
@@ -18,6 +21,6 @@ fi
 if [ -f /root/nohup.out ];then
 	rm -f nohup.out
 fi
-if [ -d /sata/home/gqlcnode ];then
-	rm -rf /sata/home/gqlcnode/*
-fi
+#if [ -d /sata/home/gqlcnode ];then
+#	rm -rf /sata/home/gqlcnode/*
+#fi
