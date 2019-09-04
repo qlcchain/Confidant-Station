@@ -308,7 +308,6 @@ int https_post(char *host, int port, char *url, const char *data, int dsize, cha
 	close(sockfd);
 	SSL_shutdown(ssl);
 	ERR_free_strings();
-
 	return r_len;
 }
 

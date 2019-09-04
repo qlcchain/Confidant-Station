@@ -2574,7 +2574,6 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             pnr_msgcache_dbdelete(msgid, 0);
 	        return ERROR;
 	    }
-
         if(g_imusr_array.usrnode[index].user_online_type == USER_ONLINE_TYPE_LWS)
         {
             pushmsg_ctype = PNR_MSG_CACHE_TYPE_LWS;
@@ -22595,16 +22594,25 @@ static void *pnr_post_newmsg_notice_task(void *para)
     cJSON_AddItemToObject(params, "msgid", cJSON_CreateNumber(pmsg->msgid));
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
+    if(post_data == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"post_data create err");
+        free(pmsg);
+        return NULL;
+    }
     data_len = strlen(post_data);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsg_notice_task:post_data(%s)",post_data);
     ret = https_post(p_server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSG_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     free(pmsg);
     free(post_data);
-    if(ret > OK)
+    if(ret > OK && rec_buff != NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",rec_buff);
     }
-    free(rec_buff);
+    if(rec_buff)
+    {
+        free(rec_buff);
+    }
     return NULL;
 }
 /**********************************************************************************
@@ -22659,7 +22667,6 @@ static void *pnr_post_newmsgs_cachesend_task(void *para)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json create err");
         free(pmsg);
-        free(rec_buff);
         return NULL;
     }
     cJSON_AddItemToObject(params, "priority", cJSON_CreateNumber(pmsg->priority));
@@ -22674,19 +22681,27 @@ static void *pnr_post_newmsgs_cachesend_task(void *para)
     cJSON_AddItemToObject(params, "tos", cJSON_CreateString(pmsg->tos));
     post_data = cJSON_PrintUnformatted_noescape(params);
     cJSON_Delete(params);
+    if(post_data == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"post_data create err");
+        free(pmsg);
+        return NULL;
+    }
     data_len = strlen(post_data);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_cachesend_task:post_data(%s)",post_data);
     ret = https_post(p_server_url,PAPUSHMSG_HTTPSSERVER_PORT,PAPUSHMSGS_HTTPSSERVER_PREURL,post_data,data_len,rec_buff,BUF_LINE_MAX_LEN);
     free(pmsg);
     free(post_data);
-    if(ret > OK)
+    if(ret > OK && rec_buff != NULL)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice:rec(%s)",rec_buff);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_post_newmsgs_cachesend_task:rec(%s)",rec_buff);
     }
-    free(rec_buff);
+    if(rec_buff)
+    {
+        free(rec_buff);
+    }
     return NULL;
 }
-
 /**********************************************************************************
   Function:      pnr_postmsgs_cache_save
   Description:   新消息提醒缓存
@@ -22755,7 +22770,7 @@ int pnr_postmsgs_cache_save(int msgid,char* uid,struct pnr_postmsgs_cache* pcach
 *****************************************************************************/
 int pnr_postmsgs_cache_send(int server_flag,int msgtype,char* rid,char* msgpay,struct pnr_postmsgs_cache* pcache)
 {
-	pthread_t task_id = 0;
+    pthread_t task_id = 0;
     struct newmsgs_notice_params* pmsg = NULL;
 
     if(rid == NULL || pcache == NULL ||(strlen(rid) != TOX_ID_STR_LEN))
@@ -22807,7 +22822,7 @@ int pnr_postmsgs_cache_send(int server_flag,int msgtype,char* rid,char* msgpay,s
 *****************************************************************************/
 int post_newmsg_notice(char* rid,char* targetid,char* msgpay,int server_flag,int msgid)
 {
-	pthread_t task_id = 0;
+    pthread_t task_id = 0;
     struct newmsg_notice_params* pmsg = NULL;
 
     if(rid == NULL || targetid == NULL || msgpay == NULL)
