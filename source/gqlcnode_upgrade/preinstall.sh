@@ -1,8 +1,5 @@
 #！/bin/sh
 gqlcnodepath=/root/gqlcnode/
-#delete last upgrade file
-rm -rf /tmp/gqlcnode_upgrade/
-rm -rf gqlcnode_*.tar.bz2
 
 if [ ! -d $gqlcnodepath ]; then 
 	mkdir -p $gqlcnodepath

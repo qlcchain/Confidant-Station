@@ -273,10 +273,12 @@ def running_status_update(module):
 def upgrade_module(module):
     mac = get_sysmac()
     if module == 1:
+        last_upgradepkg = "/tmp/ppr_*.tar.bz2"
         upgrade_path = "/tmp/upgrade" 
         ver = commands.getoutput("pnr_server --version|grep version|awk -F':' '{print $2}'")
         post = "dev=2\&module=1\&version=" + ver +"\&mac="+mac
     elif module ==3:
+        last_upgradepkg = "/tmp/gqlcnode_*.tar.bz2"
         upgrade_path = "/tmp/gqlcnode_upgrade" 
         if os.access("/root/gqlcnode/gqlc-confidant", os.F_OK):
             f = os.popen("/root/gqlcnode/gqlc-confidant version|grep version|awk -F':' '{print $2}'")
@@ -342,7 +344,7 @@ def upgrade_module(module):
         log(2,"no newversion")
         return
 
-    os.system("cd /tmp/;rm -fr %s %s" % (jret["FileName"],upgrade_path))
+    os.system("cd /tmp/;rm -fr %s %s" % (last_upgradepkg,upgrade_path))
     os.system("cd /tmp/;wget %s -q --no-check-certificate" % jret["FileUrl"])
     
     if not os.path.exists("/tmp/" + jret["FileName"]):
