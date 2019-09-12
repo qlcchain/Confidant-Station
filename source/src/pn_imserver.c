@@ -11201,6 +11201,79 @@ int im_reset_routername_deal(cJSON * params,char* retmsg,int* retmsg_len,
     return OK;
 }
 /**********************************************************************************
+  Function:      im_userlistmap_analyze
+  Description: 用户列表数据解析
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int im_userlistmap_analyze(char* uidlist,struct gpuser_maplist* plist)
+{
+    int usernum = 0;
+    char* tmp = NULL;
+    char* tmp_end = NULL;
+    char* value_end = NULL;
+    int value_len = 0;
+    if( uidlist == NULL || plist == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlistmap_analyze:input params err");
+        return ERROR;
+    }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_userlistmap_analyze:in(%s)",uidlist);
+    tmp = uidlist;
+    value_end = uidlist+strlen(uidlist);
+    while(tmp < value_end)
+    {
+        tmp_end=strchr(tmp,',');
+        if(tmp_end == NULL)
+        {
+            value_len = value_end - tmp;
+        }
+        else
+        {
+            value_len = tmp_end - tmp;
+            tmp_end++;
+        }
+        if(value_len <= TOX_ID_STR_LEN && value_len > 0)
+        {
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_userlistmap_analyze:get user(%d:%s)",value_len,tmp);
+            strncpy(plist->gpuser[usernum].userid,tmp,((value_len >=TOX_ID_STR_LEN)?TOX_ID_STR_LEN:value_len));
+            plist->gpuser[usernum].userid[TOX_ID_STR_LEN]='\0';
+            plist->gpuser[usernum].uindex = get_indexbytoxid(plist->gpuser[usernum].userid);
+            if(plist->gpuser[usernum].uindex == 0)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlistmap_analyze:get user(%s) not found",plist->gpuser[usernum].userid);
+                return ERROR;
+            }
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_userlistmap_analyze:check user(%d:%d)",usernum,plist->gpuser[usernum].uindex);
+            usernum++;
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlistmap_analyze:get user(%s) len error",tmp);
+            return ERROR;
+        }
+        if(tmp_end < value_end && tmp_end != NULL)
+        {
+            tmp = tmp_end;
+        }
+        else
+        {
+            break;
+        }
+    }
+    plist->usernum = usernum;
+    return OK;
+}
+/**********************************************************************************
   Function:      im_group_usermap_analyze
   Description: 群用户和群用户密钥映射解析
   Calls:
@@ -13670,10 +13743,11 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int ret_code = 0;
     char* ret_buff = NULL;
     char userid[TOX_ID_STR_LEN+1] = {0};
-    char targetid[TOX_ID_STR_LEN+1] = {0};
+    char toidlist[PNR_GROUP_EXTINFO_MAXLEN+1] = {0};
+    struct gpuser_maplist* puserlist = NULL;
     char groupid[TOX_ID_STR_LEN+1] = {0};
     char name[PNR_USERNAME_MAXLEN+1] = {0};
-    int cmdtype = 0,uindex= 0,verify = 0,gid = 0,i = 0;
+    int cmdtype = 0,uindex= 0,verify = 0,gid = 0,i = 0,j=0;
     struct group_user* p_guser = NULL;
     struct group_sys_msg group_sysmsg;
     if(params == NULL)
@@ -13684,7 +13758,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",groupid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",cmdtype,0);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",targetid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",toidlist,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Name",name,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"NeedVerify",verify,0);
 
@@ -13802,11 +13876,6 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad groupid(%s)",groupid);
                 ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
             }
-            else if(strlen(targetid) != TOX_ID_STR_LEN)
-            {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad ToId(%s)",targetid);
-                ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
-            }
             else
             {
                 uindex = get_indexbytoxid(userid);
@@ -13827,41 +13896,63 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     {
                         *plws_index = uindex;
                     }
-                    p_guser = get_guserbytoxid(gid,targetid);
-                    if(p_guser == NULL)
+                    puserlist = (struct gpuser_maplist*) malloc(sizeof(struct gpuser_maplist));
+                    if(puserlist == NULL)
                     {
-                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad targetid(%s)",targetid);
-                        ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
-                    }
-                    else if(p_guser->type != GROUP_USER_NORMAL)
-                    {
-                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:targetid(%s) type(%d)",targetid,p_guser->type);
-                        ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"malloc failed");
+                        ret_code = GROUP_CONFIG_RETCODE_OTHERERR;
                     }
                     else
                     {
-                        ret_code = GROUP_CONFIG_RETCODE_OK;
-                        pthread_mutex_lock(&g_grouplock[gid]);
-                        memset(&group_sysmsg,0,sizeof(group_sysmsg));
-                        group_sysmsg.type = GROUP_SYSMSG_KICKOFF;
-                        group_sysmsg.gid= gid;
-                        strcpy(group_sysmsg.group_hid,groupid);
-                        group_sysmsg.from_uid = uindex;
-                        strcpy(group_sysmsg.from_user,userid);
-                        group_sysmsg.to_uid = p_guser->userindex;
-                        strcpy(group_sysmsg.to_user,targetid);
-                        for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
+                        memset(puserlist,0,sizeof(struct gpuser_maplist));
+                        im_userlistmap_analyze(toidlist,puserlist);
+                        if(puserlist->usernum <= 0)
                         {
-                            if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                            ret_code = GROUP_CONFIG_RETCODE_OTHERERR;
+                        }
+                        else
+                        {
+                            ret_code = GROUP_CONFIG_RETCODE_OK;
+                            for(i=0;i<puserlist->usernum;i++)
                             {
-                                strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
-                                im_pushmsg_callback(g_grouplist[gid].user[i].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
+                                p_guser = get_guserbyuindex(gid,puserlist->gpuser[i].uindex);
+                                if(p_guser == NULL)
+                                {
+                                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad targetid(%s)",puserlist->gpuser[i].userid);
+                                    ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
+                                }
+                                else if(p_guser->type != GROUP_USER_NORMAL)
+                                {
+                                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:targetid(%s) type(%d)",puserlist->gpuser[i].userid,p_guser->type);
+                                    ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
+                                }
+                                else
+                                {
+                                    pthread_mutex_lock(&g_grouplock[gid]);
+                                    memset(&group_sysmsg,0,sizeof(group_sysmsg));
+                                    group_sysmsg.type = GROUP_SYSMSG_KICKOFF;
+                                    group_sysmsg.gid= gid;
+                                    strcpy(group_sysmsg.group_hid,groupid);
+                                    group_sysmsg.from_uid = uindex;
+                                    strcpy(group_sysmsg.from_user,userid);
+                                    group_sysmsg.to_uid = p_guser->userindex;
+                                    strcpy(group_sysmsg.to_user,puserlist->gpuser[i].userid);
+                                    for(j=0;j<PNR_GROUP_USER_MAXNUM;j++)
+                                    {
+                                        if(g_grouplist[gid].user[j].userindex != 0 && g_grouplist[gid].user[j].userindex != uindex)
+                                        {
+                                            strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[j].toxid);
+                                            im_pushmsg_callback(g_grouplist[gid].user[j].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
+                                        }
+                                    }
+                                    pthread_mutex_unlock(&g_grouplock[gid]);
+                                    pnr_group_deluser(gid,puserlist->gpuser[i].userid);
+                                    pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_DELUSER,group_sysmsg.from_uid,group_sysmsg.to_uid,g_grouplist[gid].group_name,
+                                        group_sysmsg.from_user,group_sysmsg.to_user,"group kickout");
+                                }
                             }
                         }
-                        pthread_mutex_unlock(&g_grouplock[gid]);
-                        pnr_group_deluser(gid,targetid);
-                        pnr_groupoper_dbget_insert(gid,GROUP_OPER_ACTION_DELUSER,group_sysmsg.from_uid,group_sysmsg.to_uid,g_grouplist[gid].group_name,
-                            group_sysmsg.from_user,group_sysmsg.to_user,"group kickout");
+                        free(puserlist);
                     }
                 }
             }
