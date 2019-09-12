@@ -88,7 +88,7 @@ def freedisk_check():
         volumn=int(filter(str.isdigit,f2.read()))
         f2.close()
         log(1,"get free capacity(%d)" % volumn)
-        if volumn > 800:
+        if volumn > 500:
             diskok = 1
         else:
             return diskok
