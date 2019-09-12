@@ -7553,6 +7553,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SENDFILE;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYSMSGPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSMSGPUSH;
+            }
             else if(strcasecmp(action_buff,PNR_IMCMD_SYNCHDATAFILE) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYNCHDATAFILE;
@@ -7561,9 +7565,9 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDEBUGMSG;
             }
-            else if(strcasecmp(action_buff,PNR_IMCMD_SYSDERLYCMD) == OK)
+            else if(strcasecmp(action_buff,PNR_EMCMD_SET_EMAILSIGN) == OK)
             {
-                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSDERLYMSG;
+                phead->im_cmdtype = PNR_EM_CMDTYPE_SET_EMAILSIGN;
             }
             else if(strcasecmp(action_buff,PNR_EMCMD_SAVE_EMAILCOFIG) == OK)
             {
@@ -14226,6 +14230,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int fromid = 0,toid = 0;
     char cmd[CMD_MAXLEN+1] = {0};
     int msgid = 0;
+    int new_msgid = 0;
     struct group_user_msg* pgmsg = NULL;
     int gid = -1;
     int filesize=0,i=0,filetype=0;
@@ -14399,6 +14404,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
                     }
                     pthread_mutex_unlock(&g_grouplock[gid]);
+                    new_msgid = pgmsg->msgid;
                     ret_code = PNR_FILEFORWARD_RETCODE_OK;
                     free(pgmsg);
                 }
@@ -14461,6 +14467,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
                         im_pushmsg_callback(fromid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, FALSE, head->api_version,msg);
                     }
+                    new_msgid = msg->log_id;
                     ret_code = PNR_FILEFORWARD_RETCODE_OK;
                 }
             }
@@ -14484,6 +14491,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_FILEFORWARD));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "MsgId", cJSON_CreateNumber(msgid));
+    cJSON_AddItemToObject(ret_params, "NewId", cJSON_CreateNumber(new_msgid));
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(to));
     cJSON_AddItemToObject(ret_params, "FromId", cJSON_CreateString(from));
     if(ret_code == PNR_FILEFORWARD_RETCODE_OK)
@@ -23459,6 +23467,122 @@ int pnr_relogin_push(int index,int curtox_flag,int cur_fnum,struct per_session_d
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      pnr_sysmsg_push
+  Description:   节点主动推送系统消息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+int pnr_sysmsg_push(int cmd,int type,int apiversion,char* toid,char* info)
+{
+    char* pmsg = NULL;
+    int msg_len = 0,uindex = 0, msgid = 0;
+    int pushmsg_ctype = 0;
+
+	if (info == NULL || toid == NULL)
+    {
+        return ERROR;
+    }
+    uindex = get_indexbytoxid(toid);
+    if(uindex <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get uindex(%s) failed",toid);
+        return ERROR;
+    }
+    //构建消息
+    cJSON * ret_root =  cJSON_CreateObject();
+    cJSON * ret_params =  cJSON_CreateObject();
+    if (ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        return ERROR;
+    }
+    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_sysmsg_push: user(%d) cmd(%d) type(%d) info(%s)",toid,cmd,type,info);
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)apiversion));
+    switch(cmd)
+    {
+        case PNR_IM_CMDTYPE_SYSMSGPUSH:
+            cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_SYSMSGPUSH));
+            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(toid));
+            cJSON_AddItemToObject(ret_params, "Type",cJSON_CreateNumber(type));
+            cJSON_AddItemToObject(ret_params, "Info",cJSON_CreateString(info));
+            break;
+        default:
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad cmd(%d)",cmd);
+            cJSON_Delete(ret_root);
+            return ERROR; 
+    }
+    pnr_msgcache_getid(uindex, &msgid);
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber(msgid));
+	//这里消息内容不能做转义，要不然对端收到会出错
+    pmsg = cJSON_PrintUnformatted_noescape(ret_root);
+    cJSON_Delete(ret_root);
+    msg_len = strlen(pmsg);
+    if(g_imusr_array.usrnode[uindex].user_online_type == USER_ONLINE_TYPE_LWS)
+    {
+        pushmsg_ctype = PNR_MSG_CACHE_TYPE_LWS;
+    }
+    else
+    {
+        pushmsg_ctype = PNR_MSG_CACHE_TYPE_TOXA;
+    }
+    pnr_msgcache_dbinsert_v3(msgid, g_daemon_tox.user_toxid,toid, cmd, pmsg, msg_len, NULL, NULL, msgid, 
+                    pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,NULL,NULL,NULL);
+    free(pmsg);
+    return OK;
+}
+/**********************************************************************************
+  Function:      pnr_sysmsg_push_newuser
+  Description:   节点主动推送新用户注册
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:成功
+                 1:失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/ 
+int pnr_sysmsg_push_newuser(char* userid,char* nickname)
+{
+    char* pmsg = NULL;
+	if (userid == NULL || nickname == NULL)
+    {
+        return ERROR;
+    }
+    //构建json
+    cJSON * ret_params =  cJSON_CreateObject();
+    if (ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        return ERROR;
+    }
+    
+    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "Name", cJSON_CreateString(nickname));
+    pmsg = cJSON_PrintUnformatted_noescape(ret_params);
+    cJSON_Delete(ret_params);
+    pnr_sysmsg_push(PNR_IM_CMDTYPE_SYSMSGPUSH,PNR_SYSPUSHMSG_TYPE_NEWUSER,PNR_API_VERSION_V6,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid,pmsg);
+    free(pmsg);
+    return OK;
+}
+
 /**********************************************************************************
   Function:      pnr_syspredeal
   Description:   应用启动预处理

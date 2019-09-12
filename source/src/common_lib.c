@@ -10,6 +10,8 @@
 #include <curl/curl.h>
 #include <sys/file.h>
 #include <sys/stat.h> 
+#include <sys/time.h>
+#include <pthread.h>
 #include "sodium.h"
 #ifdef OPENWRT_ARCH
 #include <uci.h>
@@ -21,7 +23,7 @@ char log_path[64];
 int g_debug_level = DEBUG_LEVEL_NORMAL;
 int g_mem_total = 0;
 int g_mem_free = 0;
-
+pthread_mutex_t g_gettime_lock = PTHREAD_MUTEX_INITIALIZER;
 #define AUTHUSERCMDPARSELINE(buff,phead,ptail,line,fp)\
 {\
     phead =strchr(buff,':');\
@@ -1714,6 +1716,31 @@ void pnr_itoa (int n,char* pstr)
     }
 }
 
+/*****************************************************************************
+ 函 数 名  : pnr_getmillisencond
+ 功能描述  : 获取当前时间戳(毫秒级)
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+double pnr_getmillisencond (void) 
+{ 
+    double local_mts = 0;
+    struct timeval tv;
+    pthread_mutex_lock(&g_gettime_lock);
+    gettimeofday(&tv,NULL); 
+    local_mts = tv.tv_sec*1000 + tv.tv_usec/1000;
+    pthread_mutex_unlock(&g_gettime_lock);
+    return local_mts;
+}
 int dev_hwaddr_init(void)
 {
     if(g_dev_hwaddr[0] == '\0')
