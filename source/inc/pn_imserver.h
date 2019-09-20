@@ -729,6 +729,7 @@ struct group_user_msg
     int from_uid;
     int to_uid;
     int attend_all;
+    int associal_id;
     char from[TOX_ID_STR_LEN+1];
     char to[TOX_ID_STR_LEN+1];
     char to_key[PNR_GROUP_USERKEY_MAXLEN+1];
@@ -787,6 +788,10 @@ struct group_fileinfo_struct
     char md5[PNR_MD5_VALUE_MAXLEN+1];
     char attach_info[PNR_FILEINFO_MAXLEN+1];
 };
+#define IM_ASSOCIAL_ID_KEYWORD "assoc_id"
+#define IM_ASSOCIAL_ID_KEYLEN 8
+#define IM_ASSOCIAL_ID_OFFLEN 9
+
 enum IM_MSGTYPE_ENUM
 {
 	PNR_IM_MSGTYPE_TEXT = 0,

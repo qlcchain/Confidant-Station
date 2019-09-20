@@ -2119,12 +2119,12 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 if(apiversion == PNR_API_VERSION_V1)
                 {
                     pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
-                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,0);                
+                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,psendmsg->ext2);                
                 }
                 else if(apiversion >= PNR_API_VERSION_V3)
                 {
                     pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
-                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
+                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,psendmsg->ext2);
                 }
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",psendmsg->log_id);
             }
@@ -2174,6 +2174,10 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 #else
             cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->fromuser_toxid));
             cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->touser_toxid));
+            if(psendmsg->ext2 != 0)
+            {
+                cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(psendmsg->ext2));  
+            }
 #endif
             }
             break;
@@ -2446,6 +2450,10 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "UserName",cJSON_CreateString(pgsender->username));
             cJSON_AddItemToObject(ret_params, "UserKey",cJSON_CreateString(pgsender->user_pubkey));
             cJSON_AddItemToObject(ret_params, "SelfKey",cJSON_CreateString(pgroupmsg->to_key));
+            if(pgroupmsg->associal_id)
+            {
+                cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(pgroupmsg->associal_id));
+            }
             if(pgroupmsg->type == PNR_IM_MSGTYPE_IMAGE || pgroupmsg->type == PNR_IM_MSGTYPE_AUDIO
                 || pgroupmsg->type == PNR_IM_MSGTYPE_MEDIA || pgroupmsg->type == PNR_IM_MSGTYPE_FILE)
             {
@@ -4011,6 +4019,7 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",msg->sign,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",msg->nonce,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",msg->prikey,PNR_RSA_KEY_MAXLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"AssocId",msg->ext2,TOX_ID_STR_LEN);
     msg->msgtype = PNR_IM_MSGTYPE_TEXT;
 
 #if 0//暂时不用
@@ -4070,7 +4079,7 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 
             pnr_msglog_getid(index, &msg->log_id);
             pnr_msglog_dbupdate_v3(index,msg->msgtype,msg->log_id,MSG_STATUS_SENDOK,msg->fromuser_toxid,
-                msg->touser_toxid,msg->msg_buff,msg->sign,msg->nonce,msg->prikey,NULL,0);
+                msg->touser_toxid,msg->msg_buff,msg->sign,msg->nonce,msg->prikey,NULL,msg->ext2);
 
             ret_code = PNR_MSGSEND_RETCODE_OK;
 			head->forward = TRUE;
@@ -5042,6 +5051,10 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
 
     				default:
     					cJSON_AddStringToObject(pJsonsub, "Msg", ptmp_msg->msg_buff);
+                        if(ptmp_msg->ext2)
+                        {
+                            cJSON_AddNumberToObject(pJsonsub,"AssocId",ptmp_msg->ext2); 
+                        }
 				}
                 /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_pullmsg_cmd_deal:id(%d) logid(%d)(%s->%s) Msg(%s)",
                     i,tmp_msg.log_id,tmp_msg.fromuser_toxid,tmp_msg.touser_toxid,tmp_msg.msg_buff);*/
@@ -10861,6 +10874,7 @@ int im_user_register_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 pnr_autoadd_localfriend(index,g_account_array.admin_user_index,&account);
             }
         }
+        pnr_sysmsg_push_newuser(account.toxid,account.nickname);
         g_imusr_array.usrnode[index].appactive_flag = PNR_APPACTIVE_STATUS_FRONT;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) register online", index, 
             g_imusr_array.usrnode[index].user_toxid);
@@ -12990,6 +13004,15 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         cJSON_AddStringToObject(pJsonsub,"FileKey",dbResult[offset+9]);
                     }
                 }
+                else if(tmpmsgtype == PNR_IM_MSGTYPE_TEXT)
+                {
+                    //关联id
+                    if(dbResult[offset+7] != NULL)
+                    {
+                        tmp_msgid = atoi(dbResult[offset+7]+IM_ASSOCIAL_ID_OFFLEN);
+                        cJSON_AddNumberToObject(pJsonsub,"AssocId",tmp_msgid);
+                    }
+                }
                 pthread_mutex_lock(&g_grouplock[gid]);
                 p_guser = get_guserbyuindex(gid,tmp_uid);
                 if(p_guser)
@@ -13067,7 +13090,8 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     struct group_user_msg* pmsg = NULL;
     struct group_user* puser = NULL;
     char group_hid[TOX_ID_STR_LEN+1] = {0};
-    int uindex= 0,gid = -1,i=0;
+    char extinfo[TOX_ID_STR_LEN+1] = {0};
+    int uindex= 0,gid = -1,i=0,assoc_id = 0;
     if(params == NULL)
     {
         return ERROR;
@@ -13083,6 +13107,7 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GId",group_hid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Point",pmsg->attend,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",pmsg->msgpay,PNR_GROUP_USERMSG_MAXLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"AssocId",assoc_id,TOX_ID_STR_LEN);
 
     //参数检查
     uindex = get_indexbytoxid(pmsg->from);
@@ -13098,6 +13123,7 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = uindex;
         }
+        puser = get_guserbyuindex(gid,uindex);
 		ret_code = PNR_GROUPSENDMSG_RETCODE_OK;
 	}
     else 
@@ -13110,6 +13136,11 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         pmsg->from_uid = uindex;
         pmsg->type = PNR_IM_MSGTYPE_TEXT;
         pmsg->timestamp = (int)time(NULL);
+        if(assoc_id)
+        {
+            pmsg->associal_id = assoc_id;
+            snprintf(extinfo,TOX_ID_STR_LEN,"%s:%d",IM_ASSOCIAL_ID_KEYWORD,assoc_id);
+        }
         puser = get_guserbyuindex(gid,uindex);
         if(puser == NULL)
         {
@@ -13127,8 +13158,17 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
             g_grouplist[gid].last_msgid++;
             pmsg->msgid = g_grouplist[gid].last_msgid;
             strcpy(pmsg->group_name,g_grouplist[gid].group_name);
-            pnr_groupmsg_dbinsert(gid,uindex,pmsg->msgid,PNR_IM_MSGTYPE_TEXT,
-                pmsg->from,pmsg->msgpay,pmsg->attend,NULL,NULL,NULL);
+            if(pmsg->associal_id == 0)
+            {
+                pnr_groupmsg_dbinsert(gid,uindex,pmsg->msgid,PNR_IM_MSGTYPE_TEXT,
+                    pmsg->from,pmsg->msgpay,pmsg->attend,NULL,NULL,NULL);
+            }
+            else
+            {
+                pnr_groupmsg_dbinsert(gid,uindex,pmsg->msgid,PNR_IM_MSGTYPE_TEXT,
+                    pmsg->from,pmsg->msgpay,pmsg->attend,extinfo,NULL,NULL);
+
+            }
             for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
             {
                 if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
@@ -22743,7 +22783,7 @@ static void *pnr_post_newmsgs_cachesend_task(void *para)
     }
     if(pmsg->type == PUSHMSG_TYPE_NOTICE_NEWMAIL)
     {
-        sleep(30);
+        sleep(10);
     }
     if(pmsg->server_flag == FALSE)
     {
@@ -23582,7 +23622,6 @@ int pnr_sysmsg_push_newuser(char* userid,char* nickname)
     free(pmsg);
     return OK;
 }
-
 /**********************************************************************************
   Function:      pnr_syspredeal
   Description:   应用启动预处理

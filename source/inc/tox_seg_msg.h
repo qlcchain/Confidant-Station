@@ -28,7 +28,7 @@ struct tox_msg_send {
     int msglen;
     int offset;
     int recvtime;
-	char *msg;
+    char *msg;
     char frame[256];
 };
 
