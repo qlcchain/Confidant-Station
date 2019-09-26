@@ -27,6 +27,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V8=8,
     DB_VERSION_V9=9,
     DB_VERSION_V10=10,
+    DB_VERSION_V11=11,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -44,7 +45,7 @@ enum DB_VERSION_ENUM
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V10
+#define DB_CURRENT_VERSION    DB_VERSION_V11
 struct db_string_ret
 {
     int buf_len;
@@ -136,7 +137,7 @@ int pnr_group_dbinsert(int gid,int uindex,int verify,char* utoxid,char* name,cha
 int pnr_group_dbdelete_bygid(int gid);
 int pnr_groupverify_dbupdate_bygid(int gid,int verify);
 int pnr_groupname_dbupdate_bygid(int gid,char* gname);
-int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,char* msg,char* attend,char* ext,char* ext2,char* p_filekey);
+int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,char* msg,char* attend,char* ext,char* ext2,char* p_filekey,int associd);
 int pnr_groupmsg_dbdelete_bymsgid(int gid,int msgid);
 int pnr_groupmsg_dbget_lastmsgid(int gid,int* pmsgid);
 int pnr_groupmsg_dbget_bymsgid(int gid,int msgid,struct group_user_msg* pmsg);

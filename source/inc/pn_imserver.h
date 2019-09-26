@@ -729,7 +729,7 @@ struct group_user_msg
     int from_uid;
     int to_uid;
     int attend_all;
-    int associal_id;
+    int assoc_id;
     char from[TOX_ID_STR_LEN+1];
     char to[TOX_ID_STR_LEN+1];
     char to_key[PNR_GROUP_USERKEY_MAXLEN+1];

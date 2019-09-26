@@ -436,6 +436,25 @@ int sql_db_sync(int cur_db_version)
         }
         cur_db_version++;
     }
+    if(cur_db_version == DB_VERSION_V10)
+    {
+        //初始化全局groupmsg_tbl表
+        snprintf(sql_cmd,SQL_CMD_LEN,"ALTER TABLE groupmsg_tbl ADD COLUMN associd;");
+        if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        } 
+        snprintf(sql_cmd,SQL_CMD_LEN,"UPDATE groupmsg_tbl SET associd=0;");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -685,7 +704,7 @@ int sql_groupinfodb_init(void)
         sqlite3_free(errMsg);
         return ERROR;
     }
-	snprintf(sql_cmd,SQL_CMD_LEN,"create table groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey);");
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd);");
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -5760,7 +5779,7 @@ int pnr_groupuser_dbdelete_byuid(int gid,int uindex)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,char* msg,char* attend,char* ext,char* ext2,char* filekey)
+int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,char* msg,char* attend,char* ext,char* ext2,char* filekey,int associd)
 {
 	int8* errMsg = NULL;
     int count = 0;
@@ -5807,7 +5826,7 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
         p_filekey = filekey;
     }
     //这里要检查一下，避免重复插入
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)   
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd)   
     snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from groupmsg_tbl where gid=%d and msgid=%d;",gid,msgid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
     {
@@ -5820,16 +5839,16 @@ int pnr_groupmsg_dbinsert(int gid,int uindex,int msgid,int type,char* sender,cha
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbinsert group(%d) msgid(%d) exsit",gid,msgid);
         return OK;
     }      
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associds)
     if(sql_malloc_flag == TRUE)
     {
-    	snprintf(p_sql,MSGSQL_ALLOC_MAXLEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
-             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey);
+    	snprintf(p_sql,MSGSQL_ALLOC_MAXLEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s',%d);",
+             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey,associd);
     }
     else
     {
-    	snprintf(p_sql,MSGSQL_CMD_LEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s');",
-             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey);
+    	snprintf(p_sql,MSGSQL_CMD_LEN,"insert into groupmsg_tbl values(%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s',%d);",
+             gid,msgid,uindex,(int)time(NULL),type,sender,msg,p_attend,p_ext,p_ext2,p_filekey,associd);
     }
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbinsert:sql(%s)",p_sql);
     if(sqlite3_exec(g_groupdb_handle,p_sql,0,0,&errMsg))
@@ -5870,7 +5889,7 @@ int pnr_groupmsg_dbget_lastmsgid(int gid,int* pmsgid)
     }
     
     //这里要检查一下，避免重复插入
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd)
     snprintf(sql_cmd,SQL_CMD_LEN,"select max(msgid) from groupmsg_tbl where gid=%d;",gid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,pmsgid,&errMsg))
     {
@@ -5908,7 +5927,7 @@ int pnr_groupmsg_dbdelete_bymsgid(int gid,int msgid)
         return ERROR;
     }
     //这里区分下，是全部删除还是单个删除
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd)
     if(msgid == 0)
     {
         snprintf(sql_cmd,SQL_CMD_LEN,"delete from groupmsg_tbl where gid=%d;",gid);
@@ -5952,7 +5971,7 @@ int32 pnr_groupmsg_dbget(void* obj, int n_columns, char** column_values,char** c
         return ERROR;
     }
     memset(pmsg,0,sizeof(struct group_user_msg));
-    //"select gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey from groupmsg_tbl where gid=%d and msgid=%d;"
+    //"select gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd from groupmsg_tbl where gid=%d and msgid=%d;"
     pmsg->gid = atoi(column_values[0]);
     pmsg->msgid = atoi(column_values[1]);
     pmsg->from_uid= atoi(column_values[2]);
@@ -5982,7 +6001,11 @@ int32 pnr_groupmsg_dbget(void* obj, int n_columns, char** column_values,char** c
     {
         strncpy(pmsg->file_key,column_values[10],PNR_GROUP_USERKEY_MAXLEN);
     } 
-	return OK;
+    if(column_values[11] != NULL)
+    {
+        pmsg->assoc_id= atoi(column_values[11]);
+	}
+    return OK;
 }
 /***********************************************************************************
   Function:      pnr_groupmsg_dbget_bymsgid
@@ -6009,8 +6032,8 @@ int pnr_groupmsg_dbget_bymsgid(int gid,int msgid,struct group_user_msg* pmsg)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_groupmsg_dbget_bymsgid:input err");
         return ERROR;
     }
-    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"select gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey from groupmsg_tbl where gid=%d and msgid=%d;",gid,msgid);
+    //groupmsg_tbl(gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select gid,msgid,userindex,timestamp,msgtype,sender,msg,attend,ext,ext2,filekey,associd from groupmsg_tbl where gid=%d and msgid=%d;",gid,msgid);
     if(sqlite3_exec(g_groupdb_handle,sql_cmd,pnr_groupmsg_dbget,pmsg,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
