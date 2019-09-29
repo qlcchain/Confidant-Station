@@ -16499,15 +16499,15 @@ int em_cmd_del_email_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"getemail MailId(%d) type(%d)",mailid,type);
     //参数检查
-    if (type < EMAIL_TYPE_QQ_ENTERPRISE || type > EMAIL_TYPE_OTHERS)
+    if (type < EMAIL_TYPE_QQ_ENTERPRISE || type > EMAIL_TYPE_OTHERS || mailid <= 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad type(%d)",type);
-        return ERROR;
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad type(%d) mailid(%d)",type,mailid);
+        ret_code = EMAIL_DELMAIL_RETRUN_BADPARAMS;
     }
-    if(em_email_file_del(*plws_index,mailid) != OK)
+    else if(em_email_file_del(*plws_index,mailid) != OK)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_email_list_dbinsert failed");
-        return ERROR;
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"em_email_file_del failed");
+        ret_code = EMAIL_DELMAIL_RETRUN_BADPARAMS;
     }
 
     //构建响应消息

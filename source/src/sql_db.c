@@ -447,7 +447,7 @@ int sql_db_sync(int cur_db_version)
             return ERROR;
         } 
         snprintf(sql_cmd,SQL_CMD_LEN,"UPDATE groupmsg_tbl SET associd=0;");
-        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
             sqlite3_free(errMsg);
