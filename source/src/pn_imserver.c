@@ -19604,6 +19604,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     //用户磁盘限额配置
     {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
     {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
+    {PNR_IM_CMDTYPE_SYSMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
 };
 char * g_pnr_cmdstring[]=
 {
@@ -20172,6 +20173,10 @@ int pnr_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* 
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SETCAPACITY;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_SYSMSGPUSH) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SYSMSGPUSH;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -20529,9 +20534,9 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum)
                 goto errbreak;
             }
             //get uindex
-        	if(get_uindex_by_toxfriendnum(m,friendnum,&userindex) != OK)
+	    if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERY && get_uindex_by_toxfriendnum(m,friendnum,&userindex) != OK)
             {
-        		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_uindex_by_toxfriendnum failed");
+        	DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_uindex_by_toxfriendnum: failed");
                 return ERROR;
             }
             if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_PREREGISTER
