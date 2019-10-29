@@ -71,16 +71,17 @@
 //added by willcao
 #define immsgForward        "immsgForward"
 #define immsgForwardRes     "immsgForwardRes"
+#define immsgNodeMsg        "NodeMsg"
+#define immsgNodeMsgRly     "RNodeMsg"
 
 enum MSG_TYPE
 {
-	TYPE_CheckConnectReq	= 0,
-	TYPE_JoinGroupChatReq,
-	TYPE_RecordSaveReq,
 	//added by willcao
-	TYPE_immsgForward,
+	TYPE_immsgForward = 0,
 	TYPE_immsgForwardRes,
-	TYPE_UNKNOW = -1
+    TYPE_immsgNodeMsg,
+    TYPE_immsgNodeMsgRly,
+	TYPE_UNKNOW = 0xFF
 };
 
 const char *data_file_name = NULL;
@@ -103,7 +104,6 @@ extern pthread_mutex_t g_user_toxdatalock[PNR_IMUSER_MAXNUM+1];
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey);
 int friend_Message_process(Tox* m, int friendnum, char *message);
 int map_msg(char *type);
-int get_index_by_toxhandle(Tox *ptox);
 int writep2pidtofile(char *id);
 int processImMsgForward (Tox *m, cJSON* pJson,int friendnum);
 int processImMsgForwardRes(Tox *m, cJSON *pJson, int friendnum);
@@ -249,13 +249,23 @@ static int getfriendname_terminated(Tox *m, int friendnum, char *namebuf)
 
 int map_msg(char* type)
 {
-	if (!strcmp(immsgForward, type)) {
+	if (!strcmp(immsgForward, type)) 
+    {
 		return TYPE_immsgForward;
-	} else if (!strcmp(immsgForwardRes, type)) {
+	} 
+    else if (!strcmp(immsgForwardRes, type)) 
+    {
         return TYPE_immsgForwardRes;
-    } else {
-		return TYPE_UNKNOW;
-	}
+    }
+    else if (!strcmp(immsgNodeMsg, type)) 
+    {
+        return TYPE_immsgNodeMsg;
+    }
+     else if (!strcmp(immsgNodeMsgRly, type)) 
+    {
+        return TYPE_immsgNodeMsgRly;
+    }
+	return TYPE_UNKNOW;
 }
 
 struct tox_msg_cache g_toxmsg_caches[PNR_IMUSER_MAXNUM+1][PERUSER_TOXMSG_CACHENUM];
@@ -399,7 +409,11 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
     		processImMsgForward(m, pJson, friendnum);
             break;
         case TYPE_immsgForwardRes:
+        case TYPE_immsgNodeMsgRly:
             processImMsgForwardRes(m, pJson, friendnum);
+            break;
+        case TYPE_immsgNodeMsg:
+            processImNodeMsg(m, pJson, friendnum);
             break;
     	case TYPE_UNKNOW:
     		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "UNKNOW Message(%s)", type);
@@ -504,8 +518,17 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
 		cJSON_Delete(rootJson);
 		return;
 	}
+#if 0
 	pnr_msgcache_getid(userindex, &msgid);
 	cJSON_AddItemToObject(rootJson, "msgid", cJSON_CreateNumber(msgid));
+#else
+    CJSON_GET_VARINT_BYKEYWORD(rootJson, item, itemstr, "msgid", msgid, 0);
+    if(msgid == 0)
+    {
+    	pnr_msgcache_getid(userindex, &msgid);
+	    cJSON_AddItemToObject(rootJson, "msgid", cJSON_CreateNumber(msgid));
+    }
+#endif
 	pmsg = cJSON_PrintUnformatted(rootJson);
 	if (!strcmp(action->valuestring, PNR_IMCMD_ADDFRIENDREPLY)) 
     {
@@ -526,6 +549,7 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
             im_nodelist_addfriend(userindex, friend.touser_toxid, friend.fromuser_toxid, friend.nickname, friend.user_pubkey);
             pnr_check_update_devinfo_bytoxid(userindex,friend.fromuser_toxid,devinfo.user_devid,devinfo.user_devname);
         }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ tox rec call addreply");
 		pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid,
             PNR_IM_CMDTYPE_ADDFRIENDREPLY, pmsg, strlen(pmsg), NULL, NULL, 0, 
             PNR_MSG_CACHE_TYPE_TOXA, 0, "", "");
@@ -543,6 +567,7 @@ static void friend_request_cb(Tox *m, const uint8_t *public_key,
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_userdev_mapping_dbupdate failed");
         }
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ tox rec call addpush");
         pnr_msgcache_dbinsert(msgid, "", g_imusr_array.usrnode[userindex].user_toxid, 
 			PNR_IM_CMDTYPE_ADDFRIENDPUSH, pmsg, strlen(pmsg), NULL, NULL, 0, 
 			PNR_MSG_CACHE_TYPE_TOXA, 0, "", "");
@@ -609,7 +634,7 @@ static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE ty
     null_string[length] = 0;
     
     //im_tox_rcvmsg_deal(m, (char *)null_string, length, friendnumber);
-    pnr_cmdbytox_handle(m, (char *)null_string, length, friendnumber);
+    pnr_cmdbytox_handle(m, (char *)null_string, length, friendnumber,FALSE);
     //free(null_string);
 }
 
@@ -2037,7 +2062,14 @@ int insert_tox_msgnode(int userid, char *from, char *to,
         pnr_msgcache_dbdelete(msgid, 0);
         return -1;
     }
-    cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
+    if(type >= PNR_IM_CMDTYPE_UINFOKEY_SYSCH && type <= PNR_IM_CMDTYPE_UINFO_UPDATE)
+    {
+        cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgNodeMsg));
+    }
+    else
+    {
+        cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
+    }
     cJSON_AddItemToObject(ret_root, "user", cJSON_CreateString(to));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msgid));
     msg_len = strlen(pmsg);
@@ -2139,8 +2171,15 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
         pnr_msgcache_dbdelete(msgid, 0);
         return -1;
     }
-    
-    cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
+
+    if(type >= PNR_IM_CMDTYPE_UINFOKEY_SYSCH && type <= PNR_IM_CMDTYPE_UINFO_UPDATE)
+    {
+        cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgNodeMsg));
+    }
+    else
+    {
+        cJSON_AddItemToObject(ret_root, "type", cJSON_CreateString(immsgForward));
+    }
     cJSON_AddItemToObject(ret_root, "user", cJSON_CreateString(to));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)msgid));
     msg_len = strlen(pmsg);
@@ -2181,7 +2220,7 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
     修改内容   : 新生成函数
 
 *****************************************************************************/
-int tox_msg_response(Tox *m, cJSON *pJson, int friendnum)
+int tox_msg_response(Tox *m, cJSON *pJson, int friendnum,int nodemsg)
 {
     cJSON *msgid = cJSON_GetObjectItem(pJson, "msgid");
     cJSON *ret = NULL;
@@ -2198,19 +2237,22 @@ int tox_msg_response(Tox *m, cJSON *pJson, int friendnum)
         return -1;
     }
 
-    cJSON_AddItemToObject(ret, "type", cJSON_CreateString(immsgForwardRes));
+    if(nodemsg == FALSE)
+    {
+        cJSON_AddItemToObject(ret, "type", cJSON_CreateString(immsgForwardRes));
+    }
+    else
+    {
+        cJSON_AddItemToObject(ret, "type", cJSON_CreateString(immsgNodeMsgRly));
+    }
     cJSON_AddItemToObject(ret, "msgid", cJSON_CreateNumber(msgid->valueint));
-
     msg = cJSON_PrintUnformatted(ret);
-
     tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
         (uint8_t *)msg, strlen(msg), NULL);
-
     free(msg);
     cJSON_Delete(ret);
     return OK;
 }
-
 /*****************************************************************************
  函 数 名  : processImMsgForwardRes
  功能描述  : 处理tox确认消息
@@ -2259,7 +2301,7 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
 		return -1;
 	}
 
-    tox_msg_response(m, pJson, friendnum);
+    tox_msg_response(m, pJson, friendnum,FALSE);
     
     user_info = cJSON_GetObjectItem ( pJson, "user" );
     if(user_info == NULL)
@@ -2300,6 +2342,62 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
     imtox_pushmsg_predeal(index,pusr,pmsg_decode,strlen(pmsg_decode));
 	return 0;
 }
+
+int processImNodeMsg(Tox *m, cJSON *pJson, int friendnum)
+{
+    cJSON* data_info = NULL;
+    cJSON* user_info = NULL;
+    char* pmsg_decode = NULL;
+    char* pmsg = NULL;
+    char* pusr = NULL;
+    int index = 0;
+    int msg_len = 0,tar_msglen = 0;;
+    
+	if (NULL == pJson)
+	{
+		return -1;
+	}    
+    tox_msg_response(m, pJson, friendnum,TRUE);
+    user_info = cJSON_GetObjectItem ( pJson, "user" );
+    if(user_info == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user fail");
+        return ERROR;
+    }
+    pusr = user_info->valuestring;
+    index = get_indexbytoxid(pusr);
+    if(index == 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s) fail",pusr);
+        return ERROR;
+    }
+    if(g_imusr_array.usrnode[index].init_flag != TRUE
+        || memcmp(g_imusr_array.usrnode[index].user_toxid,pusr,TOX_ID_STR_LEN)!= OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s:%d) fail",pusr,index);
+        return ERROR;
+    }
+    data_info = cJSON_GetObjectItem ( pJson, "data" );
+	if ( NULL == data_info )
+	{
+		return -2;
+	}
+	pmsg =  data_info->valuestring;
+    msg_len = strlen(pmsg);
+    tar_msglen = 2*msg_len;
+    pmsg_decode = malloc(tar_msglen);
+    if(pmsg_decode == NULL)
+    {
+        return -3;
+    }
+    memset(pmsg_decode,0,tar_msglen);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"#####get srcmsg(%d:%s)",msg_len,pmsg);
+    pnr_base64_decode(pmsg,msg_len,pmsg_decode,&tar_msglen);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"#####get msg(%s)",pmsg_decode);
+    pnr_cmdbytox_handle(m, pmsg_decode, strlen(pmsg_decode), friendnum,TRUE);
+	return 0;
+}
+
 int tox_datafile_check(int user_index,char* datafile,int* newdata_flag)
 {
     char tmpdata_md5value[PNR_MD5_VALUE_MAXLEN+1] = {0};

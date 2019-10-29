@@ -28,6 +28,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V9=9,
     DB_VERSION_V10=10,
     DB_VERSION_V11=11,
+    DB_VERSION_V12=12,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -45,13 +46,18 @@ enum DB_VERSION_ENUM
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V11
+#define DB_CURRENT_VERSION    DB_VERSION_V12
 struct db_string_ret
 {
     int buf_len;
     char* pbuf;
 };
-
+struct unode_idstruct
+{
+    int local;
+    int uid;
+    int fid;
+};
 int sql_db_init(void);
 int sql_friendsdb_init(void);
 int sql_groupinfodb_init(void);
@@ -152,7 +158,7 @@ int pnr_userdev_mapping_dbdelte_byusrid(char* usrid);
 int pnr_account_dbdelete_byuserid(char* userid);
 int pnr_userinfo_dbdelete_byuserid(char* usrid);
 int pnr_tox_datafile_dbdelete_bytoxid(char* toxid);
-
+int pnr_normal_account_dbdelete_byusn(char* usn);
 // email 操作
 int pnr_emconfig_uindex_dbget_byuser(char *gname,int *uindex);
 int pnr_emconfig_num_dbget_byuindex(int uindex,int *count);
@@ -176,5 +182,13 @@ int pnr_email_config_dbupdateread(int uindex,int status,int mailid);
 int pnr_user_capacity_dbupdate(int index,unsigned int capacity);
 int pnr_emconfig_mails_dbget_byuindex(int uindex,char* pmails);
 int sql_emaillinfodb_init(void);
+//新增cfd_uinfo_tbl操作
+int cfd_update_uinfotbl(void);
+int cfg_getmails_byuindex(int uindex,char* mailslist);
+int cfd_dbfuzzyget_uindex_bymailinfo(int* uid,int* fid,int* local,char* mailinfo);
+int cfd_dbupdate_uinfonickname_byuid(int uid,int fid,int local,char* nickname);
+int cfd_dbupdate_uinfomailinfo_byuid(int uid,int fid,int local,int mailseq,char* mailinfo);
+int cfd_dbinsert_uinfo_newrecord(struct cfd_userinfo_struct* pnode);
+int cfd_dbdelete_uinfo_byuid(int uid,int fid,int local);
 #endif
 

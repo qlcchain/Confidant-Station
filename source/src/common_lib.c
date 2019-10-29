@@ -1934,7 +1934,7 @@ int pnr_check_process_byname(char* pname,int* pid)
         return ERROR;
     }  
     *pid = atoi(recv);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_check_process_byname: cmd(%s) get pid(%d)",cmd,*pid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_check_process_byname: cmd(%s) get pid(%d)",cmd,*pid);
     return OK;
 }
 /*****************************************************************************

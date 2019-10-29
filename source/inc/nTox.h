@@ -3,8 +3,8 @@
  */
 
 /*
- * Copyright © 2016-2017 The TokTok team.
- * Copyright © 2013 Tox project.
+ * Copyright ? 2016-2017 The TokTok team.
+ * Copyright ? 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -75,6 +75,8 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
 int tox_datafile_check(int user_index,char* datafile,int* new_flag);
 int tox_datafile_backup(int user_index,char* datafile);
 int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath,int msgid,int filefrom);
+int get_index_by_toxhandle(Tox *ptox);
 int add_friends_force(Tox *plinknode, char *friendid, char *msg);
 int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex);
+int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,int* ppm_friendid);
 #endif

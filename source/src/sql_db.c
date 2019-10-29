@@ -455,6 +455,19 @@ int sql_db_sync(int cur_db_version)
         }
         cur_db_version++;
     }
+    if(cur_db_version == DB_VERSION_V11)
+    {
+        //初始化新版uinfo表
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others);");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        } 
+        cfd_update_uinfotbl();
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -552,8 +565,344 @@ int sql_db_check(void)
     		return ERROR;
         }      
 	}
-	
 	return ret;
+}
+/***********************************************************************************
+  Function:      cfg_getmails_byuindex
+  Description:  根据用户id获取用户绑定邮箱配置
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfg_getmails_byuindex(int uindex,char* mailslist)
+{
+    char **dbResult; 
+    char *errmsg;
+    int nRow, nColumn,i = 0;
+    int offset=0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(mailslist == NULL)
+    {
+        return ERROR;
+    }
+
+    snprintf(sql_cmd,SQL_CMD_LEN,"select emailuser from emailconf_tbl where uindex=%d;",uindex);
+    if(sqlite3_get_table(g_emaildb_handle, sql_cmd, &dbResult, &nRow,&nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; //字段值从offset开始呀
+        for( i = 0; i < nRow ; i++ )
+        {          
+            if(i > 0)
+            {
+                strcat(mailslist,EMLIST_SEPARATION_STRING);
+            }
+            strcat(mailslist,dbResult[offset]); 
+            offset += nColumn;
+        }
+        sqlite3_free_table(dbResult);
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfg_getmails_byuindex:sql(%s) user(%d) get mailinfo(%s)",sql_cmd,uindex,mailslist);
+    return OK;
+}
+
+/***********************************************************************************
+  Function:      cfd_update_uinfotbl
+  Description:  新版的uinfo_tbl数据更新
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_update_uinfotbl(void)
+{
+    struct cfd_userinfo_struct tmp_node;
+    char **dbResult; 
+    char *errmsg;
+    int nRow, nColumn,i;
+    int offset=0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    struct pnr_account_struct tmp_account;
+    //提取旧的userinfo_tbl表中数据    
+    //table userinfo_tbl(id integer primary key autoincrement,userindex,local,usrid,devid,avatar,md5,info);"
+    snprintf(sql_cmd,SQL_CMD_LEN,"select * from userinfo_tbl;");
+    if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow,&nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; //字段值从offset开始呀
+        for( i = 0; i < nRow ; i++ )
+        {               
+            memset(&tmp_node,0,sizeof(tmp_node));
+            //id = atoi(dbResult[offset]);
+            tmp_node.uindex = atoi(dbResult[offset+1]);
+            tmp_node.local = atoi(dbResult[offset+2]);
+            strncpy(tmp_node.userid,dbResult[offset+3],TOX_ID_STR_LEN);
+            strncpy(tmp_node.devid,dbResult[offset+4],TOX_ID_STR_LEN);
+            strncpy(tmp_node.avatar,dbResult[offset+5],PNR_FILENAME_MAXLEN);
+            strncpy(tmp_node.md5,dbResult[offset+6],PNR_MD5_VALUE_MAXLEN);
+            strncpy(tmp_node.nickname,dbResult[offset+7],PNR_USERNAME_MAXLEN);
+            tmp_node.version = DEFAULT_UINFO_VERSION;
+            tmp_node.fid = 0;
+            tmp_node.friendseq = (int)time(NULL);
+            memset(&tmp_account,0,sizeof(tmp_account));
+            strcpy(tmp_account.toxid,tmp_node.userid);
+            pnr_account_dbget_byuserid(&tmp_account);
+            strcpy(tmp_node.usn,tmp_account.user_sn);
+            strcpy(tmp_node.pubkey,tmp_account.user_pubkey);
+            cfg_getmails_byuindex(tmp_node.uindex,tmp_node.mailinfo);
+            tmp_node.eminfoseq = (int)time(NULL);
+            //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+            snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_uinfo_tbl values(null,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','');",
+                    tmp_node.uindex,tmp_node.fid,tmp_node.local,tmp_node.version,tmp_node.friendseq,tmp_node.eminfoseq,
+                    tmp_node.userid,tmp_node.devid,tmp_node.usn,tmp_node.nickname,tmp_node.avatar,tmp_node.md5,tmp_node.mailinfo);
+            if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errmsg))
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errmsg);
+                sqlite3_free_table(dbResult);
+                sqlite3_free(errmsg);
+                return ERROR;
+            }    
+            offset += nColumn;
+        }
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get nRow(%d) nColumn(%d)",nRow,nColumn);
+        sqlite3_free_table(dbResult);
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbupdate_uinfomailinfo_byuid
+  Description:  根据uid更新uinfo表中的mailinfo
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbupdate_uinfomailinfo_byuid(int uid,int fid,int local,int mailseq,char* mailinfo)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(mailinfo == NULL)
+    {
+        return ERROR;
+    }
+
+    //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_uinfo_tbl set mailseq=%d and mailinfo='%s' where userindex=%d and friendid=%d and local=%d;",
+        mailseq,mailinfo,uid,fid,local);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_dbupdate_uinfomailinfo_byuid(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbupdate_uinfonickname_byuid
+  Description:  根据uid更新uinfo表中的nickname
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbupdate_uinfonickname_byuid(int uid,int fid,int local,char* nickname)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(nickname == NULL)
+    {
+        return ERROR;
+    }
+
+    //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_uinfo_tbl set nickname='%s' where userindex=%d and friendid=%d and local=%d;",
+        nickname,uid,fid,local);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_dbupdate_uinfonickname_byuid(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbdelete_uinfo_byuid
+  Description:  根据uid删除uinfo表项记录
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbdelete_uinfo_byuid(int uid,int fid,int local)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_uinfo_tbl where userindex=%d and friendid=%d and local=%d;",
+        uid,fid,local);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_dbdelete_uinfo_byuid(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbinsert_uinfo_newrecord
+  Description:  uinfo表中插入新的记录
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbinsert_uinfo_newrecord(struct cfd_userinfo_struct* pnode)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(pnode == NULL)
+    {
+        return ERROR;
+    }
+    //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_uinfo_tbl values(null,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','');",
+            pnode->uindex,pnode->fid,pnode->local,pnode->version,pnode->friendseq,pnode->eminfoseq,
+            pnode->userid,pnode->devid,pnode->usn,pnode->nickname,pnode->avatar,pnode->md5,pnode->mailinfo);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    } 
+    return OK;
+}
+/**********************************************************************************
+  Function:      dbget_idnode_result
+  Description:   数据库查询自定义id类别操作
+  Calls:          
+  Called By:     main
+  Input:         
+  Output:        none
+  Return:        0:调用成功
+                     1:调用失败
+  Others: 
+  History: 1. Date:2008-10-22
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int32 dbget_idnode_result(void* obj, int n_columns, char** column_values,char** column_names)
+{
+    if(n_columns <= 0)
+    {
+        return ERROR;
+    }
+    struct unode_idstruct* pidnode = (struct unode_idstruct*)obj;
+    if(column_values[0] != NULL)
+    {
+        pidnode->uid = atoi(column_values[0]); 
+    }
+    if(column_values[1] == NULL)
+    {
+        pidnode->fid = atoi(column_values[1]); 
+    }
+    if(column_values[2] == NULL)
+    {
+        pidnode->local = atoi(column_values[2]); 
+    }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"dbget_idnode_result:get int(%d)",*value);
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbfuzzyget_uindex_bymailinfo
+  Description:  根据mailinfo模糊查找用户id
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbfuzzyget_uindex_bymailinfo(int* uid,int* fid,int* local,char* mailinfo)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    struct unode_idstruct tmp_idnode;
+
+    if(mailinfo == NULL)
+    {
+        return ERROR;
+    }
+    memset(&tmp_idnode,0,sizeof(tmp_idnode));
+    //cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select userindex,friendid,local from cfd_uinfo_tbl where mailinfo like '%%%s%%';",mailinfo);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_dbfuzzyget_uindex_bymailinfo(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,dbget_idnode_result,&tmp_idnode,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    if(tmp_idnode.uid)
+    {
+        *uid = tmp_idnode.uid;
+        *fid = tmp_idnode.fid;
+        *local = tmp_idnode.local;
+    }
+    return OK;
 }
 /***********************************************************************************
   Function:      sql_adminaccount_init
@@ -1077,7 +1426,15 @@ int sql_db_init(void)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
-    } 
+    }
+    //初始化新版uinfo_tbl表
+    snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others);");
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
     //初始化临时账户的sn
     sql_tempaccount_sn_init();
     //初始化admin_count
@@ -1358,7 +1715,7 @@ int pnr_dbget_friendsall_byuserid(int id,char* userid)
         return ERROR;
     }
 	snprintf(sql_cmd,SQL_CMD_LEN,"select friendname,friendid,userkey,oneway,remarks from friends_tbl where userid='%s';",userid);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_dbget_friendsall_byuserid sql_cmd(%s)",sql_cmd);
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_dbget_friendsall_byuserid sql_cmd(%s)",sql_cmd);
 	if(sqlite3_get_table(g_friendsdb_handle, sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
     {
         index = nColumn; //字段值从index开始呀
@@ -1389,8 +1746,8 @@ int pnr_dbget_friendsall_byuserid(int id,char* userid)
                 strcpy(g_imusr_array.usrnode[id].friends[i].user_devname,tmp_devinfo.user_devname);
             }
             index += nColumn;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get node(%d) friend_name(%s) friend_id(%s) userkey(%s) remarks(%s) dev(%s:%s)",
-                (i+1),g_imusr_array.usrnode[id].friends[i].user_nickname,g_imusr_array.usrnode[id].friends[i].user_toxid,
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"uid(%d) get friend(%d:%s) friend_id(%s) userkey(%s) remarks(%s) dev(%s:%s)",
+                id,i,g_imusr_array.usrnode[id].friends[i].user_nickname,g_imusr_array.usrnode[id].friends[i].user_toxid,
                 g_imusr_array.usrnode[id].friends[i].user_pubkey,g_imusr_array.usrnode[id].friends[i].user_remarks,
                 g_imusr_array.usrnode[id].friends[i].user_devid,g_imusr_array.usrnode[id].friends[i].user_devname);
         }
@@ -3190,7 +3547,6 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
             }  
             return ERROR;
         }
-
 		snprintf(fpath, sizeof(fpath), "/user%d/s/%s", userid, fname);
     } else {
         userid = get_indexbytoxid(toid);
@@ -3283,7 +3639,7 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
     }
     
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", p_sql);
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", p_sql);
     if (sqlite3_exec(g_msgcachedb_handle[userid], p_sql, 0, 0, &err)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", p_sql, err);
         sqlite3_free(err);
@@ -3345,7 +3701,7 @@ OUT:
     {
         free(p_sql);
     }  
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,len);    
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO, "inset cache msg(%d:%s) len(%d)", userid, pmsg,len);    
 	return OK;
 }
 /*****************************************************************************
@@ -3375,7 +3731,7 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
 
 	snprintf(sql, MSGSQL_CMD_LEN, "delete from msg_tbl "
 		"where id=%d;", msgid);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", sql);
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", sql);
     if (sqlite3_exec(g_msgcachedb_handle[userid], sql, 0, 0, &err)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
         sqlite3_free(err);
@@ -4338,7 +4694,7 @@ int32 pnr_usrdev_mappinginfo_sqlget(struct im_userdev_mapping_struct* p_info)
         return ERROR;
     }
 	snprintf(sql_cmd, SQL_CMD_LEN, "select id,userindex,devid,devname from userdev_mapping_tbl where usrid='%s';",p_info->user_toxid);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_usrdev_mappinginfo_sqlget: sql(%s)",sql_cmd);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_usrdev_mappinginfo_sqlget: sql(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,pnr_usrdev_mappinginfo_dbget,p_info,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -5119,6 +5475,7 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
     }
     return OK;
 }
+
 /*****************************************************************************
  函 数 名  : pnr_userinfo_dbdelete_byuserid
  功能描述  : 根据userid删除对应用户信息
@@ -7196,7 +7553,7 @@ int pnr_email_ukey_dbget_byemname(char* em_name,char* ukey,int* found_flag)
     if(strlen(ukey) <= 0)
     {
         *found_flag = FALSE;
-        return ERROR;
+        return OK;
     }
     *found_flag = TRUE;
     return OK;

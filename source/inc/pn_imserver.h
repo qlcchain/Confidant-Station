@@ -78,7 +78,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_FORMATDISK,
     PNR_IM_CMDTYPE_REBOOT,
     PNR_IM_CMDTYPE_CREATEGROUP,
-    PNR_IM_CMDTYPE_INVITEGROUP,
+    PNR_IM_CMDTYPE_INVITEGROUP,//50
     PNR_IM_CMDTYPE_GROUPINVITEPUSH,
     PNR_IM_CMDTYPE_GROUPINVITEDEAL,
     PNR_IM_CMDTYPE_VERIFYGROUP,
@@ -103,6 +103,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_DELUSER,
     PNR_IM_CMDTYPE_ENABLEQLCNODE,
     PNR_IM_CMDTYPE_CHECKQLCNODE,
+    PNR_IM_CMDTYPE_ADDFRIENDAUTO,
     // 邮箱配置
     PNR_EM_CMDTYPE_SAVE_EMAILCOFIG,
     PNR_EM_CMDTYPE_PULL_EMAILCONFIG,
@@ -118,6 +119,11 @@ enum PNR_IM_CMDTYPE_ENUM
     //用户磁盘限额配置
     PNR_IM_CMDTYPE_GETCAPACITY,
     PNR_IM_CMDTYPE_SETCAPACITY,
+    //用户状态同步消息
+    PNR_IM_CMDTYPE_UINFOKEY_SYSCH,
+    PNR_IM_CMDTYPE_UINFOKEY_REPLY,
+    PNR_IM_CMDTYPE_UINFO_REQUEST,
+    PNR_IM_CMDTYPE_UINFO_UPDATE,
     //rid独有的消息
     PNR_IM_CMDTYPE_SYSDEBUGMSG,
     PNR_IM_CMDTYPE_USRDEBUGMSG,
@@ -260,7 +266,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_DESTORY    "Destory"
 #define PNR_IMCMD_ADDFRIEDNREQ "AddFriendReq"
 #define PNR_IMCMD_ADDFRIENDPUSH  "AddFriendPush"
-#define PNR_IMCMD_ADDREIENDDEAL  "AddFriendDeal"
+#define PNR_IMCMD_ADDFRIENDDEAL  "AddFriendDeal"
 #define PNR_IMCMD_ADDFRIENDREPLY  "AddFriendReply"
 #define PNR_IMCMD_DELFRIENDCMD    "DelFriendCmd"
 #define PNR_IMCMD_DELFRIENDPUSH   "DelFriendPush"
@@ -333,6 +339,8 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_DELUSER   "DelUser"
 #define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
+//用户好友自动添加消息
+#define PNR_IMCMD_ADDFRIENDAUTO "AddFriendAuto"
 // 邮箱配置
 #define PNR_EMCMD_SAVE_EMAILCOFIG "SaveEmailConf"
 #define PNR_EMCMD_PULL_EMAILCONFIG "PullEmailConf"
@@ -345,10 +353,14 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_EMCMD_GETBAKMAILSNUM    "BakMailsNum"
 #define PNR_EMCMD_CHCEKBAKMAILS    "BakMailsCheck"
 #define PNR_EMCMD_MAILNOTICE    "MailSendNotice"
-
 //用户磁盘限额配置
 #define PNR_IMCMD_GETCAPACITY "GetCapactiy"
 #define PNR_IMCMD_SETCAPACITY "SetCapactiy"
+//用户状态同步消息
+#define PNR_IMCMD_UINFOKEYSYSCH "UinfoKeySysch"
+#define PNR_IMCMD_UINFOKEYREPLY "UinfoKeyReply"
+#define PNR_IMCMD_UINFOREQUEST "UinfoRequest"
+#define PNR_IMCMD_UINFOUPDATE "UinfoUpdate"
 //rid特有命令
 #define PNR_IMCMD_SYSDEBUGCMD   "SysDebug"
 #define PNR_IMCMD_USRDEBUGCMD   "UsrDebug"
@@ -443,6 +455,12 @@ enum PNR_DBFILE_INDEX_ENUM
     PNR_DBFILE_INDEX_MSGLOGDB,
     PNR_DBFILE_INDEX_MSGCACHEDB,
     PNR_DBFILE_INDEX_BUTT,
+};
+enum PNR_ADDFRIEND_AUTOTYPE_ENUM
+{
+    PNR_ADDFRIEND_AUTOTYPE_NONE = 0,
+    PNR_ADDFRIEND_AUTOTYPE_BYEMAIL = 1,
+    PNR_ADDFRIEND_AUTOTYPE_OTHERS,
 };
 enum PNR_DBTABLE_INDEX_ENUM
 {
@@ -633,6 +651,8 @@ struct pnr_usermapping_struct
 struct im_friend_msgstruct
 {
     int result;
+    int uindex;
+    int type;
     char fromuser_toxid[TOX_ID_STR_LEN+1];
     char touser_toxid[TOX_ID_STR_LEN+1];
     char nickname[PNR_USERNAME_MAXLEN+1];
@@ -640,6 +660,12 @@ struct im_friend_msgstruct
     char user_pubkey[PNR_USER_PUBKEY_MAXLEN+1];
     char sign[PNR_RSA_KEY_MAXLEN+1];
     char friend_msg[PNR_FRIEND_MSG_MAXLEN+1];
+};
+#define IM_USERIDS_ARRAY_MAXNUM   30
+struct im_userid_array
+{
+    int usernum;
+    char userid[IM_USERIDS_ARRAY_MAXNUM][TOX_ID_STR_LEN+1];
 };
 //群组功能相关接口
 #define PNR_GROUP_MANAGER_MAXNUM 5
@@ -1210,6 +1236,11 @@ enum PNR_SAVEMAIL_RETURN_ENUM
     PNR_SAVEMAIL_RET_OTHERERR,
     PNR_SAVEMAIL_RET_BUTT
 };
+enum PNR_NORMAL_CMDRETURN_ENUM
+{
+    PNR_NORMAL_CMDRETURN_OK = 0,
+    PNR_NORMAL_CMDRETURN_BADPARAMS = 1,
+};
 #define WS_SENDFILE_HEADLEN    952
 #define WS_FILELIST_V1  1 //这个版本新增的ver字段，添加了节点上文件保存真实名称与用户看见的逻辑名称区分
 #define WS_FILELIST_VERSION WS_FILELIST_V1
@@ -1266,14 +1297,16 @@ struct im_user_msg_sendfile {
 }
 
 struct im_user_msg_sendfile_resp {
-	uint32_t action;
-	uint32_t fileid;
-	uint32_t logid;
-	uint32_t segseq;
-	uint16_t crc;
-	uint16_t code;	//返回码
-	char fromid[TOX_ID_STR_LEN + 1];
-	char toid[TOX_ID_STR_LEN + 1];
+    uint32_t action;
+    uint32_t fileid;
+    uint32_t logid;
+    uint32_t segseq;
+    uint16_t crc;
+    uint16_t code;	//返回码
+    char fromid[TOX_ID_STR_LEN + 1];
+    char toid[TOX_ID_STR_LEN + 1];
+    char reserve[2];
+    uint32_t timestamp;
 };
 enum PNR_GLOBAL_SHOWINFO_TYPE
 {
@@ -1499,6 +1532,7 @@ enum PNR_SYSPUSHMSG_TYPE_ENUM
     PNR_SYSPUSHMSG_TYPE_NEWUSER = 1,
     PNR_SYSPUSHMSG_TYPE_NODENAME_CHANGE = 2,
     PNR_SYSPUSHMSG_TYPE_USER_UNUSUAL = 3,
+    PNR_SYSPUSHMSG_TYPE_NEWFRIEND = 4,
 };
 // 邮箱帐号信息结构体
 #define EMAIL_NAME_LEN  100
@@ -1509,9 +1543,11 @@ enum PNR_SYSPUSHMSG_TYPE_ENUM
 #define EMAIL_USERS_CACHE_MAXLEN 1500
 #define EMAIL_CONFIG_MAXNUM 20
 #define EM_CACHE_SEPARATION_CHAR ','
+#define EMLIST_SEPARATION_STRING ","
 #define EM_LISTPULL_DEFNUM    10
 struct em_user_pkey_mapping
 {
+    int type;
     int usernum;
     int pkeynum;
     char user_aray[EMAIL_UKEY_MAXNUM][EMAIL_NAME_LEN+1];
@@ -1584,20 +1620,38 @@ struct email_model
     char e_emailpath[PNR_FILEPATH_MAXLEN+1];
     char e_user[EMAIL_NAME_LEN+1];
 };
-// 邮件节点信息结构体
-// struct email_node_model
-// {
-//     int e_type;
-//     char e_name[EMAIL_NAME_LEN+1];
-//     char e_from[EMAIL_NAME_LEN+1];
-//     char e_to[EMAIL_NAME_LEN+1];
-//     char e_cc[EMAIL_NAME_LEN+1];
-//     char e_userkey[PNR_USER_PUBKEY_MAXLEN+1];
-//     char e_subject[EMAIL_SUBJECT_LEN+1];
-//     char e_attachinfo[EMAIL_SUBJECT_LEN+1];
-//     char e_emailpath[PATH_MAX+1];
-//     char e_attach_name[PATH_MAX+1];
-// };
+#define DEFAULT_UINFO_VERSION     1
+enum UINFO_SYSCHTYPE_ENUM
+{
+    UINFO_SYSCHTYPE_NONE = 0,
+    UINFO_SYSCHTYPE_FRIENDS = 1,
+    UINFO_SYSCHTYPE_MAILINFO = 2,
+    UINFO_SYSCHTYPE_NICKNAME = 4,
+    UINFO_SYSCHTYPE_AVATAR = 8,
+    UINFO_SYSCHTYPE_ALL = 0xFF,
+};
+struct cfd_userinfo_struct
+{
+    int version;
+    int local;
+    int uindex;
+    int fid;
+    int friendseq;
+    int eminfoseq;
+    char userid[TOX_ID_STR_LEN+1];
+    char devid[TOX_ID_STR_LEN+1];
+    char usn[PNR_USN_MAXLEN+1];
+    char nickname[PNR_USERNAME_MAXLEN+1];
+    char pubkey[PNR_USER_PUBKEY_MAXLEN+1];
+    char avatar[PNR_FILENAME_MAXLEN+1];
+    char md5[PNR_MD5_VALUE_MAXLEN+1];
+    char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1];
+};
+struct cfd_uinfonode
+{
+    struct cfd_userinfo_struct unode;
+    struct cfd_userinfo_struct fnode[PNR_IMUSER_FRIENDS_MAXNUM+1];
+};
 int im_server_main(void);
 int im_server_init(void);
 int im_rcvmsg_deal(struct per_session_data__minimal *pss, char* pmsg,
@@ -1645,4 +1699,5 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
 	int msg_len,char* retmsg,int* retmsg_len,int* ret_flag,int* plws_index);
 int pnr_postmsgs_cache_save(int msgid,char* uid,struct pnr_postmsgs_cache* pcache);
 int pnr_postmsgs_cache_send(int server_flag,int msgtype,char* rid,char* msgpay,struct pnr_postmsgs_cache* pcache);
+int pnr_sysmsg_push_newuser(char* userid,char* nickname,char* userkey);
 #endif
