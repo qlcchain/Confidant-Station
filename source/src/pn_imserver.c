@@ -16118,6 +16118,7 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
     struct im_friend_msgstruct *msg = NULL;
     char friends_cache[EMAIL_USERS_CACHE_MAXLEN+1] = {0};    
     struct im_userid_array userids;
+    struct pnr_account_struct src_account;
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
@@ -16135,6 +16136,7 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }    
     memset(msg,0,sizeof(struct im_friend_msgstruct));
     memset(&userids,0,sizeof(userids));
+    memset(&src_account,0,sizeof(src_account));
     //解析参数
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",msg->type,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
@@ -16178,8 +16180,10 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     fid = get_indexbytoxid(msg->touser_toxid);
                     if(fid)
                     {
+                        strcpy(src_account.toxid,msg->fromuser_toxid);
+                        pnr_account_dbget_byuserid(&src_account);
                         //im_pushmsg_callback(fid,PNR_IM_CMDTYPE_ADDFRIENDPUSH,TRUE,head->api_version,(void *)msg);
-                        pnr_autoadd_localfriend(uindex,fid,&g_account_array.account[uindex]);
+                        pnr_autoadd_localfriend(uindex,fid,&src_account);
                     }
                     else
                     {

@@ -340,7 +340,7 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_ENABLEQLCNODE   "EnableQlcNode"
 #define PNR_IMCMD_CHECKQLCNODE   "CheckQlcNode"
 //用户好友自动添加消息
-#define PNR_IMCMD_ADDFRIENDAUTO "AddFriendAuto"
+#define PNR_IMCMD_ADDFRIENDAUTO "AddFriendsAuto"
 // 邮箱配置
 #define PNR_EMCMD_SAVE_EMAILCOFIG "SaveEmailConf"
 #define PNR_EMCMD_PULL_EMAILCONFIG "PullEmailConf"
