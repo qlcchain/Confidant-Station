@@ -21960,12 +21960,11 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     }
     
     pnr_msgcache_getid(id, &msgid);
-    if (msg_head.im_cmdtype != PNR_IM_CMDTYPE_PUSHFILE) {
-    	dup = cJSON_Duplicate(root, 1);
-    	cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
-    	pmsg = cJSON_PrintUnformatted(dup);
-    	cJSON_Delete(dup);
-    }
+	dup = cJSON_Duplicate(root, 1);
+	cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
+	pmsg = cJSON_PrintUnformatted(dup);
+	cJSON_Delete(dup);
+    root = cJSON_Parse(pmsg);
 
     switch (msg_head.im_cmdtype) 
     {
@@ -22014,7 +22013,6 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     			pnr_msgcache_dbdelete_by_logid(userindex, psendmsg);
                 pnr_msglog_dbdelete(userindex, 0, psendmsg->log_id, psendmsg->fromuser_toxid, psendmsg->touser_toxid);
             }
-    		
             pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                 msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
                 PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
@@ -22035,7 +22033,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 cJSON_Delete(dup);
                 break;
             }
-            cJSON_ReplaceItemInObject(dup, "msgid", cJSON_CreateNumber(msgid));
+            //cJSON_ReplaceItemInObject(dup, "msgid", cJSON_CreateNumber(msgid));
             cJSON_ReplaceItemInObject(params, "FilePath", cJSON_CreateString(filepath));
             pmsg = cJSON_PrintUnformatted(dup);
             cJSON_Delete(dup);
