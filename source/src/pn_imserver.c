@@ -1967,6 +1967,12 @@ void im_send_msg_deal(int direction)
                     case PNR_MSG_CACHE_TYPE_TOXAF:
                     case PNR_MSG_CACHE_TYPE_TOXA:
                     case PNR_MSG_CACHE_TYPE_LWS:
+                        if (msg->resend > 30) {
+							DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg failed!user(%d:%s),status(%d),msg(%s)", 
+								msg->userid,g_imusr_array.usrnode[msg->userid].user_nickname,g_imusr_array.usrnode[msg->userid].user_online_type,msg->msg);
+							pnr_msgcache_dbdelete_nolock(msg);
+							continue;
+						}
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) ctype(%d) online_type(%d)",msg->userid,msg->ctype,g_imusr_array.usrnode[msg->userid].user_online_type);
                         if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_TOX 
                             && g_imusr_array.usrnode[msg->userid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
@@ -2743,7 +2749,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     pnr_msgcache_getid(index, &msgid);
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber(msgid));
-    if (local_flag == TRUE) {
+    if (local_flag == TRUE) {        
         if ((cmd == PNR_IM_CMDTYPE_PUSHFILE || cmd == PNR_IM_CMDTYPE_PUSHFILE_TOX) 
             && (apiversion < PNR_API_VERSION_V5))
             //新的版本本地的就不在这里拷贝了
@@ -21096,12 +21102,14 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
         {
             g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
         }
-        g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
-        g_imusr_array.usrnode[userindex].heartbeat_count = 0;
-        g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
+        if(msg_head.im_cmdtype >=PNR_IM_CMDTYPE_LOGIN && msg_head.im_cmdtype <= PNR_IM_CMDTYPE_SETCAPACITY)
+        {
+            g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
+            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+            g_imusr_array.usrnode[userindex].heartbeat_count = 0;
+        }
         pthread_mutex_unlock(&(g_pnruser_lock[userindex]));
     }
-    
     if (needret && strlen(g_tox_retbuf) > 0) 
     {
         if(nodemsg == TRUE)
@@ -21961,7 +21969,16 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     
     pnr_msgcache_getid(id, &msgid);
 	dup = cJSON_Duplicate(root, 1);
-	cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
+    int src_msgid = 0;
+    CJSON_GET_VARINT_BYKEYWORD(dup,tmp_item,tmp_json_buff,"msgid",src_msgid,0);
+    if(src_msgid == 0)
+    {
+        cJSON_AddItemToObject(dup, "msgid", cJSON_CreateNumber(msgid));
+    }
+    else
+    {
+        cJSON_ReplaceItemInObject(dup, "msgid", cJSON_CreateNumber(msgid));
+    }
 	pmsg = cJSON_PrintUnformatted(dup);
 	cJSON_Delete(dup);
     root = cJSON_Parse(pmsg);
