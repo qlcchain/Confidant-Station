@@ -29,6 +29,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V10=10,
     DB_VERSION_V11=11,
     DB_VERSION_V12=12,
+    DB_VERSION_V13=13,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -46,7 +47,7 @@ enum DB_VERSION_ENUM
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V12
+#define DB_CURRENT_VERSION    DB_VERSION_V13
 struct db_string_ret
 {
     int buf_len;
@@ -58,6 +59,17 @@ struct unode_idstruct
     int uid;
     int fid;
 };
+
+//mysql configure
+#define CFD_MYSQL_HOST     "localhost"
+#define CFD_MYSQL_USER     "qlc"
+#define CFD_MYSQL_PASSWD   "confidant"
+#define CFD_MYSQL_PORT     3306
+#define CFD_MYSQL_DBNAME   "cfddb"
+#define CFD_MYSQL_DBSOCK   NULL
+#define CFD_MYSQL_DBPCNT   0
+
+
 int sql_db_init(void);
 int sql_friendsdb_init(void);
 int sql_groupinfodb_init(void);
@@ -190,5 +202,9 @@ int cfd_dbupdate_uinfonickname_byuid(int uid,int fid,int local,char* nickname);
 int cfd_dbupdate_uinfomailinfo_byuid(int uid,int fid,int local,int mailseq,char* mailinfo);
 int cfd_dbinsert_uinfo_newrecord(struct cfd_userinfo_struct* pnode);
 int cfd_dbdelete_uinfo_byuid(int uid,int fid,int local);
+//filelist操作
+int pnr_filelist_dbinsert(int uindex,int msgid,int ftype,int depens,int srcfrom,int size,int pathid,int fileid,char* from,char* to,char* fname,char* fpath,char* md5,char* finfo,char* skey,char* dkey);
+int pnr_filelist_dbupdate_filename_byid(int uindex,int id,char* filename);
+int pnr_filelist_dbdelete_byid(int uindex,int id);
 #endif
 

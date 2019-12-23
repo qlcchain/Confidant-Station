@@ -12,6 +12,7 @@
 #include <sys/stat.h> 
 #include <sys/time.h>
 #include <pthread.h>
+#include <errno.h>
 #include "sodium.h"
 #ifdef OPENWRT_ARCH
 #include <uci.h>
@@ -579,7 +580,7 @@ int get_meminfo(void)
 #endif
         if (!(fp = popen(cmd, "r"))) 
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen cmd(%s) failed",cmd);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen cmd(%s) failed err(%s)",cmd,strerror(errno));
             return ERROR;
         }
         if (fgets(recv,CMD_MAXLEN,fp) <= 0)
@@ -979,12 +980,12 @@ int get_localip_byname(char* devname,char* local_ip)
 #endif
     if (!(fp = popen(cmd, "r"))) 
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd(%s) failed",cmd);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_localip_byname cmd(%s) failed",cmd);
         return ERROR;
     }
     if (fgets(recv,CMD_MAXLEN,fp) <= 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd =%s ret failed",cmd);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_localip_byname cmd =%s ret failed",cmd);
         pclose(fp);
         return ERROR;
     }  
@@ -1036,15 +1037,7 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
     {
         return ERROR;
     }
-#if 0
-#ifdef DEV_ONESPACE
-    snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"ether\" | awk '{print $2}'",devname);
-#else
-    snprintf(cmd,CMD_MAXLEN,"ifconfig %s | grep \"HWaddr\" | awk '{print $5}'",devname);
-#endif
-#else
     snprintf(cmd,CMD_MAXLEN,"cat /sys/class/net/%s/address",devname);
-#endif
     if (!(fp = popen(cmd, "r"))) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get_hwaddr_byname cmd(%s) failed",cmd);
@@ -1087,6 +1080,7 @@ int get_hwaddr_byname(char* devname,char* hwaddr_full,char* hwaddr)
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_hwaddr_byname ret(%s)",recv);
         return ERROR;
     }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_hwaddr_byname: cmd(%s) get dev(%s) hwaddr(%s)",cmd,devname,hwaddr_full);
     return OK;
 }
 char g_dev_hwaddr[MACSTR_MAX_LEN] = {0};
@@ -1583,12 +1577,10 @@ int get_file_name(FILE *pf, char *path, int len)
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad FILE ptr");
 		return -1;
 	}
-
 	snprintf(buf, sizeof(buf), "/proc/self/fd/%d", fd);
 	if (readlink(buf, path, len - 1) != -1) {
 		return 0;
 	}
-
 	return -1;
 }
 /*****************************************************************************
@@ -1746,26 +1738,18 @@ int dev_hwaddr_init(void)
     if(g_dev_hwaddr[0] == '\0')
     {
         get_hwaddr_byname(DEV_ETH0_KEYNAME,g_dev_hwaddr_full,g_dev_hwaddr);
-        if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
-        {
-            get_hwaddr_byname(DEV_ETH1_KEYNAME,g_dev1_hwaddr_full,g_dev1_hwaddr);
-        }
-#if 0
-        //这里是虚拟机测试用
-        if(g_dev_hwaddr[0] == '\0')
-        {
-            get_hwaddr_byname("ens32",g_dev_hwaddr_full,g_dev_hwaddr);
-        }
-#else
         if(strlen(g_dev_hwaddr) < MAC_LEN)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"dev_hwaddr_init:get dev(%s) hwaddr failed",DEV_ETH0_KEYNAME);
             return ERROR;
         }
-#endif
     }
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
+        if(g_dev1_hwaddr[0] == '\0')
+        {
+            get_hwaddr_byname(DEV_ETH1_KEYNAME,g_dev1_hwaddr_full,g_dev1_hwaddr);
+        }
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"dev_hwaddr_init onespace dev0(%s,%s)dev1(%s,%s)",
             g_dev_hwaddr,g_dev_hwaddr_full,g_dev1_hwaddr,g_dev1_hwaddr_full);
     }

@@ -76,7 +76,6 @@ extern sqlite3 *g_groupdb_handle;
 extern sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1];
 extern struct im_user_array_struct g_imusr_array;
 extern const char *data_file_name;
-extern Tox *qlinkNode;
 extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
 extern char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1];
 extern int g_format_reboot_time;
@@ -475,7 +474,7 @@ static void *test_daemon(void *para)
 	return NULL;
 }
 /**********************************************************************************
-  Function:      tox_daemon
+  Function:      cfd_nodetox_task
   Description:  tox守护进程，负责基础的p2p网络组建，接收winq的消息
   Calls:
   Called By:
@@ -489,9 +488,29 @@ static void *test_daemon(void *para)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-static void *tox_daemon(void *para)
+static void *cfd_nodetox_task(void *para)
 {
-    CreatedP2PNetwork();
+    CreatedP2PNetwork(CFD_NODE_TOXID_NID);
+	return NULL;
+}
+/**********************************************************************************
+  Function:      cfd_routetox_task
+  Description:  tox守护进程，负责用户寻址
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                     1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+static void *cfd_routetox_task(void *para)
+{
+    CreatedP2PNetwork(CFD_NODE_TOXID_RID);
 	return NULL;
 }
 /**********************************************************************************
@@ -832,7 +851,8 @@ int32 main(int argc,char *argv[])
 {
     pthread_t monstat_tid;
     pthread_t imserver_tid;
-    pthread_t maintox_tid;
+    pthread_t nodetox_tid;
+    pthread_t routetox_tid;
     pthread_t imuser_heartbeat_tid;
 	pthread_t tid;
 	int i = 0;
@@ -864,12 +884,16 @@ int32 main(int argc,char *argv[])
     /*建立消息队列*/
     
     /*启动主tox进程，建立P2P网络*/
-	if (pthread_create(&maintox_tid, NULL, tox_daemon,NULL) != OK)
+	if (pthread_create(&nodetox_tid, NULL, cfd_nodetox_task,NULL) != OK)
 	{
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create tox_daemon failed");
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create cfd_nodetox_task failed");
         goto out;
 	}
-	
+    if (pthread_create(&routetox_tid, NULL, cfd_routetox_task,NULL) != OK)
+	{
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create cfd_routetox_task failed");
+        goto out;
+	}
      /*启动monitor_stat进程，监控系统资源使用情况*/
     if (pthread_create(&monstat_tid, NULL, monstat_daemon, NULL) != 0) 
     {

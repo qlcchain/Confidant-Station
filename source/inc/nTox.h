@@ -52,6 +52,7 @@ File_Sender file_senders[PNR_IMUSER_MAXNUM+1][NUM_FILE_SENDERS];
 #define NUM_FILE_RCV 128
 typedef struct {
     FILE *file;
+    uint32_t uindex;
     uint32_t friendnum;
     uint32_t filenumber;
 	uint32_t lastrcvtime;
@@ -59,7 +60,7 @@ typedef struct {
 } File_Rcv;
 File_Rcv file_rcv[PNR_IMUSER_MAXNUM+1][NUM_FILE_RCV];
 
-int CreatedP2PNetwork(void);
+int CreatedP2PNetwork(int node_flag);
 int GetFriendNumInFriendlist_new(Tox *plinknode, char *friendId_P);
 void set_timer(void);
 void get_id(Tox *m, char *data);
@@ -76,7 +77,11 @@ int tox_datafile_check(int user_index,char* datafile,int* new_flag);
 int tox_datafile_backup(int user_index,char* datafile);
 int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath,int msgid,int filefrom);
 int get_index_by_toxhandle(Tox *ptox);
-int add_friends_force(Tox *plinknode, char *friendid, char *msg);
+//int add_friends_force(Tox *plinknode, char *friendid, char *msg);
+int if_friend_available(int userindex, char *friendid);
+int cfd_add_friends_force(int node_flag, char *friendid, char *msg);
+int cfd_rnodeid_by_toxfriendnum(Tox *tox, uint32_t friendnumber);
 int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex);
 int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,int* ppm_friendid);
+int processImNodeMsg(Tox *m, cJSON *pJson, int friendnum);
 #endif

@@ -3,8 +3,8 @@
  */
 
 /*
- * Copyright © 2016-2018 The TokTok team.
- * Copyright © 2013 Tox project.
+ * Copyright ? 2016-2018 The TokTok team.
+ * Copyright ? 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -887,14 +887,13 @@ uint32_t tox_friend_add_norequest(Tox *tox, const uint8_t *public_key, Tox_Err_F
 bool tox_friend_delete(Tox *tox, uint32_t friend_number, Tox_Err_Friend_Delete *error)
 {
     Messenger *m = tox->m;
-    int userindex = get_index_by_toxhandle(tox);
-    if(userindex == 0)
+    if(tox == NULL)
     {
-        return 0;
+        return 1;
     }
-    pthread_mutex_lock(&(g_user_friendlock[userindex]));
+    pthread_mutex_lock(&(g_user_friendlock[0]));
     int ret = m_delfriend(m, friend_number);
-    pthread_mutex_unlock(&(g_user_friendlock[userindex]));
+    pthread_mutex_unlock(&(g_user_friendlock[0]));
     // TODO(irungentoo): handle if realloc fails?
     if (ret == -1) {
         SET_ERROR_PARAMETER(error, TOX_ERR_FRIEND_DELETE_FRIEND_NOT_FOUND);
@@ -1377,7 +1376,6 @@ uint32_t tox_file_send(Tox *tox, uint32_t friend_number, uint32_t kind, uint64_t
             SET_ERROR_PARAMETER(error, TOX_ERR_FILE_SEND_FRIEND_NOT_CONNECTED);
             return UINT32_MAX;
     }
-
     /* can't happen */
     return UINT32_MAX;
 }

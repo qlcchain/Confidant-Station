@@ -39,6 +39,7 @@
 #include "tox_seg_msg.h"
 #include "net_crypto.h"
 #include "version.h"
+#include "cfd_route.h"
 
 #ifdef DEV_ONESPACE
 int g_pnrdevtype = PNR_DEV_TYPE_ONESPACE;
@@ -152,7 +153,8 @@ int g_p2pnet_init_flag = FALSE;//tox p2p网络初始化完成标识
 int g_dev_netid = 0;
 char g_devadmin_loginkey[PNR_LOGINKEY_MAXLEN+1] = {0};
 char g_dev_nickname[PNR_USERNAME_MAXLEN+1] = {0};
-struct im_user_struct g_daemon_tox;
+struct im_user_struct g_daemon_tox;//节点根id，用于给用户tox连接和节点间消息同步
+struct im_user_struct g_rnode_tox;//节点路由id，用于给用户寻址，跨节点收发消息
 struct im_user_array_struct g_imusr_array;
 Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 int g_noticepost_enable = TRUE;
@@ -161,7 +163,6 @@ int g_msglist_debugswitch = FALSE;
 //toxdata信息数组
 struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
 struct pnr_account_array_struct g_account_array;
-struct pnr_rid_node g_rnode[PNR_IMUSER_MAXNUM+1];
 
 //用户锁
 pthread_mutex_t g_pnruser_lock[PNR_IMUSER_MAXNUM+1];
@@ -208,8 +209,8 @@ pthread_mutex_t g_postlock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t g_postcachelock = PTHREAD_MUTEX_INITIALIZER;
 int g_devreg_repeat_time = PNR_REPEAT_TIME_15MIN;
 int g_udpdebug_flag = FALSE;
-struct cfd_uinfonode g_uinfolist[PNR_IMUSER_MAXNUM+1];
-pthread_mutex_t g_uinfo_lock[PNR_IMUSER_MAXNUM+1];
+//struct cfd_uinfonode g_uinfolist[PNR_IMUSER_MAXNUM+1];
+//pthread_mutex_t g_uinfo_lock[PNR_IMUSER_MAXNUM+1];
 
 //外部全局变量
 extern sqlite3 *g_groupdb_handle;
@@ -217,13 +218,25 @@ extern sqlite3 *g_db_handle;
 extern sqlite3 *g_emaildb_handle;
 extern sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1];
 extern sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1];
-extern Tox *qlinkNode;
 extern char g_dev_hwaddr_full[MACSTR_MAX_LEN];
 extern char g_dev1_hwaddr_full[MACSTR_MAX_LEN];
 extern char g_dev_hwaddr[MACSTR_MAX_LEN];
 extern char g_dev1_hwaddr[MACSTR_MAX_LEN];
 extern int g_debug_level;
+extern Tox *g_nidNode;
 extern pthread_mutex_t g_toxmsg_cache_lock[PNR_IMUSER_MAXNUM+1];
+extern pthread_mutex_t g_activeuser_lock[CFD_URECORD_MAXNUM+1];
+extern struct cfd_nodeinfo_struct g_rlist_node[CFD_RNODE_MAXNUM];
+extern struct cfd_uinfo_struct g_ruser_list[CFD_URECORD_MAXNUM+1];
+extern struct cfd_uinfo_struct* gp_ruser_cachelist[CFD_URECORD_MAXNUM+1];
+extern struct cfd_uinfo_struct* gp_localuser[PNR_IMUSER_MAXNUM+1];
+extern struct cfd_useractive_struct g_activeuser_list[CFD_URECORD_MAXNUM+1];
+extern struct cfd_useractive_struct* gp_cacheactive_hashlist[CFD_URECORD_MAXNUM+1];
+extern struct cfd_friends_record g_friendrecords[PNR_IMUSER_MAXNUM+1][PNR_IMUSER_FRIENDS_MAXNUM+1];
+extern struct cfd_generinfo g_cfdgeninfo;
+extern struct cfd_olddata_mapping g_oldusers[CFD_RNODE_MAXNUM+1];
+extern struct cfd_olddata_mapping* gp_oldusers_cachebytoxid[CFD_RNODE_MAXNUM+1];
+extern struct cfd_olddata_mapping* gp_localoldusers[PNR_IMUSER_MAXNUM+1];
 int CreatedP2PNetwork_new(int user_index);
 void im_send_file_by_tox(Tox* tox, struct lws_cache_msg_struct *msg, int push);
 /**********************************************************************************
@@ -403,6 +416,7 @@ int pnr_groupinfo_init(void)
     }
     return OK;
 }
+#if 0
 /**********************************************************************************
   Function:      cfd_userinfo_init
   Description:   用户个人信息初始化
@@ -510,6 +524,7 @@ int cfd_userinfo_init(void)
     }
     return OK;
 }
+#endif
 /*****************************************************************************
  函 数 名  : pnr_gettoxid_byhashid
  功能描述  : 根据hashid转化toxid
@@ -642,7 +657,7 @@ int pnr_check_update_devinfo_bytoxid(int index,char* ftox_id,char* dev_id,char* 
         index,ftox_id,dev_id,dev_name);
 
     //更新系统内存中的
-    f_id = get_friendid_bytoxid(index,ftox_id);
+    f_id = cfd_getfriendid_byidstr(index,ftox_id);
     if(f_id >= 0)
     {
         p_friend = &g_imusr_array.usrnode[index].friends[f_id];
@@ -699,7 +714,7 @@ int pnr_addfriend_devinfo_bytoxid(int index,char* ftox_id)
     }
 
     //更新系统内存中的
-    f_id = get_friendid_bytoxid(index,ftox_id);
+    f_id = cfd_getfriendid_byidstr(index,ftox_id);
     if(f_id >= 0)
     {
         p_friend = &g_imusr_array.usrnode[index].friends[f_id];
@@ -829,12 +844,8 @@ int pnr_autoadd_localfriend(int index,int f_index,struct pnr_account_struct* p_s
     p_friend = &g_imusr_array.usrnode[f_index];
     memset(&friend_account,0,sizeof(friend_account));
     strcpy(friend_account.toxid,p_friend->user_toxid);
-    pnr_account_dbget_byuserid(&friend_account);
-    if(friend_account.active == FALSE)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_autoadd_localfriend:friend_account not active");
-        return ERROR;
-    }
+    strcpy(friend_account.nickname,p_friend->user_nickname);
+    strcpy(friend_account.user_pubkey,p_friend->user_pubkey);
     pnr_friend_dbinsert(p_self->user_toxid,p_friend->user_toxid,friend_account.nickname,friend_account.user_pubkey);
     im_nodelist_addfriend(index,p_self->user_toxid,p_friend->user_toxid,friend_account.nickname,friend_account.user_pubkey);
     pnr_check_update_devinfo_bytoxid(index,p_friend->user_toxid,g_daemon_tox.user_toxid,g_dev_nickname);
@@ -1266,11 +1277,11 @@ int get_rnodefidbytoxid(char* p_toxid)
     {
         return -1;
     }
-    for(i=1;i<=PNR_IMUSER_MAXNUM;i++)
+    for(i=1;i<=CFD_RNODE_MAXNUM;i++)
     {
-        if(strcmp(p_toxid,g_rnode[i].tox_id) == OK)
+        if(strcmp(p_toxid,g_rlist_node[i].nodeid) == OK)
         {
-            return g_rnode[i].f_id;
+            return g_rlist_node[i].node_fid;
         }
     }
     return 0xFF;
@@ -1669,8 +1680,8 @@ int im_update_friend_nickname(char* user_toxid, char *friend_toxid, char* nickna
     {
         return ERROR;
     }
-    uid = get_indexbytoxid(user_toxid);
-    if(uid == 0)
+    uid = cfd_getindexbyidstr(user_toxid);
+    if(uid <= 0)
     {
         return ERROR;
     }
@@ -1735,22 +1746,21 @@ char g_tox_sendmsg_cache[1500] = {0};
 void im_send_msg_deal(int direction)
 {
 	int i = 0;
-    int ret = 0;    
+    int rid = 0,to_uid =0,rnode_status = 0;
 	struct lws_cache_msg_struct *msg = NULL;
     struct lws_cache_msg_struct *n = NULL;
-	struct lws_cache_msg_struct *tmsg = NULL;
-    struct lws_cache_msg_struct *tn = NULL;
+	//struct lws_cache_msg_struct *tmsg = NULL;
+    //struct lws_cache_msg_struct *tn = NULL;
     int node_num = 0;
     int msg_num = 0;
     int node_msgno = 0;
     int start_time = 0;
     int end_time = 0;
     //等待系统的p2p网络建立成功
-    if(g_p2pnet_init_flag == FALSE)
+    if(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         return;
     }
-
 	if (direction) {
 		i = PNR_IMUSER_MAXNUM;
 	} else {
@@ -1791,232 +1801,89 @@ void im_send_msg_deal(int direction)
 						msg->resend++;
 					
 					msg->timestamp = time(NULL);
-                    //printf("user(%d) ctype(%d) cmd(%d) msg_len(%d)\n",msg->userid,msg->ctype,msg->type,msg->msglen);
-                    switch (msg->ctype) {
-                    case PNR_MSG_CACHE_TYPE_TOX:
-						if (msg->resend > 50) {
-							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg failed!(user:%d:%s)", 
-							//	msg->userid, msg->msg);
-							//pnr_msgcache_dbdelete_nolock(msg);
-							//continue;
-						}
-						
-                        if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
-                            pnr_msgcache_dbdelete_nolock(msg);
-                            continue;
+                    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) ctype(%d) cmd(%d) msg_len(%d)",msg->userid,msg->ctype,msg->type,msg->msglen);
+                    if (msg->resend > 50) {
+                        //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg failed!(user:%d:%s)", 
+                        //  msg->userid, msg->msg);
+                        //pnr_msgcache_dbdelete_nolock(msg);
+                        //continue;
+                    }
+                    if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
+                        pnr_msgcache_dbdelete_nolock(msg);
+                        continue;
+                    }
+                    //节点间消息，直接走tox发送
+                    if(msg->type >= PNR_IM_CMDTYPE_UINFOKEY_SYSCH && msg->type < PNR_IM_CMDTYPE_BUTT)
+                    {
+                        node_num = msg->logid;
+                        rnode_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle, g_rlist_node[node_num].node_fid, NULL);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"Tox send fid(%d) ret(%d)",g_rlist_node[node_num].node_fid,ret);
+                        if (rnode_status == TOX_CONNECTION_TCP || rnode_status == TOX_CONNECTION_UDP) 
+                        {     
+                            cfd_tox_send_message(g_daemon_tox.ptox_handle,g_rlist_node[node_num].node_fid,msg->msg,msg->msglen,msg->msgid);
+                            msg->resend++;
                         }
-
-						msg->friendid = get_friendid_bytoxid(msg->userid, msg->toid);
-						if (msg->friendid < 0 && msg->type != PNR_IM_CMDTYPE_DELFRIENDPUSH) {
-							pnr_msgcache_dbdelete_nolock(msg);
-							continue;
-						}
-
-						if (msg->type == PNR_IM_CMDTYPE_PUSHMSG) {
-							pthread_mutex_lock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
-							//get the first msg
-							if (g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended == 0) {
-								list_for_each_safe(tmsg, tn, &g_lws_cache_msglist[i].list, struct lws_cache_msg_struct, list) {
-									if (tmsg->friendid == msg->friendid) {
-										g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended = tmsg->msgid;
-										break;
-									}	
-								}
-							}
-
-							if (g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended && 
-								g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended != msg->msgid) {	
-								pthread_mutex_unlock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
-								continue;
-							}
-							pthread_mutex_unlock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
-						}
-						
-						if (!g_tox_linknode[msg->userid])
-                            continue;
-
- 						if (msg->type != PNR_IM_CMDTYPE_DELFRIENDPUSH && !if_friend_available(msg->userid, msg->toid)) {
-							pnr_msgcache_dbdelete_nolock(msg);
-							continue;
-						}
-						
-                        ret = im_get_friend_info(msg->userid, msg->toid, &msg->friendid, &msg->friendnum);
-                        if (ret) {
-                            continue;
-						}
-
-                    	ret = tox_friend_get_connection_status(g_tox_linknode[msg->userid], msg->friendnum, NULL);
-                    	if (ret == TOX_CONNECTION_TCP || ret == TOX_CONNECTION_UDP) 
+                    }
+                    else
+                    {
+                        //文件传输
+                        //if(msg->ctype == PNR_MSG_CACHE_TYPE_TOXF || msg->ctype == PNR_MSG_CACHE_TYPE_TOXAF)
+                        if(msg->type == PNR_IM_CMDTYPE_PUSHFILE)
                         {
-                            if(msg->msglen > MAX_CRYPTO_DATA_SIZE)
+                            if (msg->filestatus) 
                             {
-                                cJSON *RspJson = cJSON_Parse(msg->msg);
-                				if (!RspJson) {
-                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse retbuf(%s) err!", msg->msg);
-                                    continue;
-                				}
-
-                                cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "data");
-                				if (!RspJsonParams) {
-                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse data(%s) err!", msg->msg);
-                					cJSON_Delete(RspJson);
-                                    continue;
-                				}
-
-                				char *RspStrParams = RspJsonParams->valuestring;
-                				if (!RspStrParams) 
-                                {
-                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print params(%s) err!", msg->msg);
-                					cJSON_Delete(RspJson);
-                                    continue;
-                				}
-                                struct tox_msg_send *tox_msg = (struct tox_msg_send *)calloc(1, sizeof(*tox_msg));
-                                if(tox_msg == NULL)
-                                {
-                					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "alloc tox_msg failed");
-                					cJSON_Delete(RspJson);
-                                    continue;
-                				}
-                                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"$$$get RspStrParams(%s)",RspStrParams);
-                                memset(tox_msg,0,sizeof(struct tox_msg_send));
-                                tox_msg->msg = RspStrParams;
-                			    tox_msg->msgid = msg->msgid;
-                			    tox_msg->friendnum = msg->friendnum;
-                			    tox_msg->msglen = strlen(RspStrParams);
-                                for(;tox_msg->offset < tox_msg->msglen;)
-                                {
-                                    cJSON *JsonFrame = cJSON_Duplicate(RspJson, true);
-                    			    if (!JsonFrame) {
-                    			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
-                    					break;
-                    				}
-                                    //去掉原始的data字段
-                    				cJSON_DeleteItemFromObject(JsonFrame, "data");
-                                    //填充新的字段
-                                    strncpy(g_tox_sendmsg_cache, tox_msg->msg+tox_msg->offset, MAX_SEND_DATA_SIZE);
-                                	cJSON_AddNumberToObject(JsonFrame, "offset", tox_msg->offset);
-                                    tox_msg->offset += MAX_SEND_DATA_SIZE;
-                                    if(tox_msg->offset >= tox_msg->msglen)
-                                    {
-                                        cJSON_AddNumberToObject(JsonFrame, "more", 0);
-                                    }
-                                    else
-                                    {
-                                        cJSON_AddNumberToObject(JsonFrame, "more", 1);
-                                    }
-                    				cJSON_AddStringToObject(JsonFrame, "data", g_tox_sendmsg_cache);
-                    				char *RspStrSend = cJSON_PrintUnformatted_noescape(JsonFrame);
-                    				if (!RspStrSend) {
-                    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print RspJsonSend err!");
-                    					cJSON_Delete(JsonFrame);
-                    					break;
-                    				}
-                    				tox_friend_send_message(g_tox_linknode[msg->userid], msg->friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-                                		(uint8_t *)RspStrSend, strlen(RspStrSend), NULL);
-                    				cJSON_Delete(JsonFrame);
-                    				free(RspStrSend);
-                                }
-                                cJSON_Delete(RspJson);
+    							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sending file(%s)", msg->filename);
+                                continue;
+    						}
+                            cfd_uinfolistgetdbid_byuidstr(msg->toid,&to_uid);
+                            rid =g_activeuser_list[to_uid].active_rid;
+                            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_usersend_textmessage_bytox:send(%d:%s) rid(%d)",to_uid,to_idstring,rid);
+                            if(rid == CFD_RNODE_DEFAULT_RID)
+                            {
+    							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sending file(%s) to local", msg->filename);
+                                cfd_usersend_textmessage(i,msg);
                             }
                             else
                             {
-                                tox_friend_send_message(g_tox_linknode[msg->userid], 
-                                    msg->friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-                                    (uint8_t *)msg->msg, msg->msglen, NULL);
-                            }
-                            msg->resend++;
-                        }
-                        break;
-
-                    case PNR_MSG_CACHE_TYPE_TOXF:
-						if (msg->resend > 50) {
-							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send file failed!(user:%d:%s)", 
-							//	msg->userid, msg->filename);
-							//pnr_msgcache_dbdelete_nolock(msg);
-							//continue;
-						}
-						
-                        if (msg->filestatus) {
-							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sending file(%s)", msg->filename);
-                            continue;
-						}
-
-						if (!g_tox_linknode[msg->userid]) {
-							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get tox err(%d)", msg->userid);
-							continue;
-						}
-
-                        ret = im_get_friend_info(msg->userid, msg->toid, &msg->friendid, &msg->friendnum);
-                        if (ret) {
-							DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get friendnum err(%d--%s)", msg->userid, msg->toid);
-                            //这里加不上，就不要重试了
-                            pnr_msgcache_dbdelete_nolock(msg);
-                            continue;
-						}
-
-						ret = tox_friend_get_connection_status(g_tox_linknode[msg->userid], msg->friendnum, NULL);
-                        if (ret == TOX_CONNECTION_TCP || ret == TOX_CONNECTION_UDP) {
-	                    	msg->filestatus = 1;
-	                    	im_send_file_by_tox(g_tox_linknode[msg->userid], msg, FALSE);
-							msg->resend++;
-                        } else {
-							//DEBUG_PRINT(DEBUG_LEVEL_ERROR, "user(%d) friend(%s) offline", msg->userid, msg->toid);
-						}
-                        break;
-
-                    case PNR_MSG_CACHE_TYPE_TOXAF:
-                    case PNR_MSG_CACHE_TYPE_TOXA:
-                    case PNR_MSG_CACHE_TYPE_LWS:
-                        if (msg->resend > 30) {
-							DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg failed!user(%d:%s),status(%d),msg(%s)", 
-								msg->userid,g_imusr_array.usrnode[msg->userid].user_nickname,g_imusr_array.usrnode[msg->userid].user_online_type,msg->msg);
-							pnr_msgcache_dbdelete_nolock(msg);
-							continue;
-						}
-                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) ctype(%d) online_type(%d)",msg->userid,msg->ctype,g_imusr_array.usrnode[msg->userid].user_online_type);
-                        if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_TOX 
-                            && g_imusr_array.usrnode[msg->userid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
-                        {
-                            tox_friend_send_message(qlinkNode, 
-                                g_imusr_array.usrnode[msg->userid].appid, TOX_MESSAGE_TYPE_NORMAL, 
-                                (uint8_t *)msg->msg, msg->msglen, NULL);
-	                    }
-						else if (g_imusr_array.usrnode[msg->userid].user_online_type == USER_ONLINE_TYPE_LWS
-                            && g_imusr_array.usrnode[msg->userid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
-	                    {
-	                        insert_lws_msgnode_ring(msg->userid, msg->msg, msg->msglen);
-	                    }
-                        else
-                        {
-                            if(g_noticepost_enable == TRUE && msg->notice_flag == FALSE)
-                            {
-                                msg->notice_flag = TRUE;
-                                switch(msg->type)
+                                rnode_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle, g_rlist_node[rid].node_fid, NULL);
+                                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"sendfile to user(%s) rid(%d) file(%s) status(%d)");
+                            	if (rnode_status == TOX_CONNECTION_TCP || rnode_status == TOX_CONNECTION_UDP) 
                                 {
-                                    //case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
-                                    //case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
-                                    case PNR_IM_CMDTYPE_PUSHMSG:
-                                    case PNR_IM_CMDTYPE_PUSHFILE:
-                                    case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
-                                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                                        post_newmsg_notice(g_daemon_tox.user_toxid,g_imusr_array.usrnode[msg->userid].user_toxid,
-                                            PNR_POSTMSG_PAYLOAD,TRUE,msg->msgid);                                    
-                                        break;
-                                    case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                                        pnr_postmsgs_cache_save(msg->msgid,g_imusr_array.usrnode[msg->userid].user_toxid,&g_group_pushmsgs_cache);
-                                        break;
-                                    default:
-                                        break;
+                                    msg->filestatus = 1;
+                                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"###friendnum(%d) node_fid(%d)",msg->friendnum,g_rlist_node[rid].node_fid);
+                                    msg->friendnum =  g_rlist_node[rid].node_fid;
+                                    im_send_file_by_tox(g_daemon_tox.ptox_handle, msg, FALSE);
+                                    msg->resend++;
+                                    //cfd_usersend_textmessage(i,msg);
                                 }
                             }
-							if (im_msg_if_limited(msg->type) && msg->resend++ > 3) {
-								pnr_msgcache_dbdelete_nolock(msg);
-								continue;
-							}
                         }
-						break;
-					default:
-						DEBUG_PRINT(DEBUG_LEVEL_ERROR, "wrong cache type(%d)", msg->ctype);
+                        else
+                        {
+                            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) cmd(%d) sendmsg(%s->%s) msg(%s)",i,msg->type,msg->fromid,msg->toid,msg->msg);
+#if 0
+                            if (msg->type == PNR_IM_CMDTYPE_PUSHMSG) 
+                            {
+    							pthread_mutex_lock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
+    							//get the first msg
+    							if (g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended == 0) {
+    								list_for_each_safe(tmsg, tn, &g_lws_cache_msglist[i].list, struct lws_cache_msg_struct, list) {
+    									if (tmsg->friendid == msg->friendid) {
+    										g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended = tmsg->msgid;
+    										break;
+    									}	
+    								}
+    							}
+    							if (g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended && 
+    								g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended != msg->msgid) {	
+    								pthread_mutex_unlock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
+    								continue;
+    							}
+    							pthread_mutex_unlock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
+    						}
+                           #endif 
+                            cfd_usersend_textmessage(i,msg);
+                        }
                     }
 				}
 			}
@@ -2058,14 +1925,27 @@ void im_send_msg_deal(int direction)
 *****************************************************************************/
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey)
 {
-    int i = 0,j = 0,none_index = 0,f_id = 0;
+    int i = 0,j = 0,none_index = 0,f_id = 0,idlen = 0;
+    char fromid_str[CFD_USER_PUBKEYLEN+1] = {0};
+    char toid_str[CFD_USER_PUBKEYLEN+1] = {0};
+    char* pfromid_str = NULL;
+    char* ptoid_str = NULL;
     //检查是否非法
     if(from_user == NULL || to_user == NULL || nickname == NULL || userkey == NULL)
     {
         return ERROR;
     }
-
-    i = get_indexbytoxid(from_user);
+    idlen = strlen(from_user);
+    if(idlen == TOX_ID_STR_LEN)
+    {
+        cfd_olduseridstr_getbytoxid(from_user,fromid_str);
+        pfromid_str = fromid_str;
+    }
+    else
+    {
+        pfromid_str = from_user;
+    }
+    i = cfd_uinfolistgetindex_byuidstr(pfromid_str);
     if(i != index)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%s) not found",from_user);
@@ -2093,10 +1973,20 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
             break;
         }
     }
-
     g_imusr_array.usrnode[i].friendnum++;
-    f_id = get_indexbytoxid(to_user);
-    if(f_id != 0)
+    idlen = strlen(to_user);
+    if(idlen == TOX_ID_STR_LEN)
+    {
+        cfd_olduseridstr_getbytoxid(to_user,toid_str);
+        ptoid_str = toid_str;
+    }
+    else
+    {
+        ptoid_str = to_user;
+    }
+    cfd_uinfolistgetdbid_byuidstr(ptoid_str,&f_id);    
+    g_imusr_array.usrnode[i].friends[none_index].friend_uid = f_id;
+    if(f_id > 0 && g_activeuser_list[f_id].active_rid == CFD_RNODE_DEFAULT_RID)
     {
         g_imusr_array.usrnode[i].friends[none_index].local = TRUE;
     }
@@ -2110,7 +2000,7 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
         &g_imusr_array.usrnode[i].friends[none_index].hashid,g_imusr_array.usrnode[i].friends[none_index].u_hashstr);
     //这里肯定是在线的
     g_imusr_array.usrnode[i].friends[none_index].online_status = USER_ONLINE_STATUS_ONLINE;
-    strncpy(g_imusr_array.usrnode[i].friends[none_index].user_toxid,to_user,TOX_ID_STR_LEN);
+    strncpy(g_imusr_array.usrnode[i].friends[none_index].user_toxid,ptoid_str,TOX_ID_STR_LEN);
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_nickname,nickname,TOX_ID_STR_LEN);
     strncpy(g_imusr_array.usrnode[i].friends[none_index].user_pubkey,userkey,PNR_USER_PUBKEY_MAXLEN);
     pthread_mutex_unlock(&(g_user_friendlock[i]));
@@ -2141,14 +2031,14 @@ int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname
 *****************************************************************************/
 int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
 {
-    int i = 0,j = 0,exsit_flag = 0;
+    int i = 0,j = 0;
     //检查是否非法
     if(from_user == NULL || to_user == NULL)
     {
         return ERROR;
     }
 
-    i = get_indexbytoxid(from_user);
+    i = cfd_getindexbyidstr(from_user);
     if(i != index)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%s) not found",from_user);
@@ -2156,15 +2046,8 @@ int im_nodelist_delfriend(int index,char* from_user,char* to_user,int oneway)
     }
 
     pthread_mutex_lock(&(g_user_friendlock[i]));
-    for(j=0;j<PNR_IMUSER_FRIENDS_MAXNUM;j++)
-    {
-        if(strcmp(g_imusr_array.usrnode[i].friends[j].user_toxid,to_user) == OK)
-        {
-            exsit_flag = TRUE;
-            break;
-        }
-    }
-    if(exsit_flag == TRUE)
+    j = cfd_getfriendid_byidstr(i,to_user);
+    if(j >= 0)
     {
     	if (oneway) {
 			g_imusr_array.usrnode[i].friends[j].oneway = 1;
@@ -2208,7 +2091,9 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 	struct group_sys_msg* pgsysmsg = NULL;
 	struct group_user* pgsender = NULL;
 	struct group_user* pgrecer = NULL;
+    struct cfd_node_online_msgstruct* pnodemsg = NULL;
     struct group_fileinfo_struct tmp_finfo;
+    struct cfd_uinfo_struct* p_uinfo = NULL;
     char* pmsg = NULL;
     int msg_len = 0;
 	char filepath[512] = {0};
@@ -2228,7 +2113,6 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     {
         return ERROR;
     }
-	
     //构建消息
 	cJSON * ret_root =  cJSON_CreateObject();
     cJSON * ret_params =  cJSON_CreateObject();
@@ -2238,18 +2122,16 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         cJSON_Delete(ret_root);
         return ERROR;
     }
-    
     cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)apiversion));
-    
     switch(cmd)
     {
         case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             pfriend = (struct im_friend_msgstruct*)params;
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_ADDFRIENDPUSH));
-            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(pfriend->touser_toxid));
-            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(pfriend->fromuser_toxid));  
+            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(pfriend->to_uidstr));
+            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(pfriend->from_uidstr));  
             cJSON_AddItemToObject(ret_params, "NickName",cJSON_CreateString(pfriend->nickname));
             cJSON_AddItemToObject(ret_params, "UserKey",cJSON_CreateString(pfriend->user_pubkey));
             cJSON_AddItemToObject(ret_params, "Msg",cJSON_CreateString(pfriend->friend_msg));
@@ -2261,8 +2143,8 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
             pfriend = (struct im_friend_msgstruct*)params;
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_ADDFRIENDREPLY));
-            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(pfriend->fromuser_toxid));
-            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(pfriend->touser_toxid));  
+            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(pfriend->from_uidstr));
+            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(pfriend->to_uidstr));  
             cJSON_AddItemToObject(ret_params, "Nickname",cJSON_CreateString(pfriend->nickname));
             cJSON_AddItemToObject(ret_params, "Result",cJSON_CreateNumber(pfriend->result));
             cJSON_AddItemToObject(ret_params, "FriendName",cJSON_CreateString(pfriend->friend_nickname));
@@ -2309,8 +2191,8 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 }
                 else if(apiversion >= PNR_API_VERSION_V3)
                 {
-                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
-                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,psendmsg->ext2);
+                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser,
+                        psendmsg->touser,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,psendmsg->ext2);
                 }
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",psendmsg->log_id);
             }
@@ -2333,45 +2215,42 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 cJSON_AddItemToObject(ret_params, "Sign",cJSON_CreateString(psendmsg->sign));  
                 cJSON_AddItemToObject(ret_params, "Nonce",cJSON_CreateString(psendmsg->nonce)); 
                 cJSON_AddItemToObject(ret_params, "PriKey",cJSON_CreateString(psendmsg->prikey)); 
-                char friend_pubkey[PNR_LOGINKEY_MAXLEN+1] = {0};
-                if(pnr_friend_get_pubkey_bytoxid(psendmsg->touser_toxid,psendmsg->fromuser_toxid,friend_pubkey) == OK)
+                cJSON_AddItemToObject(ret_params, "PubKey",cJSON_CreateString(psendmsg->touser)); 
+                cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->fromuser));
+                cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->touser));
+                if(psendmsg->ext2 != 0)
                 {
-                    cJSON_AddItemToObject(ret_params, "PubKey",cJSON_CreateString(friend_pubkey)); 
+                    cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(psendmsg->ext2));  
                 }
-#if 0 //暂时不用hashid
-                if(local_flag == TRUE)
-                {
-                    int f_id = 0;
-                    f_id = get_friendid_bytoxid(index,psendmsg->fromuser_toxid);
-                    if(f_id >= 0 && f_id < PNR_IMUSER_FRIENDS_MAXNUM)
-                    {
-                        cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(g_imusr_array.usrnode[index].friends[f_id].u_hashstr));
-                        cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(g_imusr_array.usrnode[index].u_hashstr));
-                        DEBUG_PRINT(DEBUG_LEVEL_INFO,"PushMsg:renew hasdid(%s:%s->%s:%s)",
-                            psendmsg->from_uid,psendmsg->to_uid,
-                            g_imusr_array.usrnode[index].friends[f_id].u_hashstr,g_imusr_array.usrnode[index].u_hashstr);
-                    }
-                }
-                else
-                {
-                    cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->from_uid));
-                    cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->to_uid));
-                }
-#else
-            cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->fromuser_toxid));
-            cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->touser_toxid));
-            if(psendmsg->ext2 != 0)
-            {
-                cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(psendmsg->ext2));  
-            }
-#endif
             }
             break;
         case PNR_IM_CMDTYPE_DELMSGPUSH:
             psendmsg = (struct im_sendmsg_msgstruct*)params;
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_DELMSGPUSH));
-            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser_toxid));
-            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser_toxid));  
+            if(strlen(psendmsg->fromuser_toxid) == TOX_ID_STR_LEN)
+            {
+                if(strlen(psendmsg->fromuser) != CFD_USER_PUBKEYLEN)
+                {
+                    cfd_olduseridstr_getbytoxid(psendmsg->fromuser_toxid,psendmsg->fromuser);
+                }
+                cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser));
+            }
+            else
+            {
+                cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser_toxid));
+            }
+            if(strlen(psendmsg->touser_toxid) == TOX_ID_STR_LEN)
+            {
+                if(strlen(psendmsg->touser_toxid) != CFD_USER_PUBKEYLEN)
+                {
+                    cfd_olduseridstr_getbytoxid(psendmsg->touser_toxid,psendmsg->touser);
+                }
+                cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser));
+            }
+            else
+            {
+                cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser_toxid));
+            }
             //这里需要把最终推送给用户的msgid转换成数据库里面的id
             if(local_flag == TRUE)
             {
@@ -2395,15 +2274,15 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "OnlineStatus",cJSON_CreateNumber(pfriend->result));  
             break;
         case PNR_IM_CMDTYPE_UINFOKEY_SYSCH:
-            pfriend = (struct im_friend_msgstruct*)params;
+            p_uinfo = (struct cfd_uinfo_struct*)params;
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_UINFOKEYSYSCH));
-            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(pfriend->fromuser_toxid));
-            cJSON_AddItemToObject(ret_params, "ToId",cJSON_CreateString(pfriend->touser_toxid));
+            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(p_uinfo->uidstr));
             cJSON_AddItemToObject(ret_params, "RouteId",cJSON_CreateString(g_daemon_tox.user_toxid));
-            cJSON_AddItemToObject(ret_params, "RouteName",cJSON_CreateString(g_dev_nickname));
-            cJSON_AddItemToObject(ret_params, "FriendSeq",cJSON_CreateNumber(g_uinfolist[pfriend->uindex].unode.friendseq)); 
-            cJSON_AddItemToObject(ret_params, "MailSeq",cJSON_CreateNumber(g_uinfolist[pfriend->uindex].unode.eminfoseq)); 
-            cJSON_AddItemToObject(ret_params, "AvatarMd5",cJSON_CreateString(g_uinfolist[pfriend->uindex].unode.md5)); 
+            cJSON_AddItemToObject(ret_params, "FriendSeq",cJSON_CreateNumber(p_uinfo->friend_seq)); 
+            cJSON_AddItemToObject(ret_params, "UinfoSeq",cJSON_CreateNumber(p_uinfo->uinfo_seq)); 
+            cJSON_AddItemToObject(ret_params, "AvatarMd5",cJSON_CreateString(p_uinfo->md5)); 
+            cJSON_AddItemToObject(ret_params, "Uname",cJSON_CreateString(p_uinfo->uname)); 
+            cJSON_AddItemToObject(ret_params, "MailInfo",cJSON_CreateString(p_uinfo->mailinfo)); 
             break;
 		case PNR_IM_CMDTYPE_PUSHFILE:
 			psendfile = (struct im_user_msg_sendfile *)params;
@@ -2421,8 +2300,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             }
 		    cJSON_AddItemToObject(ret_params, "FileName", cJSON_CreateString(psendfile->filename));
             cJSON_AddItemToObject(ret_params, "FileType", cJSON_CreateNumber(ntohl(psendfile->action)));
-            
-			findex = get_indexbytoxid(psendfile->fromid);
+			findex = cfd_getindexbyidstr(psendfile->fromid);
             if(apiversion >= PNR_API_VERSION_V5)
             {
                 //src file
@@ -2526,7 +2404,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(ptoxsendfile->touser_toxid));
 			cJSON_AddItemToObject(ret_params, "FileName", cJSON_CreateString(ptoxsendfile->filename));
 			cJSON_AddItemToObject(ret_params, "FileType", cJSON_CreateNumber(ptoxsendfile->filetype));
-			findex = get_indexbytoxid(ptoxsendfile->fromuser_toxid);
+			findex = cfd_getindexbyidstr(ptoxsendfile->fromuser_toxid);
 			snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
 				g_imusr_array.usrnode[findex].userdata_pathurl, ptoxsendfile->filename);
 			md5_hash_file(fullfilename, md5);
@@ -2554,8 +2432,8 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
         case PNR_IM_CMDTYPE_READMSGPUSH:
             psendmsg = (struct im_sendmsg_msgstruct*)params;
             cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_READMSGPUSH));
-            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser_toxid));
-            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser_toxid));  
+            cJSON_AddItemToObject(ret_params, "UserId",cJSON_CreateString(psendmsg->fromuser));
+            cJSON_AddItemToObject(ret_params, "FriendId",cJSON_CreateString(psendmsg->touser));  
             cJSON_AddItemToObject(ret_params, "ReadMsgs",cJSON_CreateString(psendmsg->msg_buff));  
             if(local_flag == TRUE)
             {
@@ -2740,16 +2618,60 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                     return ERROR;
             }
             break;
+        case PNR_IM_CMDTYPE_RNODEONLINE_NOTICE:
+            pnodemsg = (struct cfd_node_online_msgstruct*)params;
+            cJSON_AddItemToObject(ret_params, "Action",cJSON_CreateString(PNR_IMCMD_RNODEONLINE_NOTICE));
+            cJSON_AddItemToObject(ret_params, "Mac",cJSON_CreateString(pnodemsg->head.mac));
+            cJSON_AddItemToObject(ret_params, "Type",cJSON_CreateNumber(pnodemsg->head.type));
+            cJSON_AddItemToObject(ret_params, "Weight",cJSON_CreateNumber(pnodemsg->head.weight));
+            cJSON_AddItemToObject(ret_params, "NodeId",cJSON_CreateString(pnodemsg->head.nodeid));
+            cJSON_AddItemToObject(ret_params, "RouteId",cJSON_CreateString(pnodemsg->head.routeid));
+            cJSON_AddItemToObject(ret_params, "Rname",cJSON_CreateString(pnodemsg->head.rname));
+            cJSON_AddItemToObject(ret_params, "UserNum",cJSON_CreateNumber(pnodemsg->head.innode_usernum));
+            if(pnodemsg->head.innode_usernum > 0)
+            {            
+                cJSON *pJsonsub = NULL;
+                int i = 0;
+                cJSON *pJsonArry = cJSON_CreateArray();
+                if(pJsonArry == NULL)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                    cJSON_Delete(ret_root);
+                    return ERROR;
+                }
+                for(i=0;i<pnodemsg->head.innode_usernum;i++)  
+                {
+                    pJsonsub = cJSON_CreateObject();
+                    if(pJsonsub == NULL)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                        cJSON_Delete(ret_root);
+                        return ERROR;
+                    }
+                    cJSON_AddItemToArray(pJsonArry,pJsonsub); 
+                    snprintf(filepath,512,"%d,%d,%d,%d,%d,%d,%s",pnodemsg->users[i].uid,pnodemsg->users[i].index,pnodemsg->users[i].friend_seq,
+                        pnodemsg->users[i].uinfo_seq,pnodemsg->users[i].last_active,pnodemsg->users[i].active_rid,pnodemsg->users[i].idstr);
+                    cJSON_AddStringToObject(pJsonsub,"User",filepath); 
+                }
+                cJSON_AddItemToObject(ret_params,"Users", pJsonArry);
+            }
+            break;
         default:
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad cmd(%d)",cmd);
             cJSON_Delete(ret_root);
             return ERROR;
     }
-
-    pnr_msgcache_getid(index, &msgid);
+    if(cmd >= PNR_IM_CMDTYPE_UINFOKEY_SYSCH)
+    {
+        pnr_msgcache_getid(CFD_NODEID_USERINDEX, &msgid);
+    }
+    else
+    {
+        pnr_msgcache_getid(index, &msgid);
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber(msgid));
-    if (local_flag == TRUE) {        
+    if (local_flag == TRUE) {
         if ((cmd == PNR_IM_CMDTYPE_PUSHFILE || cmd == PNR_IM_CMDTYPE_PUSHFILE_TOX) 
             && (apiversion < PNR_API_VERSION_V5))
             //新的版本本地的就不在这里拷贝了
@@ -2819,15 +2741,14 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             }
             else if(apiversion >= PNR_API_VERSION_V3)
             {
-                pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, 
-                    psendmsg->touser_toxid, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
-                    pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
+                pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser,psendmsg->touser, cmd, pmsg, msg_len, NULL, NULL, 
+                    psendmsg->log_id,pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
             }
             break;
         case PNR_IM_CMDTYPE_DELMSGPUSH:
         case PNR_IM_CMDTYPE_READMSGPUSH:
-            pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, 
-                psendmsg->touser_toxid, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
+            pnr_msgcache_dbinsert(msgid, psendmsg->fromuser, 
+                psendmsg->touser, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
                 pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->msg_srckey,psendmsg->msg_dstkey);
             break;
 
@@ -2865,21 +2786,16 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             pnr_msgcache_dbdelete(msgid, 0);
 	        return ERROR;
 	    }
-	
     	switch (cmd) {
 		case PNR_IM_CMDTYPE_PUSHMSG:
-#if (DB_CURRENT_VERSION < DB_VERSION_V3)
-#else
-			insert_tox_msgnode_v3(index, psendmsg->fromuser_toxid,
-                psendmsg->touser_toxid, pmsg, msg_len, cmd, psendmsg->log_id,
-                msgid, psendmsg->sign, psendmsg->nonce, psendmsg->prikey);
+			cfd_usermsgnode_insert(index, psendmsg->fromuser,psendmsg->touser, pmsg, msg_len,
+                cmd, psendmsg->log_id,msgid, psendmsg->sign, psendmsg->nonce, psendmsg->prikey);
             break;
-#endif
 		case PNR_IM_CMDTYPE_DELMSGPUSH:
         case PNR_IM_CMDTYPE_READMSGPUSH:
-			insert_tox_msgnode(index, psendmsg->fromuser_toxid,
-                psendmsg->touser_toxid, pmsg, msg_len, cmd, psendmsg->log_id,
-                msgid, psendmsg->msg_srckey, psendmsg->msg_dstkey);
+			cfd_usermsgnode_insert(index, psendmsg->fromuser,
+                psendmsg->touser, pmsg, msg_len, cmd, psendmsg->log_id,
+                msgid, psendmsg->msg_srckey, "",psendmsg->msg_dstkey);
 			break;
 			
 		case PNR_IM_CMDTYPE_PUSHFILE:
@@ -2895,31 +2811,40 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
 			break;
 
 		case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
-			add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
-			break;
+			//现在添加好友都是复用的节点p2p链接，所以不用重建了
+            //cfd_add_friends_force(CFD_NODE_TOXID_NID,pfriend->friend_devid,pmsg);
+            cfd_usermsgnode_insert(index, pfriend->fromuser_toxid,
+                pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL,NULL);
+            break;
 
 		case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
-			add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
-			insert_tox_msgnode(index, pfriend->fromuser_toxid,
-                pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL);
+			//现在添加好友都是复用的节点p2p链接，所以不用重建了
+            //cfd_add_friends_force(CFD_NODE_TOXID_NID,pfriend->friend_devid,pmsg);
+			cfd_usermsgnode_insert(index, pfriend->fromuser_toxid,
+                pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL,NULL);
 			break;
         case PNR_IM_CMDTYPE_FILEFORWARD_PUSH:
             insert_tox_file_msgnode(index,psendmsg->fromuser_toxid, psendmsg->touser_toxid,
                 pmsg, msg_len, psendmsg->msg_buff, fullfilename, cmd, psendmsg->log_id,
                 msgid, ntohl(psendmsg->msgtype),psendmsg->sign,psendmsg->prikey);
             break;
-        //case PNR_IM_CMDTYPE_UINFOKEY_SYSCH:
-            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg(%s)",pmsg);
+        case PNR_IM_CMDTYPE_RNODEONLINE_NOTICE:
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"NOTICE:len(%d)(%s)",msg_len,pmsg);
+            pnodemsg = (struct cfd_node_online_msgstruct*)params;
+            cfd_rnodetox_msgnode_insert(g_daemon_tox.user_toxid,g_rlist_node[pnodemsg->to_rid].nodeid,cmd,msgid,msg_len,pmsg);
+            break;
+        case PNR_IM_CMDTYPE_UINFOKEY_SYSCH:
+            p_uinfo = (struct cfd_uinfo_struct*)params;
+            cfd_rnodetox_msgnode_insert(g_daemon_tox.user_toxid,g_rlist_node[p_uinfo->local].nodeid,cmd,msgid,msg_len,pmsg);
+            break;
 		default:
-			insert_tox_msgnode(index, pfriend->fromuser_toxid,
-                pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL);
+			cfd_usermsgnode_insert(index, pfriend->fromuser_toxid,
+                pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL,NULL);
 		}
     }
-
     free(pmsg);
     return OK;
 }
-
 /*****************************************************************************
  函 数 名  : im_tox_pushmsg_callback
  功能描述  : tox转发消息
@@ -3053,8 +2978,8 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
         break;  
     case PNR_IM_CMDTYPE_DELMSGPUSH:
         cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_DELMSGPUSH));
-        cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(psendmsg->fromuser_toxid));
-        cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(psendmsg->touser_toxid));  
+        cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(psendmsg->fromuser));
+        cJSON_AddItemToObject(ret_params, "FriendId", cJSON_CreateString(psendmsg->touser));  
         cJSON_AddItemToObject(ret_params, "MsgId", cJSON_CreateNumber(psendmsg->log_id));  
         break;   
         
@@ -3079,7 +3004,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
         }
         cJSON_AddItemToObject(ret_params, "FileName", cJSON_CreateString(psendfile->filename));
 		cJSON_AddItemToObject(ret_params, "FileType", cJSON_CreateNumber(ntohl(psendfile->action)));
-		findex = get_indexbytoxid(psendfile->fromid);
+		findex = cfd_getindexbyidstr(psendfile->fromid);
 		snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
 			g_imusr_array.usrnode[findex].userdata_pathurl, psendfile->filename);
 		md5_hash_file(fullfilename, md5);
@@ -3104,7 +3029,7 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
 		cJSON_AddItemToObject(ret_params, "DstKey", cJSON_CreateString(pfile->dstkey));
 		cJSON_AddItemToObject(ret_params, "MsgId", cJSON_CreateNumber(pfile->log_id));
 
-		findex = get_indexbytoxid(pfile->fromuser_toxid);
+		findex = cfd_getindexbyidstr(pfile->fromuser_toxid);
 		snprintf(fullfilename, sizeof(fullfilename), "%ss/%s", 
 			g_imusr_array.usrnode[findex].userdata_pathurl, pfile->filename);
 		md5_hash_file(fullfilename, md5);
@@ -3166,11 +3091,13 @@ int im_tox_pushmsg_callback(int index, int cmd, int apiversion, void *params)
 		break;
 
 	case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
-		add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
+		//add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
+		cfd_add_friends_force(CFD_NODE_TOXID_NID, pfriend->friend_devid, pmsg);
 		break;
 
 	case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
-		add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
+		//add_friends_force(g_tox_linknode[index], pfriend->touser_toxid, pmsg);
+		cfd_add_friends_force(CFD_NODE_TOXID_NID, pfriend->friend_devid, pmsg);
 		/*insert_tox_msgnode(index, pfriend->fromuser_toxid,
             pfriend->touser_toxid, pmsg, msg_len, cmd, 0, msgid,NULL,NULL);*/
 		break;
@@ -3243,7 +3170,7 @@ int im_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserDataVersion",data_version,TOX_ID_STR_LEN);
 
-    if(g_p2pnet_init_flag != TRUE)
+    if(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"g_p2pnet_init_flag no ok");
         ret_code = PNR_USER_LOGIN_NO_SERVER;
@@ -3501,7 +3428,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",router_id,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_id,TOX_ID_STR_LEN);
 
-    if(g_p2pnet_init_flag != TRUE)
+    if(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"g_p2pnet_init_flag no ok");
         ret_code = PNR_USER_DESTORY_OTHER_ERR;
@@ -3514,7 +3441,7 @@ int im_userdestory_deal(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_USER_DESTORY_BAD_ROUTERID;
     }
     //useid 处理
-    else if(strlen(user_id) != TOX_ID_STR_LEN)
+    else if(strlen(user_id) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",router_id);
         ret_code = PNR_USER_DESTORY_BAD_USERID;
@@ -3605,13 +3532,12 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,rid = 0,f_uid = 0;
 
     if(params == NULL)
     {
         return ERROR;
     }
-
     msg = (struct im_friend_msgstruct *)calloc(1, sizeof(struct im_friend_msgstruct));
     if (!msg) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
@@ -3623,33 +3549,33 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendDevId",msg->friend_devid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",msg->nickname,PNR_USERNAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",msg->user_pubkey,PNR_USER_PUBKEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",msg->friend_msg,PNR_FRIEND_MSG_MAXLEN);
 
     //useid 处理
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->user_pubkey) < DEFAULT_DES_KEYLEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN
+        || strlen(msg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s) userkey(%s)",
-            msg->fromuser_toxid,msg->touser_toxid,msg->user_pubkey);
-        ret_code = PNR_MSGSEND_RETCODE_FAILED;
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
+            msg->fromuser_toxid,msg->touser_toxid);
+        ret_code = PNR_USER_ADDFRIEND_FAILED;
     }
     else if(strcmp(msg->fromuser_toxid,msg->touser_toxid) == OK)
     {
        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"userid repeat(%s->%s)",
             msg->fromuser_toxid,msg->touser_toxid); 
-       ret_code = PNR_MSGSEND_RETCODE_FAILED;
+       ret_code = PNR_USER_ADDFRIEND_FAILED;
     }
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
-            ret_code = PNR_MSGSEND_RETCODE_FAILED;
+            ret_code = PNR_USER_ADDFRIEND_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
         }
         else
@@ -3658,28 +3584,71 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 *plws_index = index;
             }
-
-			if (if_friend_available(index, msg->touser_toxid)) {
+			if (if_friend_available(index, msg->touser_toxid))
+            {
 				ret_code = PNR_USER_ADDFRIEND_FRIEND_EXSIT;
-			} else {
-            	ret_code = PNR_USER_ADDFRIEND_RETOK;
-			}
-			
-            if (head->iftox) {
-                head->toxmsg = msg;
-                head->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDPUSH;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
-            } else {
-                i = get_indexbytoxid(msg->touser_toxid);
-                if(i != 0)
+			} 
+            else
+            {
+                cfd_toxidformatidstr(msg->fromuser_toxid,msg->from_uidstr);
+                cfd_toxidformatidstr(msg->touser_toxid,msg->to_uidstr);
+                if(strlen(msg->to_uidstr) < CFD_USER_PUBKEYLEN)
                 {
-                    im_pushmsg_callback(i,PNR_IM_CMDTYPE_ADDFRIENDPUSH,TRUE,head->api_version,(void *)msg);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"get touser_toxid(%s) failed",msg->touser_toxid);
+                    ret_code = PNR_USER_ADDFRIEND_FAILED;
                 }
                 else
                 {
-                    im_pushmsg_callback(index,PNR_IM_CMDTYPE_ADDFRIENDPUSH,FALSE,head->api_version,(void *)msg);
+                    ret_code = PNR_USER_ADDFRIEND_RETOK;
+                    memset(msg->user_pubkey,0,PNR_USER_PUBKEY_MAXLEN);
+                    strcpy(msg->user_pubkey,msg->from_uidstr);
+                    if(strlen(msg->friend_devid) == TOX_ID_STR_LEN)
+                    {
+                        rid = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,msg->friend_devid);
+                        if(rid <= 0)
+                        {
+                            //新节点
+                            rid = cfd_rnodelist_getidleid();
+                            if(rid <= 0)
+                            {
+                                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rnodelist over");
+                                return ERROR;
+                            }
+                            cfd_rnodelist_addnewnode(rid,msg->friend_devid);
+                        }
+                    }
+                    cfd_uinfolistgetdbid_byuidstr(msg->to_uidstr,&f_uid);
+                    if(f_uid <= 0)
+                    {
+                        //新用户
+                        f_uid = cfd_uinfolist_getidleid();
+                        if(f_uid > 0 && f_uid < CFD_URECORD_MAXNUM)
+                        {
+                            cfd_uinfonode_addnew(f_uid,0,FALSE,0,0,msg->to_uidstr,msg->nickname,NULL,NULL,NULL);
+                            cfd_uactive_addnew(f_uid,index,rid,msg->to_uidstr);
+                            im_pushmsg_callback(index,PNR_IM_CMDTYPE_ADDFRIENDPUSH,FALSE,head->api_version,(void *)msg);
+                        }
+                        else
+                        {
+                            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rnodelist over");
+                            return ERROR;
+                        }
+                    }
+                    else
+                    {
+                        //已存在的用户
+                        rid = g_activeuser_list[f_uid].active_rid;
+                        if(rid == CFD_RNODE_DEFAULT_RID)
+                        {
+                            im_pushmsg_callback(i,PNR_IM_CMDTYPE_ADDFRIENDPUSH,TRUE,head->api_version,(void *)msg);
+                        }
+                        else
+                        {
+                            im_pushmsg_callback(index,PNR_IM_CMDTYPE_ADDFRIENDPUSH,FALSE,head->api_version,(void *)msg);
+                        }
+                    }
                 }
-            }
+			}
         }
     }
     
@@ -3696,7 +3665,6 @@ int im_addfriend_req_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
     cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
     cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
-
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_ADDFRIEDNREQ));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "Msg", cJSON_CreateString(retmsg_buff));
@@ -3780,17 +3748,9 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
 
     //查询是否已经存在的实例
-    for(index=1;index<=g_imusr_array.max_user_num;index++)
-    {
-        if(strcmp(msg->fromuser_toxid,g_imusr_array.usrnode[index].user_toxid) == OK)
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s)",msg->fromuser_toxid);
-            break;
-        }
-    }
+    index = cfd_getindexbyidstr(msg->fromuser_toxid);
     //非本地实例消息
-    if((index > g_imusr_array.max_user_num)
-        ||((msg->result == OK) &&((strlen(friend_pubkey) < DEFAULT_DES_KEYLEN ) || (strlen(msg->user_pubkey) < DEFAULT_DES_KEYLEN))))
+    if( index <= 0 ||((msg->result == OK) &&((strlen(friend_pubkey) < DEFAULT_DES_KEYLEN ) || (strlen(msg->user_pubkey) < DEFAULT_DES_KEYLEN))))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_addfriend_deal_deal:get index(%d) friend_pubkey(%s) user_pubkey(%s) error",
             index,friend_pubkey,msg->user_pubkey);
@@ -3802,23 +3762,25 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
         {
             *plws_index = index;
         }
+        cfd_toxidformatidstr(msg->fromuser_toxid,msg->from_uidstr);
+        cfd_toxidformatidstr(msg->touser_toxid,msg->to_uidstr);
         //如果添加成功，先添加本地数据库
         if(msg->result == OK)
         {
             pnr_friend_dbinsert(msg->fromuser_toxid,msg->touser_toxid,msg->friend_nickname,friend_pubkey);
             im_nodelist_addfriend(index,msg->fromuser_toxid,msg->touser_toxid,msg->friend_nickname,friend_pubkey);
-            pnr_addfriend_devinfo_bytoxid(index,msg->touser_toxid);
+            cfd_addfriend_devinfo_byidstr(index,msg->to_uidstr);
         }
         ret_code = PNR_MSGSEND_RETCODE_OK;
 
         if (head->iftox) {
             head->toxmsg = msg;
             head->im_cmdtype = PNR_IM_CMDTYPE_ADDFRIENDREPLY;
-            head->to_userid = get_indexbytoxid(msg->touser_toxid);
+            head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
         } else {
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ adddeal call addreply");
-            friend_id = get_indexbytoxid(msg->touser_toxid);
-            if(friend_id != 0)
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ adddeal call addreply");
+            friend_id = cfd_getindexbyidstr(msg->to_uidstr);
+            if(friend_id > 0)
             {
                 im_pushmsg_callback(friend_id,PNR_IM_CMDTYPE_ADDFRIENDREPLY,TRUE,head->api_version,(void *)msg);
             }
@@ -3898,7 +3860,7 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,rid = 0;
 
     if (!params) {
         return ERROR;
@@ -3917,8 +3879,7 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
 
     //useid 处理
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN || strlen(msg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
             msg->fromuser_toxid,msg->touser_toxid);
@@ -3927,8 +3888,8 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -3942,7 +3903,6 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
 
 			int iffriend = if_friend_available(index, msg->touser_toxid);
-			
 			pnr_msgcache_dbdelete_by_friendid(index, msg->touser_toxid);
             im_nodelist_delfriend(index,msg->fromuser_toxid,msg->touser_toxid,0);
             pnr_friend_dbdelete(msg->fromuser_toxid,msg->touser_toxid,0);
@@ -3952,17 +3912,21 @@ int im_delfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	            if (head->iftox) {
 	                head->toxmsg = msg;
 	                head->im_cmdtype = PNR_IM_CMDTYPE_DELFRIENDPUSH;
-	                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+	                head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
 	            } else {
-	                i = get_indexbytoxid(msg->touser_toxid);
-	                if(i != 0)
+	                cfd_checklastactive_byuidstr(msg->touser_toxid,&i,&rid);
+                    if(i > 0 && rid == CFD_RNODE_DEFAULT_RID)
 	                {
 	                    im_pushmsg_callback(i,PNR_IM_CMDTYPE_DELFRIENDPUSH,TRUE,head->api_version,(void *)msg);
 	                }
-	                else
+	                else if(rid)
 	                {
 	                    im_pushmsg_callback(index,PNR_IM_CMDTYPE_DELFRIENDPUSH,FALSE,head->api_version,(void *)msg);
 	                }
+                    else
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_INFO,"have no router");
+                    }
 	            }
 			} else {
 				int friendnum = GetFriendNumInFriendlist_new(g_tox_linknode[index], msg->touser_toxid);
@@ -4041,7 +4005,7 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,rid = 0;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
     
@@ -4064,8 +4028,8 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     msg->msgtype = PNR_IM_MSGTYPE_TEXT;
 
 	//useid 处理
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN
+        || strlen(msg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
             msg->fromuser_toxid,msg->touser_toxid);
@@ -4085,8 +4049,8 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -4114,10 +4078,10 @@ int im_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if (head->iftox) {
                 head->toxmsg = msg;
                 head->im_cmdtype = PNR_IM_CMDTYPE_PUSHMSG;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
             } else {
-                i = get_indexbytoxid(msg->touser_toxid);
-                if(i != 0)
+                cfd_checklastactive_byuidstr(msg->touser_toxid,&i,&rid);
+                if(i > 0 && rid == CFD_RNODE_DEFAULT_RID)
                 {
                     im_pushmsg_callback(i,PNR_IM_CMDTYPE_PUSHMSG,TRUE,head->api_version,(void *)msg);
                 }
@@ -4199,7 +4163,7 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0,target_associd = 0;
+    int index = 0,i = 0,rid = 0,target_associd = 0;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
     
@@ -4240,8 +4204,8 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     }   
     else
 #endif        
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN
+        || strlen(msg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
             msg->fromuser_toxid,msg->touser_toxid);
@@ -4261,8 +4225,8 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -4304,10 +4268,10 @@ int im_sendmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
             if (head->iftox) {
                 head->toxmsg = msg;
                 head->im_cmdtype = PNR_IM_CMDTYPE_PUSHMSG;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
             } else {
-                i = get_indexbytoxid(msg->touser_toxid);
-                if(i != 0)
+                cfd_checklastactive_byuidstr(msg->touser_toxid,&i,&rid);
+                if(i > 0 && rid == CFD_RNODE_DEFAULT_RID)
                 {
                     im_pushmsg_callback(i,PNR_IM_CMDTYPE_PUSHMSG,TRUE,head->api_version,(void *)msg);
                 }
@@ -4396,48 +4360,46 @@ ERR:
 int im_delmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
-    struct im_sendmsg_msgstruct *msg;
+    struct im_sendmsg_msgstruct *msg = NULL;
     char retmsg_buff[PNR_USERNAME_MAXLEN+1] = {0};
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,rid = 0;
 	cJSON *ret_root =  NULL;
     cJSON *ret_params = NULL;
 
 	if (!params) {
         return ERROR;
     }
-
     msg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*msg));
     if (!msg) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
         return ERROR;
     }
-    
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",msg->touser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msg->log_id,TOX_ID_STR_LEN);
     msg->msgtype = PNR_IM_MSGTYPE_SYSTEM;
 
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
+    cfd_toxidformatidstr(msg->fromuser_toxid,msg->fromuser);
+    cfd_toxidformatidstr(msg->touser_toxid,msg->touser);
+    if(strlen(msg->fromuser) < CFD_USER_PUBKEYLEN || strlen(msg->touser) < CFD_USER_PUBKEYLEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
-            msg->fromuser_toxid,msg->touser_toxid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",msg->fromuser_toxid,msg->touser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser);
+        if(index <= 0)
         {
             //清除对应记录
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser_toxid);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get fromuser_toxid(%s) failed",msg->fromuser);
         }
         else
         {
@@ -4445,24 +4407,22 @@ int im_delmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 *plws_index = index;
             }
-
-			if (!if_friend_available(index, msg->touser_toxid)) {
+			if (!if_friend_available(index, msg->touser)) {
 				ret_code = PNR_MSGSEND_RETCODE_NOT_FRIEND;
 				goto OUT;
 			}
-
 			pnr_msgcache_dbdelete_by_logid(index, msg);
-            pnr_msglog_dbdelete(index,msg->msgtype,msg->log_id,msg->fromuser_toxid,msg->touser_toxid);
+            pnr_msglog_dbdelete(index,msg->msgtype,msg->log_id,msg->fromuser,msg->touser);
             ret_code = PNR_USER_ADDFRIEND_RETOK;
 			head->forward = TRUE;
 
             if (head->iftox) {
                 head->toxmsg = msg;
                 head->im_cmdtype = PNR_IM_CMDTYPE_DELMSGPUSH;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                head->to_userid = cfd_getindexbyidstr(msg->touser);
             } else {
-                i = get_indexbytoxid(msg->touser_toxid);
-                if(i != 0)
+                cfd_checklastactive_byuidstr(msg->touser,&i,&rid);
+                if(i > 0 && rid == CFD_RNODE_DEFAULT_RID)
                 {
                     im_pushmsg_callback(i,PNR_IM_CMDTYPE_DELMSGPUSH,TRUE,head->api_version,(void *)msg);
                 }
@@ -4557,8 +4517,7 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"TargetUserId",msg.touser_toxid,TOX_ID_STR_LEN);
 
     //useid 处理
-    if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg.touser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg.fromuser_toxid) < CFD_USER_PUBKEYLEN || strlen(msg.touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
             msg.fromuser_toxid,msg.touser_toxid);
@@ -4569,8 +4528,8 @@ int im_onlinestatus_check_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_MSGSEND_RETCODE_OK;
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg.touser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg.touser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
             online_status = USER_ONLINE_STATUS_OFFLINE;
@@ -4646,6 +4605,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* ret_buff = NULL;
     int index = 0;
     int active = PNR_APPACTIVE_STATUS_BUTT;
+    int uid = 0;
     if(params == NULL)
     {
         return ERROR;
@@ -4656,18 +4616,17 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",msg.fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Active",active,TOX_ID_STR_LEN);
     //useid 处理
-    if(strlen(msg.fromuser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg.fromuser_toxid) < CFD_USER_PUBKEYLEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",
-            msg.fromuser_toxid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",msg.fromuser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
     else
     {
         ret_code = PNR_MSGSEND_RETCODE_OK;
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg.fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg.fromuser_toxid);
+        if(index <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",msg.fromuser_toxid);
         }
@@ -4677,7 +4636,7 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 *plws_index = index;
             }   
-            pthread_mutex_lock(&(g_pnruser_lock[index]));
+            pthread_mutex_lock(&(g_activeuser_lock[index]));
             if(active == PNR_APPACTIVE_STATUS_FRONT || active == PNR_APPACTIVE_STATUS_BACKEND)
             {
                 if(g_imusr_array.usrnode[index].appactive_flag != active)
@@ -4689,7 +4648,21 @@ int im_heartbeat_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             g_imusr_array.usrnode[index].heartbeat_count = 0;
             g_imusr_array.usrnode[index].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
-            pthread_mutex_unlock(&(g_pnruser_lock[index]));
+            if(gp_localuser[index] != NULL)
+            {
+                uid = gp_localuser[index]->id;
+                g_activeuser_list[uid].active_time = (int)time(NULL);
+                if(g_activeuser_list[uid].active_rid != CFD_RNODE_DEFAULT_RID)
+                {
+                    g_activeuser_list[uid].active_rid = CFD_RNODE_DEFAULT_RID;
+                    cfd_uactive_dbupdate_byid(gp_localuser[index]->id,0,g_activeuser_list[uid].active_rid,g_activeuser_list[uid].active_time,0,NULL);
+                }
+                else
+                {
+                    cfd_uactive_dbupdate_byid(gp_localuser[index]->id,0,0,g_activeuser_list[uid].active_time,0,NULL);
+                }
+            }
+            pthread_mutex_unlock(&(g_activeuser_lock[index]));
             /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"hearbeat_deal: set user(%d) user_onlinestatus(%d) user_online_type(%d)",
                 index,g_imusr_array.usrnode[index].user_onlinestatus,g_imusr_array.usrnode[index].user_online_type);*/
         }
@@ -4790,7 +4763,7 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad msgnum(%s)",msgnum);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
-    else if(strlen(pmsg->fromuser_toxid) != TOX_ID_STR_LEN || strlen(pmsg->touser_toxid) != TOX_ID_STR_LEN)
+    else if(strlen(pmsg->fromuser_toxid) < CFD_USER_PUBKEYLEN || strlen(pmsg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",pmsg->fromuser_toxid,pmsg->touser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -4798,8 +4771,8 @@ int im_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(pmsg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(pmsg->fromuser_toxid);
+        if(index <= 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",pmsg->fromuser_toxid);
@@ -5083,7 +5056,7 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
 #endif
-    else if(strlen(pmsg->fromuser_toxid) != TOX_ID_STR_LEN || strlen(pmsg->touser_toxid) != TOX_ID_STR_LEN)
+    else if(strlen(pmsg->fromuser_toxid) < CFD_USER_PUBKEYLEN || strlen(pmsg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s:%s)",pmsg->fromuser_toxid,pmsg->touser_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -5091,8 +5064,8 @@ int im_pullmsg_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(pmsg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(pmsg->fromuser_toxid);
+        if(index <= 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",pmsg->fromuser_toxid);
@@ -5341,7 +5314,7 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
     //useid 处理
-    if(strlen(user_toxid) != TOX_ID_STR_LEN)
+    if(strlen(user_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -5349,8 +5322,8 @@ int im_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(user_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(user_toxid);
+        if(index <= 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",user_toxid);
@@ -5473,7 +5446,7 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
     //useid 处理
-    if(strlen(user_toxid) != TOX_ID_STR_LEN)
+    if(strlen(user_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -5481,8 +5454,8 @@ int im_pullfriend_cmd_deal_v3(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(user_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(user_toxid);
+        if(index <= 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",user_toxid);
@@ -5614,8 +5587,8 @@ int im_sysch_datafile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"NeedSynch",synch_flag,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserDataVersion",data_version,TOX_ID_STR_LEN);
 
-    index = get_indexbytoxid(user_id);
-    if(index == 0)
+    index = cfd_getindexbyidstr(user_id);
+    if(index <= 0)
     {
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
@@ -5736,6 +5709,8 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	int ret_code = 0, ret_num = 0;
     int filefrom = 0;
     struct pnr_account_struct src_account;
+    char user_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+
     if (!params) {
         return ERROR;
     }
@@ -5746,28 +5721,29 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "MsgStartId", start, 0);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "MsgNum", num, 0);
 
-    index = get_indexbytoxid(user_id);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(user_id);
+    if (index <= 0) {
         ret_code = 1;
 		goto OUT;
     }
-	snprintf(sql, sizeof(sql), "select id,timestamp,msgtype,msg,ext,ext2,from_user,to_user,sign,prikey "
-		"from msg_tbl where ");
+    cfd_toxidformatidstr(user_id,user_idstr);
+	snprintf(sql, sizeof(sql), "select id,timestamp,msgtype,msg,filepath,filesize,from_user,to_user,sign,prikey "
+		"from cfd_msglog_tbl where ");
 	switch (category) {
 	case PNR_FILE_ALL:
-		snprintf(category_str, sizeof(category_str), "(from_user='%s' or to_user='%s')", user_id,user_id);
+		snprintf(category_str, sizeof(category_str), "(from_user='%s' or to_user='%s')", user_idstr,user_idstr);
 		break;
 
 	case PNR_FILE_SEND:
-		snprintf(category_str, sizeof(category_str), "(from_user='%s' and to_user!='')", user_id);
+		snprintf(category_str, sizeof(category_str), "(from_user='%s' and to_user!='')", user_idstr);
 		break;
 
 	case PNR_FILE_RECV:
-		snprintf(category_str, sizeof(category_str), "(to_user='%s' and from_user!='')", user_id);
+		snprintf(category_str, sizeof(category_str), "(to_user='%s' and from_user!='')", user_idstr);
 		break;
 
 	case PNR_FILE_UPLOAD:
-		snprintf(category_str, sizeof(category_str), "(from_user='%s' and to_user='')", user_id);
+		snprintf(category_str, sizeof(category_str), "(from_user='%s' and to_user='')", user_idstr);
 		break;
 
 	default:
@@ -5784,21 +5760,17 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
 #if 0
         snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and msgtype in(%d,%d,%d)",PNR_IM_MSGTYPE_IMAGE, PNR_IM_MSGTYPE_MEDIA, PNR_IM_MSGTYPE_FILE);
 #else
-        snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and (msgtype=%d or (msgtype in(%d,%d,%d) and ext like '%%/u/%%'))",
+        snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and (msgtype=%d or (msgtype in(%d,%d,%d) and filepath like '%%/u/%%'))",
 		    PNR_IM_MSGTYPE_FILE,PNR_IM_MSGTYPE_IMAGE, PNR_IM_MSGTYPE_MEDIA, PNR_IM_MSGTYPE_FILE);
 #endif
 	}
-
 	if (start) {
 		snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " and id<%d", start);
 	}
-	
-	snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " group by ext order by id desc");
-
+	snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " group by filepath order by id desc");
 	if (num) {
 		snprintf(sql + strlen(sql), sizeof(sql) - strlen(sql), " limit %d;", num);
 	}
-
 	ret_payloads = cJSON_CreateArray();
     if (!ret_payloads) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "json create err");
@@ -5853,7 +5825,7 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
                 strcpy(from_user,dbResult[offset+6]);
                 if(category == PNR_FILE_ALL)
                 {
-                    if(strcasecmp(from_user,user_id) == OK)
+                    if(strcasecmp(from_user,user_idstr) == OK)
                     {
                         if(strstr(filename,"/u/") != NULL)
                         {
@@ -5925,8 +5897,8 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
 				pnr_friend_get_remark(user_id, from_user, remark, sizeof(remark) - 1);
 				cJSON_AddItemToObject(array_item, "Sender", cJSON_CreateString(remark));
 				cJSON_AddItemToObject(array_item, "UserKey", cJSON_CreateString(dbResult[offset+9]));
-                friendid = get_friendid_bytoxid(index,from_user);
-                if(friendid)
+                friendid = cfd_getfriendid_byidstr(index,from_user);
+                if(friendid > 0)
                 {
                     cJSON_AddItemToObject(array_item, "SenderKey", cJSON_CreateString(g_imusr_array.usrnode[index].friends[friendid].user_pubkey));
                 }
@@ -5954,7 +5926,7 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
         				pnr_friend_get_remark(user_id, to_user, remark, sizeof(remark) - 1);
 				        cJSON_AddItemToObject(array_item, "Sender", cJSON_CreateString(remark));
                     }
-                    friendid = get_friendid_bytoxid(index,to_user);
+                    friendid = cfd_getfriendid_byidstr(index,to_user);
                     if(friendid)
                     {
                         cJSON_AddItemToObject(array_item, "SenderKey", cJSON_CreateString(g_imusr_array.usrnode[index].friends[friendid].user_pubkey));
@@ -5986,10 +5958,11 @@ int im_pull_file_list_deal(cJSON *params, char *retmsg, int *retmsg_len,
             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"file(%s) filefrom(%d)",filepath,filefrom);
 			offset += nColumn;
         }
-
         ret_num = i;
         sqlite3_free_table(dbResult);
-    } else {
+    }
+    else 
+    {
     	DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql(%s) err(%s)", sql, errmsg);
 		sqlite3_free(errmsg);
 	}
@@ -6027,14 +6000,12 @@ OUT:
 	
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-	
     *retmsg_len = strlen(ret_buff);
     if (*retmsg_len >= IM_JSON_MAXLEN) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad ret(%d)", *retmsg_len);
         free(ret_buff);
         return ERROR;
     }
-	
     strcpy(retmsg, ret_buff);
     free(ret_buff);
 	
@@ -6073,7 +6044,8 @@ int im_upload_file_req_deal(cJSON *params, char *retmsg, int *retmsg_len,
     cJSON *ret_params = NULL;
 	int index = 0;
 	int ret_code = 0, filesize = 0, filetype = 0;
-	
+    char user_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+
     if (!params) {
         return ERROR;
     }
@@ -6082,20 +6054,16 @@ int im_upload_file_req_deal(cJSON *params, char *retmsg, int *retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileName", filename, PNR_FILENAME_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileSize", filesize, 0);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileType", filetype, 0);
-
-    index = get_indexbytoxid(user_id);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(user_id);
+    if (index <= 0) {
         ret_code = 3;
 		goto OUT;
     }
-
-	snprintf(sql, sizeof(sql), "select id from msg_tbl where from_user='%s' and to_user='' and msg='%s';", 
-		user_id, filename);
-
+    cfd_toxidformatidstr(user_id,user_idstr);
+	snprintf(sql, sizeof(sql), "select id from cfd_msglog_tbl where from_user='%s' and to_user='' and msg='%s';",user_idstr, filename);
 	char **dbResult; 
     char *errmsg;
     int nRow, nColumn;
-		
     if (sqlite3_get_table(g_msglogdb_handle[index], sql, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK) {
 		if (nRow > 0)
 			ret_code = 1;
@@ -6133,17 +6101,14 @@ OUT:
 
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-	
     *retmsg_len = strlen(ret_buff);
     if (*retmsg_len >= IM_JSON_MAXLEN) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad ret(%d)", *retmsg_len);
         free(ret_buff);
         return ERROR;
     }
-	
     strcpy(retmsg, ret_buff);
     free(ret_buff);
-	
 	return OK;
 }
 
@@ -6196,8 +6161,8 @@ int im_upload_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileSize", filesize, 0);
     CJSON_GET_VARINT_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileType", filetype, 0);
 
-    index = get_indexbytoxid(user_id);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(user_id);
+    if (index <= 0) {
         ret_code = 3;
 		goto OUT;
     }
@@ -6299,8 +6264,8 @@ int im_delete_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
 
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "UserId", user_id, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FileName", filename, PNR_FILENAME_MAXLEN);
-    index = get_indexbytoxid(user_id);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(user_id);
+    if (index <= 0) {
         ret_code = 3;
 		goto OUT;
     }
@@ -6330,11 +6295,11 @@ int im_delete_file_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	unlink(filepath);
     if(head->api_version >= PNR_API_VERSION_V5)
     {
-        snprintf(sql, sizeof(sql), "delete from msg_tbl where ext='%s';", p_filepath);
+        snprintf(sql, sizeof(sql), "delete from cfd_msglog_tbl where filepath='%s';", p_filepath);
     }
     else
     {
-        snprintf(sql, sizeof(sql), "delete from msg_tbl where ext='%s';", filename);
+        snprintf(sql, sizeof(sql), "delete from cfd_msglog_tbl where filepath='%s';", filename);
     }
 	if (sqlite3_exec(g_msglogdb_handle[index], sql, 0, 0, &errmsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql(%s) err(%s)", sql, errmsg);
@@ -7346,8 +7311,8 @@ int im_replaymsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff, "ToId", toid, TOX_ID_STR_LEN);
-    index = get_indexbytoxid(toid);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(toid);
+    if (index <= 0) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get toid(%s) index err", toid);
         return ERROR;
     }
@@ -7423,7 +7388,8 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
     if (!phead->no_parse_msgid) {
         CJSON_GET_VARLONG_BYKEYWORD(root,tmp_item,tmp_json_buff,"msgid",phead->msgid,0);
     }
-    if (phead->iftox) {
+    if (phead->iftox) 
+    {
 		CJSON_GET_VARINT_BYKEYWORD(root,tmp_item,tmp_json_buff,"offset",phead->offset,0);	
         if(phead->offset)
         {
@@ -7473,6 +7439,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_EMCMD_CHCEKBAKMAILS) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_CHECKBAKEMAIL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_BAKFILE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_BAKFILE;
             }
             else
             {
@@ -7569,6 +7539,18 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_IMCMD_FILEFORWARD) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_FILEFORWARD;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_FILEPATHSPULL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FILEPATHSPULL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_FILESLISTPULL) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FILESLISTPULL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_FILEACTION) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_FILEACTION;
             }
 			else
             {
@@ -7837,6 +7819,14 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_REBOOT;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_RNODEONLINE_NOTICE) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RNODEONLINE_NOTICE;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_RNODEONLINE_REPLY) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_RNODEONLINE_REPLY;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -8073,8 +8063,8 @@ int im_sendfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "DstKey", msg->dstkey, PNR_RSA_KEY_MAXLEN);
 	msg->msgtype = msg->filetype;
 
-    index = get_indexbytoxid(msg->fromuser_toxid);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(msg->fromuser_toxid);
+    if (index <= 0) {
         ret_code = PNR_FILESEND_RETCODE_FAILED;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "get fromuser_toxid(%s) failed", msg->fromuser_toxid);
         goto SENDRET;
@@ -8092,7 +8082,7 @@ int im_sendfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	} else {
         md5_hash_file(msg->fullfilename, md5);
         
-    	if (strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN) {
+    	if (strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad userid(%s)", msg->fromuser_toxid);
             ret_code = PNR_FILESEND_RETCODE_FAILED;
         } else if (strcmp(msg->fromuser_toxid, msg->touser_toxid) == OK) {
@@ -8115,7 +8105,7 @@ int im_sendfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if (head->iftox) {
                 head->toxmsg = msg;
                 head->im_cmdtype = PNR_IM_CMDTYPE_PUSHFILE_TOX;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
             }
             
 			ret_code = PNR_FILESEND_RETCODE_OK;
@@ -8198,43 +8188,31 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 	int index = 0;
 	
 	*ret_flag = FALSE;
-	
 	file->status = FILE_UPLOAD_RUNNING;
 	file->rcvlen += msg_len;
-
 	DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "rcvdata[%d-%d-%d]", msg_len, plws_index, fileindex);
 	DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "param[%d-%d-%d-%d-%s-%s-%s]", 
 		plws_index, fileindex, file->filesize, file->fd, file->fullfilename, file->filename, file->md5);
 	DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "rcv len:%d", file->rcvlen);
-	
 	write(file->fd, pmsg, msg_len);
-
 	if (file->rcvlen >= file->filesize) {
 		*ret_flag = TRUE;
-
 		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "rcv file(%s) complete", file->fullfilename);
 		//printf("rcv file(%s) complete\n", file->fullfilename);
-		
 		//构建响应消息
 		cJSON *ret_root = cJSON_CreateObject();
 	    cJSON *ret_params = cJSON_CreateObject();
 	    if (ret_root == NULL || ret_params == NULL) {
 	        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "create json err");
-
 			if (ret_root)
 				cJSON_Delete(ret_root);
-
 			if (ret_params)
 				cJSON_Delete(ret_params);
-			
 	        goto ERR;
 	    }
-
 		ret_code = PNR_MSGSEND_RETCODE_OK;
-
 		md5_hash_file(file->fullfilename, md5);
 		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "md5[%s]", md5);
-
 		if (strncasecmp(md5, file->md5, 32)) {
 			DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "md5[%s-%s]", file->md5, md5);
 			ret_code = 2;
@@ -8250,35 +8228,28 @@ int im_rcv_file_deal(char *pmsg, int msg_len, char *retmsg, int *retmsg_len,
 	    cJSON_AddItemToObject(ret_params, "FromId", cJSON_CreateString(file->fromuser_toxid));
 	    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(file->touser_toxid));
 	    cJSON_AddItemToObject(ret_root, "params", ret_params);
-
 	    ret_buff = cJSON_PrintUnformatted(ret_root);
 	    cJSON_Delete(ret_root);
-	    
 	    *retmsg_len = strlen(ret_buff);
 	    if (*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN) {
 	        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d)",*retmsg_len);
 	        free(ret_buff);
 	        goto ERR;
 	    }
-		
 	    strcpy(retmsg, ret_buff);
 	    free(ret_buff);
-
 		//tox发送到对端
 		if (ret_code == PNR_MSGSEND_RETCODE_OK) {
-			index = get_indexbytoxid(file->touser_toxid);
+			index = cfd_getindexbyidstr(file->touser_toxid);
 	        //对于目标好友为本地用户
-	        if (index != 0)
+	        if (index <= 0)
 	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,TRUE,PNR_API_VERSION_V5,(void *)file);
 	        else
 	            im_pushmsg_callback(index,PNR_IM_CMDTYPE_PUSHFILE,FALSE,PNR_API_VERSION_V5,(void *)file);
 		}
-
 		memset(file, 0, sizeof(struct im_sendfile_struct));
 	}
-
 	return OK;
-
 ERR:
 	memset(file, 0, sizeof(struct im_sendfile_struct));
 	return ERROR;
@@ -8333,8 +8304,8 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FilePath", filepath, PNR_FILEPATH_MAXLEN);
     }
 
-    index = get_indexbytoxid(file_info.touser_toxid);
-    if (index == 0) 
+    index = cfd_getindexbyidstr(file_info.touser_toxid);
+    if (index <= 0) 
     {
         ret_code = PNR_FILESEND_RETCODE_FAILED;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "get touser_toxid(%s) failed", file_info.touser_toxid);
@@ -8410,8 +8381,8 @@ int im_pullfile_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else 
 	{
         md5_hash_file(file_info.fullfilename, file_info.md5);        
-        if (strlen(file_info.fromuser_toxid) != TOX_ID_STR_LEN || 
-            strlen(file_info.touser_toxid) != TOX_ID_STR_LEN) {
+        if (strlen(file_info.fromuser_toxid) < CFD_USER_PUBKEYLEN || 
+            strlen(file_info.touser_toxid) < CFD_USER_PUBKEYLEN) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad userid(%s->%s)",
                 file_info.fromuser_toxid, file_info.touser_toxid);
             ret_code = PNR_FILESEND_RETCODE_FAILED;
@@ -8468,7 +8439,7 @@ err:
 	//发送文件
     if (ret_code == PNR_FILESEND_RETCODE_OK) {
 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "send file(%s) to app(%d)", file_info.fullfilename, head->friendnum);
-    	imtox_send_file_to_app(qlinkNode, head->friendnum, file_info.fromuser_toxid, file_info.fullfilename,file_info.log_id,filefrom);
+    	imtox_send_file_to_app(g_nidNode, head->friendnum, file_info.fromuser_toxid, file_info.fullfilename,file_info.log_id,filefrom);
     }
     
     strcpy(retmsg, ret_buff);
@@ -8645,7 +8616,7 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_LOGIN_RETCODE_BAD_RID;
     }
-    else if(strlen(account.toxid) != TOX_ID_STR_LEN)
+    else if(strlen(account.toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v2_deal:bad uid(%d:%s)",strlen(account.toxid),account.toxid);
         ret_code = PNR_LOGIN_RETCODE_BAD_UID;
@@ -8679,8 +8650,8 @@ int im_userlogin_v2_deal(cJSON * params,char* retmsg,int* retmsg_len,
         else
         {
             //查询是否已经存在的实例
-            index = get_indexbytoxid(account.toxid);
-            if(index)
+            index = cfd_getindexbyidstr(account.toxid);
+            if(index > 0)
             {
                 if(g_imusr_array.usrnode[index].init_flag == FALSE)
                 {
@@ -8993,14 +8964,14 @@ int im_logout_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_LOGOUT_RETCODE_BADRID;
     }
-    else if(strlen(account.toxid) != TOX_ID_STR_LEN)
+    else if(strlen(account.toxid) < CFD_USER_PUBKEYLEN)
     {
         ret_code = PNR_LOGOUT_RETCODE_BADUID;
     }
     else
     {
-        index = get_indexbytoxid(account.toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(account.toxid);
+        if(index <= 0)
         {
             ret_code = PNR_LOGOUT_RETCODE_BADUID;
         }
@@ -9076,7 +9047,7 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Mac",mac_string,MACSTR_MAX_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"LoginKey",loginkey,PNR_LOGINKEY_MAXLEN);    
     //rid检查
-    if(g_p2pnet_init_flag == FALSE)
+    if(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal:g_p2pnet_init_flag not ready");
         ret_code = PNR_ROUTERLOGIN_RETCODE_BUSY;
@@ -9385,22 +9356,22 @@ int im_changeremarks_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",friend_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Remarks",user_remarks,PNR_USERNAME_MAXLEN);
     //rid检查
-    if(strlen(user_toxid) != TOX_ID_STR_LEN || strlen(friend_toxid) != TOX_ID_STR_LEN)
+    if(strlen(user_toxid) < CFD_USER_PUBKEYLEN || strlen(friend_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_changeremarks_deal:bad uid(%s) friend_id(%s)",user_toxid,friend_toxid);
         ret_code = PNR_CHANGEREMARKS_RETCODE_BADUID;
     }
     else
     {
-        index = get_indexbytoxid(user_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(user_toxid);
+        if(index <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_changeremarks_deal:bad uid(%s)",user_toxid);   
             ret_code = PNR_CHANGEREMARKS_RETCODE_BADUID;
         }
         else 
         {
-            friend_id = get_friendid_bytoxid(index,friend_toxid);
+            friend_id = cfd_getfriendid_byidstr(index,friend_toxid);
             if(friend_id < 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_changeremarks_deal:get friend(%s) failed",friend_toxid);   
@@ -10154,7 +10125,7 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    int index = 0,i = 0;
+    int index = 0,i = 0,rid = 0;
     char tmp_msgbuff[IM_MSG_MAXLEN+1] = {0};
     
     if (!params) {
@@ -10176,8 +10147,8 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     msg->msgtype = PNR_IM_MSGTYPE_SYSTEM;
 
     //useid 处理
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN
-        || strlen(msg->touser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN
+        || strlen(msg->touser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s)",
             msg->fromuser_toxid,msg->touser_toxid);
@@ -10197,8 +10168,8 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(msg->fromuser_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(msg->fromuser_toxid);
+        if(index <= 0)
         {
             //清除对应记录
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -10215,10 +10186,10 @@ int im_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if (head->iftox) {
                 head->toxmsg = msg;
                 head->im_cmdtype = PNR_IM_CMDTYPE_READMSGPUSH;
-                head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
             } else {
-                i = get_indexbytoxid(msg->touser_toxid);
-                if(i != 0)
+                cfd_checklastactive_byuidstr(msg->touser_toxid,&i,&rid);
+                if(i > 0 && rid == CFD_RNODE_DEFAULT_RID)
                 {
                     im_pushmsg_callback(i,PNR_IM_CMDTYPE_READMSGPUSH,TRUE,head->api_version,(void *)msg);
                 }
@@ -10318,7 +10289,7 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",msg->friend_nickname,PNR_USERNAME_MAXLEN);
 
     //useid 处理
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN)
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",msg->fromuser_toxid);
         ret_code = PNR_USERINFOUPDATE_RETCODE_BADUID;
@@ -10329,8 +10300,8 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         memset(&account,0,sizeof(account));
         strcpy(account.toxid,msg->fromuser_toxid);
         pnr_account_dbget_byuserid(&account);
-        index = get_indexbytoxid(account.toxid);
-        if(account.active != TRUE || index == 0)
+        index = cfd_getindexbyidstr(account.toxid);
+        if(account.active != TRUE || index <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s) not active,index(%d)",account.toxid,index);
             ret_code = PNR_USERINFOUPDATE_RETCODE_BADUID;
@@ -10356,12 +10327,12 @@ int im_userinfoupdate_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     if(g_imusr_array.usrnode[index].friends[fr_id].exsit_flag == TRUE)
                     {
                         strcpy(msg->touser_toxid,g_imusr_array.usrnode[index].friends[fr_id].user_toxid);
-                        fr_index = get_indexbytoxid(g_imusr_array.usrnode[index].friends[fr_id].user_toxid);
+                        fr_index = cfd_getindexbyidstr(g_imusr_array.usrnode[index].friends[fr_id].user_toxid);
                         if (head->iftox) 
                         {
                              head->toxmsg = msg;
                              head->im_cmdtype = PNR_IM_CMDTYPE_USERINFOUPDATE;
-                             head->to_userid = get_indexbytoxid(msg->touser_toxid);
+                             head->to_userid = cfd_getindexbyidstr(msg->touser_toxid);
                         }
                         else
                         {
@@ -10701,8 +10672,8 @@ int im_get_relationship_status_cmd_deal(cJSON *params, char *retmsg, int *retmsg
 	CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "UserId", fromid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params, tmp_item, tmp_json_buff, "FriendId", toid, TOX_ID_STR_LEN);
 
-    index = get_indexbytoxid(fromid);
-    if (index == 0) {
+    index = cfd_getindexbyidstr(fromid);
+    if (index <= 0) {
         ret_code = 2;
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "get fromid(%s) failed", fromid);
     } else {
@@ -10795,7 +10766,7 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_LOGIN_RETCODE_BAD_RID;
     }
-    else if(strlen(account.toxid) != TOX_ID_STR_LEN)
+    else if(strlen(account.toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlogin_v4_deal:bad uid(%d:%s)",strlen(account.toxid),account.toxid);
         ret_code = PNR_LOGIN_RETCODE_BAD_UID;
@@ -10851,8 +10822,8 @@ int im_userlogin_v4_deal(cJSON * params,char* retmsg,int* retmsg_len,
         else
         {
             //查询是否已经存在的实例
-            index = get_indexbytoxid(account.toxid);
-            if(index)
+            index = cfd_getindexbyidstr(account.toxid);
+            if(index > 0)
             {
                 if(g_imusr_array.usrnode[index].init_flag == FALSE)
                 {
@@ -11277,7 +11248,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",user_toxid,TOX_ID_STR_LEN);
 
     //useid 处理
-    if(strlen(user_toxid) != TOX_ID_STR_LEN)
+    if(strlen(user_toxid) < CFD_USER_PUBKEYLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",user_toxid);
         ret_code = PNR_MSGSEND_RETCODE_FAILED;
@@ -11285,8 +11256,8 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         //查询是否已经存在的实例
-        index = get_indexbytoxid(user_toxid);
-        if(index == 0)
+        index = cfd_getindexbyidstr(user_toxid);
+        if(index <= 0)
         {
             ret_code = PNR_MSGSEND_RETCODE_FAILED;
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"get UserId(%s) failed",user_toxid);
@@ -11379,7 +11350,7 @@ int im_pullfriend_cmd_deal_v4(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     cJSON_AddStringToObject(pJsonsub,"RouteName", g_imusr_array.usrnode[index].friends[i].user_devname);
                     //同一个
-                    findex = get_indexbytoxid(g_imusr_array.usrnode[index].friends[i].user_toxid);
+                    findex = cfd_getindexbyidstr(g_imusr_array.usrnode[index].friends[i].user_toxid);
                     if(findex > 0)
                     {
                         memset(user_mails,0,CMD_MAXLEN);
@@ -11579,8 +11550,8 @@ int im_userlistmap_analyze(char* uidlist,struct gpuser_maplist* plist)
             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_userlistmap_analyze:get user(%d:%s)",value_len,tmp);
             strncpy(plist->gpuser[usernum].userid,tmp,((value_len >=TOX_ID_STR_LEN)?TOX_ID_STR_LEN:value_len));
             plist->gpuser[usernum].userid[TOX_ID_STR_LEN]='\0';
-            plist->gpuser[usernum].uindex = get_indexbytoxid(plist->gpuser[usernum].userid);
-            if(plist->gpuser[usernum].uindex == 0)
+            plist->gpuser[usernum].uindex = cfd_getindexbyidstr(plist->gpuser[usernum].userid);
+            if(plist->gpuser[usernum].uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_userlistmap_analyze:get user(%s) not found",plist->gpuser[usernum].userid);
                 return ERROR;
@@ -11708,8 +11679,8 @@ int im_group_usermap_analyze(char* fidlist,char* fkeylist,struct gpuser_maplist*
             //DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_usermap_analyze:get user(%d:%s)",value_len,tmp);
             strncpy(plist->gpuser[usernum].userid,tmp,((value_len >=TOX_ID_STR_LEN)?TOX_ID_STR_LEN:value_len));
             plist->gpuser[usernum].userid[TOX_ID_STR_LEN]='\0';
-            plist->gpuser[usernum].uindex = get_indexbytoxid(plist->gpuser[usernum].userid);
-            if(plist->gpuser[usernum].uindex == 0)
+            plist->gpuser[usernum].uindex = cfd_getindexbyidstr(plist->gpuser[usernum].userid);
+            if(plist->gpuser[usernum].uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_usermap_analyze:get user(%s) not found",plist->gpuser[usernum].userid);
                 return ERROR;
@@ -11950,8 +11921,8 @@ int pnr_group_adduser(int gid,int user_type,char* user_toxid,char* userkey)
     g_grouplist[gid].user[u_id].last_msgid = g_grouplist[gid].last_msgid;
     strcpy(g_grouplist[gid].user[u_id].userkey,userkey);
     strcpy(g_grouplist[gid].user[u_id].toxid,user_toxid);
-    uindex = get_indexbytoxid(user_toxid);
-    if(uindex)
+    uindex = cfd_getindexbyidstr(user_toxid);
+    if(uindex > 0)
     {
         g_grouplist[gid].user[u_id].userindex = uindex;
     }
@@ -12113,8 +12084,8 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",fidlist,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendKey",fkeylist,PNR_GROUP_EXTINFO_MAXLEN);
     //uid检查
-    uindex = get_indexbytoxid(user_toxid);
-    if(uindex == 0)
+    uindex = cfd_getindexbyidstr(user_toxid);
+    if(uindex <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_create_deal:bad uid(%s)",user_toxid);
         ret_code = PNR_CREATEGROUP_RETCODE_BADUID;
@@ -12197,8 +12168,8 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
                         for(i=0;i<puserlist->usernum;i++)
                         {
-                            to_uid = get_indexbytoxid(puserlist->gpuser[i].userid);
-                            if(to_uid)
+                            to_uid = cfd_getindexbyidstr(puserlist->gpuser[i].userid);
+                            if(to_uid > 0)
                             {
                                 if(pnr_group_adduser(gid,GROUP_USER_NORMAL,puserlist->gpuser[i].userid,puserlist->gpuser[i].userkey) != OK)
                                 {
@@ -12318,10 +12289,10 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",fidlist,PNR_GROUP_EXTINFO_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendKey",fkeylist,PNR_GROUP_EXTINFO_MAXLEN);
     //uid检查
-    userindex = get_indexbytoxid(user_toxid);
+    userindex = cfd_getindexbyidstr(user_toxid);
     gid = get_gidbygrouphid(group_hid);
     pinviter = get_guserbyuindex(gid,userindex);
-    if(userindex == 0)
+    if(userindex <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_invite_deal:bad uid(%s)",user_toxid);
         ret_code = PNR_GROUPINVITE_RETCODE_BADUID;
@@ -12388,8 +12359,8 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
             group_sysmsg.type = GROUP_SYSMSG_NEWUSER;            
             for(i=0;i<puserlist->usernum;i++)
             {
-                to_uid = get_indexbytoxid(puserlist->gpuser[i].userid);
-                if(to_uid)
+                to_uid = cfd_getindexbyidstr(puserlist->gpuser[i].userid);
+                if(to_uid > 0)
                 {
                     group_sysmsg.to_uid = to_uid;
                     strcpy(group_sysmsg.to_user,puserlist->gpuser[i].userid);
@@ -12573,13 +12544,13 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Result",result,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserKey",invite_info.user_groupkey,PNR_GROUP_USERKEY_MAXLEN);
     gid = get_gidbygrouphid(invite_info.groud_hid);
-    uindex = get_indexbytoxid(invite_info.aduitor);
+    uindex = cfd_getindexbyidstr(invite_info.aduitor);
     if(gid < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_verify_deal:bad gid(%s)",invite_info.groud_hid);
         ret_code = PNR_GROUPVERIFY_RETCODE_BADGID;
     }
-    else if(uindex == 0 || g_grouplist[gid].ownerid != uindex)
+    else if(uindex <= 0 || g_grouplist[gid].ownerid != uindex)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_verify_deal:bad uid(%s)",invite_info.aduitor);
         ret_code = PNR_GROUPVERIFY_RETCODE_BADUID;
@@ -12601,8 +12572,8 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
         group_sysmsg.from_uid = uindex;
         strcpy(group_sysmsg.from_user,invite_info.inviter);
         group_sysmsg.type = GROUP_SYSMSG_NEWUSER;  
-        to_uid = get_indexbytoxid(invite_info.user);
-        if(to_uid)
+        to_uid = cfd_getindexbyidstr(invite_info.user);
+        if(to_uid > 0)
         {
             group_sysmsg.to_uid = to_uid;
             strcpy(group_sysmsg.to_user,invite_info.user);
@@ -12703,9 +12674,9 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"GroupName",gname,PNR_USERNAME_MAXLEN);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
+    uindex = cfd_getindexbyidstr(userid);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex == 0 || gid < 0)
+    if(uindex <= 0 || gid < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_quit_deal:bad params(%s:%s)",userid,group_hid);
         ret_code = PNR_GROUPQUIT_RETCODE_BADPARAMS;
@@ -12835,8 +12806,8 @@ int im_group_pulllist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,TOX_ID_STR_LEN);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
-    if(uindex < 0)
+    uindex = cfd_getindexbyidstr(userid);
+    if(uindex <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_pulllist_deal:bad uid(%s)",userid);
         ret_code = PNR_GROUPPULL_RETCODE_ERR;
@@ -12995,16 +12966,16 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,TOX_ID_STR_LEN);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
+    uindex = cfd_getindexbyidstr(userid);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex < 0 || gid < 0)
+    if(uindex <= 0 || gid < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_pulluser_deal:bad uid(%s) gid(%s)",userid,group_hid);
         ret_code = PNR_GROUPPULL_RETCODE_ERR;
     }
-    else if(num > 0 && strlen(startid) == TOX_ID_STR_LEN)
+    else if(num > 0 && strlen(startid) >= CFD_USER_PUBKEYLEN)
     {
-        uid = get_indexbytoxid(startid);
+        uid = cfd_getindexbyidstr(startid);
         if(uid <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_pulluser_deal:bad startid(%s)",startid);
@@ -13093,7 +13064,7 @@ int im_group_pulluser_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 else
                 {
                     //这里如果群昵称里面没有设置，再检测是不是自己的好友，如果是自己好友并且好友昵称里面设置了，返回好友昵称
-                    fid = get_friendid_bytoxid(uindex,dbResult[offset+2]);
+                    fid = cfd_getfriendid_byidstr(uindex,dbResult[offset+2]);
                     if(fid >= 0)
                     {
                         if(strlen(g_imusr_array.usrnode[uindex].friends[fid].user_remarks) > 0)
@@ -13190,7 +13161,7 @@ int im_group_pullmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgStartId",msg_startid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"SrcMsgId",src_msgid,TOX_ID_STR_LEN);
     //参数检查
-    uindex = get_indexbytoxid(userid);
+    uindex = cfd_getindexbyidstr(userid);
     gid = get_gidbygrouphid(group_hid);
     if(uindex < 0 || gid < 0)
     {
@@ -13488,7 +13459,7 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"AssocId",assoc_id,TOX_ID_STR_LEN);
 
     //参数检查
-    uindex = get_indexbytoxid(pmsg->from);
+    uindex = cfd_getindexbyidstr(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
     if(uindex == 0 || group_hid < 0)
     {
@@ -13652,9 +13623,9 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",msgid,0);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
+    uindex = cfd_getindexbyidstr(userid);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex == 0 || group_hid < 0)
+    if(uindex <= 0 || group_hid < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_delmsg_deal:bad uid(%s) gid(%s)",userid,group_hid);
         ret_code = PNR_GROUP_DELMSG_RETURN_BADPRARMS;
@@ -13975,9 +13946,9 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileType",filetype,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",fileid,PNR_FILEINFO_MAXLEN);
     //参数检查
-    uindex = get_indexbytoxid(pmsg->from);
+    uindex = cfd_getindexbyidstr(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex == 0 || group_hid < 0)
+    if(uindex <= 0 || group_hid < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_sendfile_done_deal:bad uid(%s) gid(%d)",pmsg->from,group_hid);
         ret_code = PNR_GROUP_SENDFILE_RETURN_BADPRARMS;
@@ -14189,9 +14160,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             else
             {
-                uindex = get_indexbytoxid(userid);
+                uindex = cfd_getindexbyidstr(userid);
                 p_guser = get_guserbytoxid(gid,userid);
-                if(p_guser == NULL || uindex == 0)
+                if(p_guser == NULL || uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad userid(%s)",userid);
                     ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -14236,9 +14207,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             break;
         case GROUP_CONFIG_CMDTYPE_SET_VERIFY:
-            uindex = get_indexbytoxid(userid);
+            uindex = cfd_getindexbyidstr(userid);
             gid =get_gidbygrouphid(groupid);
-            if(gid < 0 || uindex == 0)
+            if(gid < 0 || uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad groupid(%s)",groupid);
                 ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -14287,9 +14258,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             else
             {
-                uindex = get_indexbytoxid(userid);
+                uindex = cfd_getindexbyidstr(userid);
                 p_guser = get_guserbytoxid(gid,userid);
-                if(p_guser == NULL || uindex == 0)
+                if(p_guser == NULL || uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad userid(%s) uindex(%d)",userid,uindex);
                     ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -14367,9 +14338,9 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             break;
         case GROUP_CONFIG_CMDTYPE_SET_GREMARK:
-            uindex = get_indexbytoxid(userid);
+            uindex = cfd_getindexbyidstr(userid);
             gid =get_gidbygrouphid(groupid);
-            if(gid < 0 || uindex == 0)
+            if(gid < 0 || uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_config_deal:bad groupid(%s)",groupid);
                 ret_code = GROUP_CONFIG_RETCODE_BADPARAMS;
@@ -14500,8 +14471,8 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Filename",filename,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rename",newname,PNR_FILENAME_MAXLEN);
     //uid检查
-    index = get_indexbytoxid(uid);
-    if(index == 0)
+    index = cfd_getindexbyidstr(uid);
+    if(index <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_rename_deal bad uid(%s)",uid);
         ret_code = PNR_RESETDEVNAME_RETCODE_BADRID;
@@ -14632,7 +14603,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char targetpath[PNR_FILEPATH_MAXLEN+1] = {0};
     char dstkey[PNR_AES_CBC_KEYSIZE+1] = {0};
     char* ptmp = NULL;
-    int fromid = 0,toid = 0;
+    int fromid = 0,toid = 0,rid = 0;
     char cmd[CMD_MAXLEN+1] = {0};
     int msgid = 0;
     int new_msgid = 0;
@@ -14662,7 +14633,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
         CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,PNR_FILEPATH_MAXLEN);
     }
     //参数检查
-    if(strlen(from) != TOX_ID_STR_LEN || strlen(to) != TOX_ID_STR_LEN || strcmp(from,to) == OK)
+    if(strlen(from) < CFD_USER_PUBKEYLEN || strlen(to) < CFD_USER_PUBKEYLEN || strcmp(from,to) == OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal input uid err(%s:%s)",from,to);
         ret_code = PNR_FILEFORWARD_RETCODE_BADUID;
@@ -14707,8 +14678,8 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"get filename(%d:%s:%s) ext(%s)",head->api_version,filename,realfilename,msg->ext);
-        fromid = get_indexbytoxid(from);
-        if(fromid == 0 || ret_code != OK)
+        fromid = cfd_getindexbyidstr(from);
+        if(fromid <= 0 || ret_code != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_file_forward_deal: input params err");
             ret_code = PNR_FILEFORWARD_RETCODE_BADFILENAME;
@@ -14850,9 +14821,9 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward:user(%d) log_id(%d)",fromid,msg->log_id);
                     }
                     //调用推送消息
-                    toid = get_indexbytoxid(to);
+                    cfd_checklastactive_byuidstr(to,&toid,&rid);
                     //本地对象
-                    if(toid)
+                    if(toid > 0 && rid == CFD_RNODE_DEFAULT_RID)
                     {
                         //本地拷贝一份文件备份
                         snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,realfilename);
@@ -14981,8 +14952,8 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileName",newuser.avatar,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileMD5",newuser.md5,PNR_MD5_VALUE_MAXLEN);
     //参数检查
-    index = get_indexbytoxid(newuser.userid);
-    if(index == 0)
+    index = cfd_getindexbyidstr(newuser.userid);
+    if(index <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_upload_avatar_deal input uid err(%d:%s)",index,newuser.userid);
         ret_code = PNR_UPLOAD_AVATAR_RETCODE_BADUID;
@@ -15053,6 +15024,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 strcpy(newuser.info,g_imusr_array.usrnode[index].user_nickname);
                 //同步数据库
                 pnr_userinfo_dbupdate(&newuser);
+                cfd_userinfo_dbupdate_avatar(index,newuser.avatar,newuser.md5);
                 snprintf(newavatar,PNR_FILEPATH_MAXLEN,"%s%s",PNR_AVATAR_DIR,filename);
                 snprintf(cmd,CMD_MAXLEN,"mv %s %s%s",fullname,DAEMON_PNR_USERDATA_DIR,newavatar);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_upload_avatar_deal:cmd(%s)",cmd);
@@ -15132,14 +15104,14 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Fid",to,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Md5",md5string,PNR_MD5_VALUE_MAXLEN);
     //参数检查
-    fromid = get_indexbytoxid(from);
-    toid = get_indexbytoxid(to);
-    if(fromid == 0)
+    fromid = cfd_getindexbyidstr(from);
+    toid = cfd_getindexbyidstr(to);
+    if(fromid <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_updata_avatar_deal input uid err(%s)",from);
         ret_code = PNR_UPDATE_AVATAR_RETCODE_BADUID;
     }
-    else if(toid == 0)
+    else if(toid <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_updata_avatar_deal input fid err(%s)",to);
         ret_code = PNR_UPDATE_AVATAR_RETCODE_BADUID;
@@ -15225,8 +15197,8 @@ int im_updata_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            toid = get_friendid_bytoxid(fromid,to);
-            if(toid)
+            toid = cfd_getfriendid_byidstr(fromid,to);
+            if(toid > 0)
             {
                 cJSON_AddItemToObject(ret_params, "TargetKey", cJSON_CreateString(g_imusr_array.usrnode[fromid].friends[toid].user_pubkey));
             }
@@ -15280,8 +15252,8 @@ int im_pull_tmpaccount_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"userid",userid,TOX_ID_STR_LEN);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
-    if(uindex < 0)
+    uindex = cfd_getindexbyidstr(userid);
+    if(uindex <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_template_deal:bad uid(%s)",userid);
         ret_code = PNR_GROUPVERIFY_RETCODE_BADGID;
@@ -15369,8 +15341,8 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //参数检查
     if(*plws_index == 0)
     {
-        uindex = get_indexbytoxid(from_account.toxid);
-        if(uindex)
+        uindex = cfd_getindexbyidstr(from_account.toxid);
+        if(uindex > 0)
         {
             *plws_index = uindex;
         }
@@ -15402,7 +15374,7 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         else
         {
-            uindex = get_indexbytoxid(account.toxid);
+            uindex = cfd_getindexbyidstr(account.toxid);
             if(uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toid(%s)",account.toxid);
@@ -15686,8 +15658,8 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 break;
             case PNR_SYSDEBUG_CMDTYPE_POST_DEBUGINFO:
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
-                uindex = get_indexbytoxid(userid);
-                if(uindex < 0)
+                uindex = cfd_getindexbyidstr(userid);
+                if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
                     ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
@@ -15700,8 +15672,8 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 break;
             case PNR_SYSDEBUG_CMDTYPE_ACTIVE_USER:
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
-                uindex = get_indexbytoxid(userid);
-                if(uindex < 0)
+                uindex = cfd_getindexbyidstr(userid);
+                if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
                     ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
@@ -15741,7 +15713,7 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                                 //如果是新用户激活对应数据库句柄
                                 if(g_msglogdb_handle[uindex] == NULL)
                                 {
-                                     if (sql_msglogdb_init(uindex) != OK) 
+                                     if (cfdsql_msglogdb_init(uindex) != OK) 
                                      {
                                          DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed",uindex);
                                      }
@@ -15767,8 +15739,8 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
             case PNR_SYSDEBUG_CMDTYPE_CHECK_FRIENDS:
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Friend",friendid,TOX_ID_STR_LEN);
-                uindex = get_indexbytoxid(userid);
-                if(uindex < 0)
+                uindex = cfd_getindexbyidstr(userid);
+                if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
                     ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
@@ -15776,7 +15748,7 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
-                    f_id = get_friendid_bytoxid(uindex,friendid);
+                    f_id = cfd_getfriendid_byidstr(uindex,friendid);
                     ret_code = PNR_RNODEMSG_RETCODE_OK;
                     snprintf(info,PNR_ATTACH_INFO_MAXLEN,"user(%d:%s) friend(%s) f_id(%d)",
                         uindex,userid,friendid,f_id);
@@ -15785,8 +15757,8 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
             case PNR_SYSDEBUG_CMDTYPE_CHECKANDADD_FRIENDS:
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Friend",friendid,TOX_ID_STR_LEN);
-                uindex = get_indexbytoxid(userid);
-                if(uindex < 0)
+                uindex = cfd_getindexbyidstr(userid);
+                if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_rnode_pmsg_deal:bad uid(%s)",userid);
                     ret_code = PNR_RNODEMSG_RETCODE_BADPARAMS;
@@ -15794,7 +15766,7 @@ int im_cmd_rnode_pmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 }
                 else
                 {
-                    f_id = get_friendid_bytoxid(uindex,friendid);
+                    f_id = cfd_getfriendid_byidstr(uindex,friendid);
                     f_num = check_and_add_friends(g_tox_linknode[uindex], friendid, 
                             g_imusr_array.usrnode[uindex].userinfo_fullurl);
                     ret_code = PNR_RNODEMSG_RETCODE_OK;
@@ -16042,11 +16014,9 @@ int im_addfriend_autopush_deal(cJSON * params,char* pmsg,
     {
         return ERROR;
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"####im_addfriend_autopush_deal");
-    return OK;
     memset(&friend,0,sizeof(struct im_friend_msgstruct));
     memset(&devinfo,0,sizeof(struct im_userdev_mapping_struct));
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",friend.type,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",friend.type,0);
     if(friend.type != PNR_ADDFRIEND_AUTOTYPE_BYEMAIL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_addfriend_auotpush_deal:");
@@ -16061,7 +16031,9 @@ int im_addfriend_autopush_deal(cJSON * params,char* pmsg,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",devinfo.user_devid, TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteName",devinfo.user_devname, PNR_USERNAME_MAXLEN);
 
-    uindex = get_indexbytoxid(friend.touser_toxid);
+    cfd_toxidformatidstr(friend.fromuser_toxid,friend.from_uidstr);
+    cfd_toxidformatidstr(friend.touser_toxid,friend.to_uidstr);
+    uindex = cfd_getindexbyidstr(friend.touser_toxid);
     pnr_friend_dbinsert(friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
     im_nodelist_addfriend(uindex,friend.fromuser_toxid,friend.touser_toxid,friend.nickname,friend.user_pubkey);
     pnr_check_update_devinfo_bytoxid(uindex,friend.fromuser_toxid,devinfo.user_toxid,devinfo.user_devname);
@@ -16094,10 +16066,9 @@ int im_addfriend_autopush_deal(cJSON * params,char* pmsg,
     cJSON_AddItemToObject(ret_params, "RouterName",cJSON_CreateString(g_dev_nickname));
     pmsg = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
-    add_friends_force(g_tox_linknode[uindex],friend.fromuser_toxid, pmsg);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ auto add call addreply");
-    insert_tox_msgnode(uindex, friend.touser_toxid,friend.fromuser_toxid,
-        pmsg, strlen(pmsg), PNR_IM_CMDTYPE_ADDFRIENDREPLY, 0, head->msgid,NULL,NULL);
+    //add_friends_force(g_tox_linknode[uindex],friend.fromuser_toxid, pmsg);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"@@@@@ auto add call addreply");
+    cfd_usermsgnode_insert(uindex, friend.touser_toxid,friend.fromuser_toxid,pmsg,strlen(pmsg),PNR_IM_CMDTYPE_ADDFRIENDREPLY,0,head->msgid,NULL,NULL,NULL);
     free(pmsg);
     //这里要推送一条系统推送
     pnr_sysmsg_push_newfriend(friend.type,friend.fromuser_toxid,friend.nickname,friend.user_pubkey,friend.friend_msg,friend.touser_toxid);
@@ -16150,7 +16121,7 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"EmailId",msg->friend_msg,PNR_FRIEND_MSG_MAXLEN);
 
     //参数检查
-    if(strlen(msg->fromuser_toxid) != TOX_ID_STR_LEN || strlen(friends_cache) < TOX_ID_STR_LEN
+    if(strlen(msg->fromuser_toxid) < CFD_USER_PUBKEYLEN || strlen(friends_cache) < CFD_USER_PUBKEYLEN
         || msg->type != PNR_ADDFRIEND_AUTOTYPE_BYEMAIL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s->%s) type(%d)",
@@ -16168,8 +16139,8 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
         else
         {
             //查询是否已经存在的实例
-            uindex = get_indexbytoxid(msg->fromuser_toxid);
-            if(uindex == 0)
+            uindex = cfd_getindexbyidstr(msg->fromuser_toxid);
+            if(uindex <= 0)
             {
                 //清除对应记录
                 ret_code = PNR_USER_ADDFRIEND_FAILED;
@@ -16179,12 +16150,14 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 strcpy(msg->user_pubkey,g_imusr_array.usrnode[uindex].user_pubkey);
                 strcpy(msg->nickname,g_imusr_array.usrnode[uindex].user_nickname);
+                cfd_toxidformatidstr(msg->fromuser_toxid,msg->from_uidstr);
                 for(i=0;i<userids.usernum;i++)
                 {
                     memset(msg->touser_toxid,0,TOX_ID_STR_LEN);
                     strcpy(msg->touser_toxid,userids.userid[i]);
-                    fid = get_indexbytoxid(msg->touser_toxid);
-                    if(fid)
+                    cfd_toxidformatidstr(msg->touser_toxid,msg->to_uidstr);
+                    fid = cfd_getindexbyidstr(msg->touser_toxid);
+                    if(fid > 0)
                     {
                         strcpy(src_account.toxid,msg->fromuser_toxid);
                         pnr_account_dbget_byuserid(&src_account);
@@ -16267,9 +16240,9 @@ int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int caller = 0;
     char* ret_buff = NULL;
     struct email_config_mode g_config_mode;
-    int count = 0,uindex = -1;
+    int count = 0,uindex = -1,uid=-1;
     int modify_flag = FALSE;
-    char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1];
+    char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1] = {0};
     if(params == NULL)
     {
         return ERROR;
@@ -16328,16 +16301,17 @@ int em_cmd_save_emailcofig_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(modify_flag == TRUE)
     {
         cfg_getmails_byuindex(uindex,mailinfo);
-        pthread_mutex_lock(&g_uinfo_lock[uindex]);
-        if(strcmp(mailinfo,g_uinfolist[uindex].unode.mailinfo) != OK)
+        cfd_uinfolistgetdbid_byuidstr(g_config_mode.g_userkey,&uid);
+        if(uid > 0)
         {
-            g_uinfolist[uindex].unode.eminfoseq = (int)time(NULL);
-            memset(g_uinfolist[uindex].unode.mailinfo,0,EMAIL_USERS_CACHE_MAXLEN);
-            strcpy(g_uinfolist[uindex].unode.mailinfo,mailinfo);
-            cfd_dbupdate_uinfomailinfo_byuid(uindex,0,TRUE,g_uinfolist[uindex].unode.eminfoseq,mailinfo);
-            imuser_frienduinfo_sysch(uindex);
+            if(strcmp(g_ruser_list[uid].mailinfo,mailinfo) != OK)
+            {
+                g_ruser_list[uid].uinfo_seq++;
+                memset(g_ruser_list[uid].mailinfo,0,EMAIL_USERS_CACHE_MAXLEN);
+                strncpy(g_ruser_list[uid].mailinfo,mailinfo,EMAIL_USERS_CACHE_MAXLEN);
+                cfd_uinfomailinfo_dbupdate_byuid(uid,g_ruser_list[uid].uinfo_seq,g_ruser_list[uid].mailinfo);
+            }
         }
-        pthread_mutex_unlock(&g_uinfo_lock[uindex]);
     }
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
@@ -17171,7 +17145,7 @@ int em_users_cache_anaylse(char* users_cache,struct em_user_pkey_mapping* p_ukey
 int em_ukeys_check_byunames(struct em_user_pkey_mapping* p_ukeys)
 {
     int i = 0,found_flag = FALSE;
-    int uid = 0,fid = -1,local = 0;
+    int uid = 0;
     if(p_ukeys == NULL || p_ukeys->usernum <= 0)
     {
         return ERROR;
@@ -17190,6 +17164,7 @@ int em_ukeys_check_byunames(struct em_user_pkey_mapping* p_ukeys)
         }
         else
         {
+#if 0
             cfd_dbfuzzyget_uindex_bymailinfo(&uid,&fid,&local,p_ukeys->user_aray[i]);
             if(uid > 0)
             {
@@ -17204,6 +17179,14 @@ int em_ukeys_check_byunames(struct em_user_pkey_mapping* p_ukeys)
                     p_ukeys->pkeynum++;
                 }
             }
+#else
+            cfd_dbfuzzygetid_bymailinfo(p_ukeys->user_aray[i],&uid);
+            if(uid > 0)
+            {
+                strcpy(p_ukeys->pkey_aray[i],g_ruser_list[uid].uidstr);
+                p_ukeys->pkeynum++;
+            }
+#endif
             else if(p_ukeys->type == FALSE)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"em_ukeys_check_byunames:type0 return check failed");
@@ -17571,10 +17554,10 @@ int im_cmd_get_capacity_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else 
     {
         len = strlen(userid);
-        if(len == TOX_ID_STR_LEN)
+        if(len >= CFD_USER_PUBKEYLEN)
         {
-            uindex = get_indexbytoxid(userid);
-            if(uindex < 0)
+            uindex = cfd_getindexbyidstr(userid);
+            if(uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
                 ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
@@ -17683,10 +17666,10 @@ int im_cmd_set_capacity_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else 
     {
         len = strlen(userid);
-        if(len == TOX_ID_STR_LEN)
+        if(len >= CFD_USER_PUBKEYLEN)
         {
-            uindex = get_indexbytoxid(userid);
-            if(uindex < 0)
+            uindex = cfd_getindexbyidstr(userid);
+            if(uindex <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_set_capacity_deal:bad uid(%s)",userid);
                 ret_code = PNR_USER_CAPACITY_CONFIG_BADUSER;
@@ -17923,53 +17906,88 @@ int im_cmd_uinfokey_sysch_deal(cJSON * params,char* retmsg,int* retmsg_len,
     int ret_code = 0;
     char* ret_buff = NULL;
     char fromid[TOX_ID_STR_LEN+1] = {0};
-    char toid[TOX_ID_STR_LEN+1] = {0};
     char devid[TOX_ID_STR_LEN+1] = {0};
     char md5[PNR_MD5_VALUE_MAXLEN+1] = {0};
-    int friendseq = 0,mailseq = 0,uindex= 0,fid = -1,sysch_flag = 0;
+    char uidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char uname[PNR_USERNAME_MAXLEN+1] = {0};
+    char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1] = {0};
+    int friendseq = 0,uinfoseq = 0,uid = -1,sysch_flag = 0,rid = 0;
+    struct cfd_innode_users_info onlineuser;
     if(params == NULL)
     {
         return ERROR;
     }
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",fromid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",toid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",devid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"AvatarMd5",md5,PNR_MD5_VALUE_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendSeq",friendseq,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailSeq",mailseq,0);
-
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UinfoSeq",uinfoseq,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Uname",uname,PNR_USERNAME_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",mailinfo,EMAIL_USERS_CACHE_MAXLEN);
     //参数检查
-    uindex = get_indexbytoxid(toid);
-    if(uindex < 0)
+    ret_code = cfd_toxidformatidstr(fromid,uidstr);
+    rid = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,devid);
+    if(ret_code == OK)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_sysch_deal:bad uid(%s)",toid);
-        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
-    }
-    else 
-    {
-        *plws_index = uindex;
-        fid = get_friendid_bytoxid(uindex,fromid);
-        if(fid < 0)
+        cfd_uinfolistgetdbid_byuidstr(uidstr,&uid);
+        if(uid <= 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_sysch_deal:uid(%d) bad fid(%s)",uindex,fromid);
-            ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+            if(g_rlist_node[CFD_RNODE_DEFAULT_RID].weight == CFD_RNODE_SERVER_WEIGHT)
+            {
+                uid = cfd_uinfolist_getidleid();
+                if(uid<=0)
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_sysch_deal:bad uid(%s)",fromid);
+                    ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+                }
+                cfd_uinfonode_addnew(uid,0,FALSE,0,0,uidstr,uname,mailinfo,NULL,md5);
+                cfd_uactive_addnew(uid,0,rid,uidstr);
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_sysch_deal:bad uid(%s)",fromid);
+                ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+            }
         }
-        else
+        if(ret_code == OK)
         {
-            if(g_uinfolist[uindex].fnode[fid].friendseq < friendseq)
+            if(g_ruser_list[uid].friend_seq < friendseq)
             {
                 sysch_flag |= UINFO_SYSCHTYPE_FRIENDS; 
             }
-            if(g_uinfolist[uindex].fnode[fid].eminfoseq < mailseq)
+            if(g_ruser_list[uid].uinfo_seq < uinfoseq)
             {
-                sysch_flag |= UINFO_SYSCHTYPE_MAILINFO; 
+                g_ruser_list[uid].uinfo_seq = uinfoseq;
+                if(strcmp(g_ruser_list[uid].mailinfo,mailinfo) != OK)
+                {
+                    memset(g_ruser_list[uid].mailinfo,0,EMAIL_USERS_CACHE_MAXLEN);
+                    strcpy(g_ruser_list[uid].mailinfo,mailinfo);
+                }
+                if(strcmp(g_ruser_list[uid].uname,uname) != OK)
+                {
+                    memset(g_ruser_list[uid].uname,0,PNR_USERNAME_MAXLEN);
+                    strcpy(g_ruser_list[uid].uname,uname);
+                }
+                cfd_uinfo_dbupdate_byuid(&g_ruser_list[uid]);
             }
-            if(strcmp(g_uinfolist[uindex].fnode[fid].md5,md5) != OK)
+            else if(g_ruser_list[uid].uinfo_seq > uinfoseq)
+            {
+                sysch_flag |= UINFO_SYSCHTYPE_USERINFO; 
+            }
+            if(strcmp(g_ruser_list[uid].md5,md5) != OK)
             {
                 sysch_flag |= UINFO_SYSCHTYPE_AVATAR; 
             }
         }
+        //同步最后在线信息
+        memset(&onlineuser,0,sizeof(onlineuser));
+        onlineuser.uid = uid;
+        onlineuser.active_rid = rid;
+        strcpy(onlineuser.idstr,g_ruser_list[uid].uidstr);
+        onlineuser.last_active = (int)time(NULL);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_cmd_uinfokey_sysch_deal:uid(%d) rid(%d)",uid,rid);
+        cfd_uactive_update_byidstr(&onlineuser);
     }
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
@@ -17988,10 +18006,14 @@ int im_cmd_uinfokey_sysch_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_UINFOKEYREPLY));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "NeedSysch", cJSON_CreateNumber(sysch_flag));
-    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(toid));
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(fromid));
     cJSON_AddItemToObject(ret_params, "RouteId", cJSON_CreateString(g_daemon_tox.user_toxid));
-
+    if((ret_code == OK) &&(sysch_flag & UINFO_SYSCHTYPE_USERINFO))
+    {
+        cJSON_AddItemToObject(ret_params, "UinfoSeq", cJSON_CreateNumber(g_ruser_list[uid].uinfo_seq));
+        cJSON_AddItemToObject(ret_params, "NickName", cJSON_CreateString(g_ruser_list[uid].uname));
+        cJSON_AddItemToObject(ret_params, "MailInfo", cJSON_CreateString(g_ruser_list[uid].mailinfo));
+    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -18029,17 +18051,19 @@ int im_cmd_uinfokey_reply_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
-    char fromid[TOX_ID_STR_LEN+1] = {0};
     char toid[TOX_ID_STR_LEN+1] = {0};
+    char uidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    int uid = -1,sysch_flag = 0,uinfo_seq = 0;
     char devid[TOX_ID_STR_LEN+1] = {0};
     char md5[PNR_MD5_VALUE_MAXLEN+1] = {0};
-    int uindex= 0,fid = -1,sysch_flag = 0;
+    char uname[PNR_USERNAME_MAXLEN+1] = {0};
+    char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1] = {0};
+
     if(params == NULL)
     {
         return ERROR;
     }
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",fromid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",toid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",devid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"AvatarMd5",md5,PNR_MD5_VALUE_MAXLEN);
@@ -18049,30 +18073,46 @@ int im_cmd_uinfokey_reply_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //参数检查
     if(ret_code != 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:uid(%s) retcode(%d)",fromid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:node(%s) retcode(%d)",devid,ret_code);
         return OK;
     }
     if(sysch_flag == 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:uid(%s) no need(%d)",fromid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:node(%s) no need(0x%04x)",devid,sysch_flag);
         return OK;
-    } 
-    uindex = get_indexbytoxid(toid);
-    if(uindex < 0)
+    }
+    cfd_toxidformatidstr(toid,uidstr);
+    cfd_uinfolistgetdbid_byuidstr(uidstr,&uid);
+    if(uid <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:bad uid(%s)",toid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
-    else 
+    if((ret_code == OK) && (sysch_flag & UINFO_SYSCHTYPE_USERINFO))
     {
-        *plws_index = uindex;
-        fid = get_friendid_bytoxid(uindex,fromid);
-        if(fid < 0)
+        CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UinfoSeq",uinfo_seq,0);
+        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",uname,PNR_USERNAME_MAXLEN);
+        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",mailinfo,EMAIL_USERS_CACHE_MAXLEN);
+        if(g_ruser_list[uid].uinfo_seq < uinfo_seq)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfokey_reply_deal:uer(%d) bad fid(%s)",uindex,fromid);
-            ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+            g_ruser_list[uid].uinfo_seq = uinfo_seq;
+            if(strcmp(g_ruser_list[uid].mailinfo,mailinfo) != OK)
+            {
+                memset(g_ruser_list[uid].mailinfo,0,EMAIL_USERS_CACHE_MAXLEN);
+                strcpy(g_ruser_list[uid].mailinfo,mailinfo);
+            }
+            if(strcmp(g_ruser_list[uid].uname,uname) != OK)
+            {
+                memset(g_ruser_list[uid].uname,0,PNR_USERNAME_MAXLEN);
+                strcpy(g_ruser_list[uid].uname,uname);
+            }
+            cfd_uinfo_dbupdate_byuid(&g_ruser_list[uid]);
         }
-    }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"update new user(%d) uinfo(%d:%s) failed",uid,uinfo_seq,mailinfo);
+        }
+    }   
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
     cJSON * ret_params = cJSON_CreateObject();
@@ -18091,20 +18131,7 @@ int im_cmd_uinfokey_reply_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "Type", cJSON_CreateNumber(sysch_flag));
     cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(toid));
-    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(fromid));
     cJSON_AddItemToObject(ret_params, "RouteId", cJSON_CreateString(g_daemon_tox.user_toxid));
-    if(ret_code == OK)
-    {
-        if(sysch_flag & UINFO_SYSCHTYPE_MAILINFO)
-        {
-            cJSON_AddItemToObject(ret_params, "MailSeq", cJSON_CreateNumber(g_uinfolist[uindex].unode.eminfoseq));
-            cJSON_AddItemToObject(ret_params, "MailInfo", cJSON_CreateString(g_uinfolist[uindex].unode.mailinfo));
-        }
-        if(sysch_flag & UINFO_SYSCHTYPE_NICKNAME)
-        {
-            cJSON_AddItemToObject(ret_params, "NickName", cJSON_CreateString(g_uinfolist[uindex].unode.nickname));
-        }
-    }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
@@ -18145,7 +18172,9 @@ int im_cmd_uinfo_request_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char fromid[TOX_ID_STR_LEN+1] = {0};
     char toid[TOX_ID_STR_LEN+1] = {0};
     char devid[TOX_ID_STR_LEN+1] = {0};
-    int uindex= 0,fid = -1,sysch_flag = 0;
+    char uidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char* pidstr = NULL;
+    int uid = -1,sysch_flag = 0,uid_len = 0;
     if(params == NULL)
     {
         return ERROR;
@@ -18162,19 +18191,27 @@ int im_cmd_uinfo_request_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:uid(%s) no need(%d)",fromid);
         return OK;
     } 
-    uindex = get_indexbytoxid(toid);
-    if(uindex < 0)
+    uid_len = strlen(fromid);
+    if(uid_len == TOX_ID_STR_LEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:bad uid(%s)",toid);
+        cfd_olduseridstr_getbytoxid(fromid,uidstr);
+        pidstr = uidstr;
+    }
+    else if(uid_len == CFD_USER_PUBKEYLEN)
+    {
+        pidstr = fromid;
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:bad uid(%s)",fromid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
-    else 
+    if(ret_code == OK)
     {
-        *plws_index = uindex;
-        fid = get_friendid_bytoxid(uindex,fromid);
-        if(fid < 0)
+        cfd_uinfolistgetdbid_byuidstr(pidstr,&uid);
+        if(uid <= 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:bad fid(%s)",fromid);
+             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:bad uid(%s)",fromid);
             ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
         }
     }
@@ -18200,14 +18237,11 @@ int im_cmd_uinfo_request_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "RouteId", cJSON_CreateString(g_daemon_tox.user_toxid));
     if(ret_code == OK)
     {
-        if(sysch_flag & UINFO_SYSCHTYPE_MAILINFO)
+        if(sysch_flag & UINFO_SYSCHTYPE_USERINFO)
         {
-            cJSON_AddItemToObject(ret_params, "MailSeq", cJSON_CreateNumber(g_uinfolist[uindex].unode.eminfoseq));
-            cJSON_AddItemToObject(ret_params, "MailInfo", cJSON_CreateString(g_uinfolist[uindex].unode.mailinfo));
-        }
-        if(sysch_flag & UINFO_SYSCHTYPE_NICKNAME)
-        {
-            cJSON_AddItemToObject(ret_params, "NickName", cJSON_CreateString(g_uinfolist[uindex].unode.nickname));
+            cJSON_AddItemToObject(ret_params, "UinfoSeq", cJSON_CreateNumber(g_ruser_list[uid].uinfo_seq));
+            cJSON_AddItemToObject(ret_params, "NickName", cJSON_CreateString(g_ruser_list[uid].uname));
+            cJSON_AddItemToObject(ret_params, "MailInfo", cJSON_CreateString(g_ruser_list[uid].mailinfo));
         }
     }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
@@ -18246,20 +18280,18 @@ int im_cmd_uinfo_update_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
-    struct pnr_account_struct tmp_account;
-    char fromid[TOX_ID_STR_LEN+1] = {0};
-    char toid[TOX_ID_STR_LEN+1] = {0};
+    char userid[TOX_ID_STR_LEN+1] = {0};
     char devid[TOX_ID_STR_LEN+1] = {0};
     char mailinfo[EMAIL_USERS_CACHE_MAXLEN+1] = {0};
     char nickname[PNR_USERNAME_MAXLEN+1] = {0};
-    int uindex= 0,fid = -1,sysch_flag = 0,mailseq = 0,exsit_flag = FALSE;
+    char uidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    int uid = -1,sysch_flag = 0,uinfoseq = 0;
     if(params == NULL)
     {
         return ERROR;
     }
     //解析参数
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",fromid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"ToId",toid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",devid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"RetCode",ret_code,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",sysch_flag,0);
@@ -18275,6 +18307,7 @@ int im_cmd_uinfo_update_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return OK;
     }
     //参数检查
+#if 0        
     uindex = get_indexbytoxid(toid);
     if(uindex < 0)
     {
@@ -18353,6 +18386,46 @@ int im_cmd_uinfo_update_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
         }
     }
+#else
+    cfd_toxidformatidstr(userid,uidstr);
+    if(ret_code == OK)
+    {
+        cfd_uinfolistgetdbid_byuidstr(uidstr,&uid);
+        if(uid <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_cmd_uinfo_request_deal:bad uid(%s)",userid);
+            ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+        }
+        else
+        {
+            if(sysch_flag & UINFO_SYSCHTYPE_USERINFO)
+            {
+                CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UinfoSeq",uinfoseq,0);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",nickname,PNR_USERNAME_MAXLEN);
+                CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"MailInfo",mailinfo,EMAIL_USERS_CACHE_MAXLEN);
+                if(g_ruser_list[uid].uinfo_seq < uinfoseq)
+                {
+                    g_ruser_list[uid].uinfo_seq = uinfoseq;
+                    if(strcmp(g_ruser_list[uid].mailinfo,mailinfo) != OK)
+                    {
+                        memset(g_ruser_list[uid].mailinfo,0,EMAIL_USERS_CACHE_MAXLEN);
+                        strcpy(g_ruser_list[uid].mailinfo,mailinfo);
+                    }
+                    if(strcmp(g_ruser_list[uid].uname,nickname) != OK)
+                    {
+                        memset(g_ruser_list[uid].uname,0,PNR_USERNAME_MAXLEN);
+                        strcpy(g_ruser_list[uid].uname,nickname);
+                    }
+                    cfd_uinfo_dbupdate_byuid(&g_ruser_list[uid]);
+                }
+                else
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"update new user(%d) uinfo(%d:%s) failed",uid,uinfoseq,mailinfo);
+                }
+            }
+        }
+    }
+#endif
     return OK;
 }
 /**********************************************************************************
@@ -18388,7 +18461,7 @@ int im_cmd_template_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Result",result,0);
 
     //参数检查
-    uindex = get_indexbytoxid(userid);
+    uindex = cfd_getindexbyidstr(userid);
     if(uindex < 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_verify_deal:bad uid(%s)",userid);
@@ -20029,10 +20102,10 @@ int im_tox_rcvmsg_deal(Tox *m, char *pmsg, int len, int friendnum)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "bad api_version(%d)", msg_head.api_version);
         return ERROR;
     }
-
     if (userindex > 0 && userindex <= PNR_IMUSER_MAXNUM) 
     {
-		for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) {
+		for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) 
+        {
 			if (g_imusr_array.usrnode[i].appid == friendnum)
 				g_imusr_array.usrnode[i].appid = -1;
 		}
@@ -20548,40 +20621,45 @@ struct ppr_func_struct g_cmddeal_cb_v5[]=
 struct ppr_func_struct g_cmddeal_cb_v6[]=
 {
     {PNR_IM_CMDTYPE_NONE,PNR_API_VERSION_V6,FALSE,NULL},
-    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V6,TRUE,im_userlogin_v4_deal},
+    //{PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V6,TRUE,im_userlogin_v4_deal},
+    {PNR_IM_CMDTYPE_LOGIN,PNR_API_VERSION_V6,TRUE,cfd_userlogin_deal},
     {PNR_IM_CMDTYPE_DESTORY,PNR_API_VERSION_V6,TRUE,im_userdestory_deal},
     {PNR_IM_CMDTYPE_ADDFRIENDREQ,PNR_API_VERSION_V6,TRUE,im_addfriend_req_deal},
-    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_ADDFRIENDDEAL,PNR_API_VERSION_V6,TRUE,im_addfriend_deal_deal},
-    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_ADDFRIENDREPLY,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_DELFRIENDCMD,PNR_API_VERSION_V6,TRUE,im_delfriend_cmd_deal},
-    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V6,TRUE,im_sendmsg_cmd_deal_v3},
-    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V6,TRUE,im_readmsg_cmd_deal},
-    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELFRIENDPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    //{PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V6,TRUE,im_sendmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_SENDMSG,PNR_API_VERSION_V6,TRUE,cfd_sendmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_PUSHMSG,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    {PNR_IM_CMDTYPE_READMSG,PNR_API_VERSION_V6,TRUE,cfd_readmsg_cmd_deal},
+    {PNR_IM_CMDTYPE_READMSGPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_DELMSG,PNR_API_VERSION_V6,TRUE,im_delmsg_cmd_deal},
-    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_DELMSGPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_HEARTBEAT,PNR_API_VERSION_V6,TRUE,im_heartbeat_cmd_deal},
     {PNR_IM_CMDTYPE_ONLINESTATUSCHECK,PNR_API_VERSION_V6,TRUE,im_onlinestatus_check_deal},
-    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V6,TRUE,im_pullmsg_cmd_deal_v3},
-    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V6,TRUE,im_pullfriend_cmd_deal_v4},
+    {PNR_IM_CMDTYPE_ONLINESTATUSPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    //{PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V6,TRUE,im_pullmsg_cmd_deal_v3},
+    {PNR_IM_CMDTYPE_PULLMSG,PNR_API_VERSION_V6,TRUE,cfd_pullmsg_cmd_deal},
+    //{PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V6,TRUE,im_pullfriend_cmd_deal_v4},
+    {PNR_IM_CMDTYPE_PULLFRIEND,PNR_API_VERSION_V6,TRUE,cfd_pullfriend_cmd_deal},
     {PNR_IM_CMDTYPE_SENDFILE,PNR_API_VERSION_V6,TRUE,im_sendfile_cmd_deal},
-    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    {PNR_IM_CMDTYPE_PUSHFILE_TOX,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_SYNCHDATAFILE,PNR_API_VERSION_V6,TRUE,im_sysch_datafile_deal},
     {PNR_IM_CMDTYPE_CREATENORMALUSER,PNR_API_VERSION_V6,TRUE,im_create_normaluser_cmd_deal},
     {PNR_IM_CMDTYPE_LOGINIDENTIFY,PNR_API_VERSION_V6,TRUE,im_login_identify_deal},
     {PNR_IM_CMDTYPE_PREREGISTER,PNR_API_VERSION_V6,TRUE,im_user_preregister_deal},
-    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V6,TRUE,im_user_register_v4_deal},
+    //{PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V6,TRUE,im_user_register_v4_deal},
+    {PNR_IM_CMDTYPE_REGISTER,PNR_API_VERSION_V6,TRUE,cfd_user_register_deal},
     {PNR_IM_CMDTYPE_RECOVERYIDENTIFY,PNR_API_VERSION_V6,TRUE,im_user_recoveryidentify_deal},
     {PNR_IM_CMDTYPE_RECOVERY,PNR_API_VERSION_V6,TRUE,im_user_recovery_deal},
     {PNR_IM_CMDTYPE_PULLUSERLIST,PNR_API_VERSION_V6,TRUE,im_pulluserlist_cmd_deal},
     {PNR_IM_CMDTYPE_PULLFILE,PNR_API_VERSION_V6,TRUE,im_pullfile_cmd_deal},
     {PNR_IM_CMDTYPE_LOGOUT,PNR_API_VERSION_V6,TRUE,im_logout_deal},
     {PNR_IM_CMDTYPE_USERINFOUPDATE,PNR_API_VERSION_V6,TRUE,im_userinfoupdate_cmd_deal},
-    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_USERINFOPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_CHANGEREMARKS,PNR_API_VERSION_V6,TRUE,im_changeremarks_deal},
     {PNR_IM_CMDTYPE_GET_RELATIONSHIP,PNR_API_VERSION_V6,TRUE,im_get_relationship_status_cmd_deal},
     {PNR_IM_CMDTYPE_PULLFILELIST,PNR_API_VERSION_V6,TRUE,im_pull_file_list_deal},
@@ -20598,26 +20676,27 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_REBOOT,PNR_API_VERSION_V6,TRUE,im_reboot_deal},
     {PNR_IM_CMDTYPE_CREATEGROUP,PNR_API_VERSION_V6,TRUE,im_group_create_deal},
     {PNR_IM_CMDTYPE_INVITEGROUP,PNR_API_VERSION_V6,TRUE,im_group_invite_deal},
-    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPINVITEPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_GROUPINVITEDEAL,PNR_API_VERSION_V6,TRUE,im_group_invitedeal_deal},
     {PNR_IM_CMDTYPE_VERIFYGROUP,PNR_API_VERSION_V6,TRUE,im_group_verify_deal},
-    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_VERIFYGROUPPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_GROUPQUIT,PNR_API_VERSION_V6,TRUE,im_group_quit_deal},
-    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V6,TRUE,im_group_pulllist_deal},
+    //{PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V6,TRUE,im_group_pulllist_deal},
+    {PNR_IM_CMDTYPE_GROUPLISTPULL,PNR_API_VERSION_V6,TRUE,cfd_group_pulllist_deal},
     {PNR_IM_CMDTYPE_GROUPUSERPULL,PNR_API_VERSION_V6,TRUE,im_group_pulluser_deal},
     {PNR_IM_CMDTYPE_GROUPMSGPULL,PNR_API_VERSION_V6,TRUE,im_group_pullmsg_deal},
     {PNR_IM_CMDTYPE_GROUPSENDMSG,PNR_API_VERSION_V6,TRUE,im_group_sendmsg_deal},
     {PNR_IM_CMDTYPE_GROUPSENDFILEPRE,PNR_API_VERSION_V6,TRUE,im_group_sendfile_predeal},
     {PNR_IM_CMDTYPE_GROUPSENDFILEDONE,PNR_API_VERSION_V6,TRUE,im_group_sendfile_done_deal},
     {PNR_IM_CMDTYPE_GROUPDELMSG,PNR_API_VERSION_V6,TRUE,im_group_delmsg_deal},
-    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPMSGPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_GROUPCONFIG,PNR_API_VERSION_V6,TRUE,im_group_config_deal},
-    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_GROUPSYSPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_FILERENAME,PNR_API_VERSION_V6,TRUE,im_file_rename_deal},
     {PNR_IM_CMDTYPE_FILEFORWARD,PNR_API_VERSION_V6,TRUE,im_file_forward_deal},
-    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_FILEFORWARD_PUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     {PNR_IM_CMDTYPE_UPLOADAVATAR,PNR_API_VERSION_V6,TRUE,im_upload_avatar_deal},
-    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V6,TRUE,im_updata_avatar_deal},
+    {PNR_IM_CMDTYPE_UPDATEAVATAR,PNR_API_VERSION_V6,TRUE,cfd_updata_avatar_deal},
     {PNR_IM_CMDTYPE_PULLTMPACCOUNT,PNR_API_VERSION_V6,TRUE,im_pull_tmpaccount_deal},
     {PNR_IM_CMDTYPE_DELUSER,PNR_API_VERSION_V6,TRUE,im_account_delete_deal},
     {PNR_IM_CMDTYPE_ENABLEQLCNODE,PNR_API_VERSION_V6,TRUE,im_cmd_enableqlcnode_deal},
@@ -20638,16 +20717,24 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     //用户磁盘限额配置
     {PNR_IM_CMDTYPE_GETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_get_capacity_deal},
     {PNR_IM_CMDTYPE_SETCAPACITY,PNR_API_VERSION_V6,TRUE,im_cmd_set_capacity_deal},
+    //文件操作
+    {PNR_IM_CMDTYPE_FILEPATHSPULL,PNR_API_VERSION_V6,TRUE,cfd_pullfilepaths_deal},
+    {PNR_IM_CMDTYPE_FILESLISTPULL,PNR_API_VERSION_V6,TRUE,cfd_pullfileslist_deal},
+    {PNR_IM_CMDTYPE_BAKFILE,PNR_API_VERSION_V6,TRUE,cfd_bakfile_deal},
+    {PNR_IM_CMDTYPE_FILEACTION,PNR_API_VERSION_V6,TRUE,cfd_fileaction_deal},
     //用户状态同步消息
     {PNR_IM_CMDTYPE_UINFOKEY_SYSCH,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_sysch_deal},
     {PNR_IM_CMDTYPE_UINFOKEY_REPLY,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_reply_deal},
     {PNR_IM_CMDTYPE_UINFO_REQUEST,PNR_API_VERSION_V6,TRUE,im_cmd_uinfo_request_deal},
     {PNR_IM_CMDTYPE_UINFO_UPDATE,PNR_API_VERSION_V6,TRUE,im_cmd_uinfo_update_deal},
+    //节点同步消息
+    {PNR_IM_CMDTYPE_RNODEONLINE_NOTICE,PNR_API_VERSION_V6,FALSE,cfd_nodeonline_notice_deal},
+    {PNR_IM_CMDTYPE_RNODEONLINE_REPLY,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
     //系统推送消息
-    {PNR_IM_CMDTYPE_SYSDEBUGMSG,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_USRDEBUGMSG,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_SYSDERLYMSG,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
-    {PNR_IM_CMDTYPE_SYSMSGPUSH,PNR_API_VERSION_V6,FALSE,im_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SYSDEBUGMSG,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    {PNR_IM_CMDTYPE_USRDEBUGMSG,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SYSDERLYMSG,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
+    {PNR_IM_CMDTYPE_SYSMSGPUSH,PNR_API_VERSION_V6,FALSE,cfd_replaymsg_deal},
 };
 char * g_pnr_cmdstring[]=
 {
@@ -20736,14 +20823,16 @@ char * g_pnr_cmdstring[]=
     PNR_EMCMD_PULL_EMAILLIST,
     PNR_EMCMD_BAKUPEMAIL,
     //用户磁盘限额配置
-PNR_IMCMD_GETCAPACITY,
-PNR_IMCMD_SETCAPACITY,
-//用户状态同步消息
-PNR_IMCMD_UINFOKEYSYSCH,
-PNR_IMCMD_UINFOKEYREPLY,
-PNR_IMCMD_UINFOREQUEST,
-PNR_IMCMD_UINFOUPDATE,
-
+    PNR_IMCMD_GETCAPACITY,
+    PNR_IMCMD_SETCAPACITY,
+    //用户状态同步消息
+    PNR_IMCMD_UINFOKEYSYSCH,
+    PNR_IMCMD_UINFOKEYREPLY,
+    PNR_IMCMD_UINFOREQUEST,
+    PNR_IMCMD_UINFOUPDATE,
+    //rnode 同步消息
+    PNR_IMCMD_RNODEONLINE_NOTICE,
+    PNR_IMCMD_RNODEONLINE_REPLY,
     //rid独有的消息
     PNR_IMCMD_SYSDEBUGCMD,
     PNR_IMCMD_USRDEBUGCMD,
@@ -20795,12 +20884,14 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
 {
     cJSON *root = NULL;
     cJSON *params = NULL;
-    int retcode = 0;
+    int retcode = 0,idstr_len = 0;
     struct imcmd_msghead_struct msg_head;
 	int uindex = 0;
     char toxid[TOX_ID_STR_LEN+1]={0};
+    char idstr[CFD_USER_PUBKEYLEN+1]={0};
     char sign[PNR_RSA_KEY_MAXLEN+1] = {0};
     char* tmp_json_buff = NULL;
+    char* p_idstr = NULL;
     cJSON* tmp_item = NULL;
     struct ppr_func_struct* p_cmddeal_cbnode = NULL;
 
@@ -20863,7 +20954,17 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
             {
                 //获取用户id
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",toxid,TOX_ID_STR_LEN);
-                uindex = get_indexbytoxid(toxid);
+                idstr_len = strlen(toxid);
+                if(idstr_len == TOX_ID_STR_LEN)
+                {
+                    cfd_olduseridstr_getbytoxid(toxid,idstr);
+                    p_idstr=idstr;
+                }
+                else
+                {
+                    p_idstr = toxid;
+                }
+                uindex = cfd_uinfolistgetindex_byuidstr(p_idstr);
                 if(uindex <= 0)
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad toxid(%s)",toxid);
@@ -20981,10 +21082,9 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
     cJSON *params = NULL;
     struct imcmd_msghead_struct msg_head;
     int retlen = 0;
-    int userindex = 0,ppm_friendnum = 0;
+    int userindex = 0;
     int needret = 0;
-    char sendmsg[1500] = {0};
-    int i = 0,msgid = 0;
+    int i = 0,msgid = 0,rid = 0;
     int retcode = 0;
     char sign[PNR_RSA_KEY_MAXLEN+1] = {0};
     char* tmp_json_buff = NULL;
@@ -21051,7 +21151,7 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
                 if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_RECOVERY && get_uindex_by_toxfriendnum(m,friendnum,&userindex) != OK)
                 {
                 	DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get_uindex_by_toxfriendnum: failed");
-                        return ERROR;
+                    return ERROR;
                 }
                 if(msg_head.im_cmdtype != PNR_IM_CMDTYPE_PREREGISTER
                     && msg_head.im_cmdtype != PNR_IM_CMDTYPE_REGISTER
@@ -21072,7 +21172,8 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
             } 
             else
             {   
-                userindex = get_index_by_toxhandle(m);
+                //userindex = get_index_by_toxhandle(m);
+                userindex = CFD_NODEID_USERINDEX;
             }
         }        
     }
@@ -21088,141 +21189,66 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
     }
     if (userindex > 0 && userindex <= PNR_IMUSER_MAXNUM) 
     {
-		for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) {
+		for (i = 0; i <= PNR_IMUSER_MAXNUM; i++) 
+        {
 			if (g_imusr_array.usrnode[i].appid == friendnum)
+            {
 				g_imusr_array.usrnode[i].appid = -1;
+            }         
 		}
 		g_imusr_array.usrnode[userindex].appid = friendnum;
-        pthread_mutex_lock(&(g_pnruser_lock[userindex]));
-        if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
+        if(msg_head.im_cmdtype >= PNR_IM_CMDTYPE_LOGIN && msg_head.im_cmdtype < PNR_IM_CMDTYPE_UINFOKEY_SYSCH)
         {
-            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
-        }
-        else
-        {
-            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
-        }
-        if(msg_head.im_cmdtype >=PNR_IM_CMDTYPE_LOGIN && msg_head.im_cmdtype <= PNR_IM_CMDTYPE_SETCAPACITY)
-        {
-            g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
-            g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+            pthread_mutex_lock(&(g_pnruser_lock[userindex]));
+            if(msg_head.im_cmdtype == PNR_IM_CMDTYPE_LOGOUT)
+            {
+                g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_OFFLINE;
+            }
+            else
+            {
+                g_imusr_array.usrnode[userindex].user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+            }
             g_imusr_array.usrnode[userindex].heartbeat_count = 0;
+            g_imusr_array.usrnode[userindex].user_online_type = USER_ONLINE_TYPE_TOX;
+            pthread_mutex_unlock(&(g_pnruser_lock[userindex]));
         }
-        pthread_mutex_unlock(&(g_pnruser_lock[userindex]));
     }
-    if (needret && strlen(g_tox_retbuf) > 0) 
+    if (needret && retlen > 0) 
     {
         if(nodemsg == TRUE)
         {
+#if 0
+        
             pnr_msgcache_getid(userindex, &msgid);
             get_ppm_usernum_by_toxfriendnum(m,friendnum,userindex,&ppm_friendnum);
             insert_tox_msgnode_v3(userindex, g_imusr_array.usrnode[userindex].user_toxid,
                         g_imusr_array.usrnode[userindex].friends[ppm_friendnum].user_toxid, 
                         g_tox_retbuf, strlen(g_tox_retbuf), msg_head.im_cmdtype, msg_head.msgid,
                         msgid, NULL, NULL, NULL);
-        }
-        else
-        {
-        	if (retlen >= MAX_CRYPTO_DATA_SIZE) 
+#else
+            rid = cfd_rnodeid_by_toxfriendnum(m,friendnum);
+            if(rid > 0)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"retlen(%d) MAX_CRYPTO_DATA_SIZE(%d)",retlen,MAX_CRYPTO_DATA_SIZE);
-    			while (1) {
-    				cJSON *RspJson = cJSON_Parse(g_tox_retbuf);
-    				if (!RspJson) {
-    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse retbuf(%s) err!", g_tox_retbuf);
-    					break;
-    				}
-                    cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "params");
-    				if (!RspJsonParams) {
-    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse params(%s) err!", g_tox_retbuf);
-    					cJSON_Delete(RspJson);
-    					break;
-    				}
-    				char *RspStrParams = cJSON_PrintUnformatted_noescape(RspJsonParams);
-    				if (!RspStrParams) {
-    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print params(%s) err!", g_tox_retbuf);
-    					cJSON_Delete(RspJson);
-    					break;
-    				}
-    				cJSON *JsonFrame = cJSON_Duplicate(RspJson, true);
-    			    if (!JsonFrame) {
-    			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "dup RspJson err!");
-    					cJSON_Delete(RspJson);
-    					free(RspStrParams);
-    					break;
-    				}
-    				cJSON_Delete(RspJson);
-    				cJSON_DeleteItemFromObject(JsonFrame, "params");
-    				char *StrFrame = cJSON_PrintUnformatted_noescape(JsonFrame);
-    				if (!StrFrame) {
-    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print frame err!");
-    					cJSON_Delete(JsonFrame);
-    					free(RspStrParams);
-    					break;
-    				}
-    				struct tox_msg_send *tmsg = (struct tox_msg_send *)calloc(1, sizeof(*tmsg));
-    			    if (!tmsg) {
-    			        cJSON_Delete(JsonFrame);
-    			        free(StrFrame);
-    					free(RspStrParams);
-    			        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err![%d]", errno);
-    			    	break;
-    			    }
-    				tmsg->msg = RspStrParams;
-    			    tmsg->msgid = msg_head.msgid;
-    			    tmsg->friendnum = friendnum;
-    			    tmsg->msglen = strlen(RspStrParams);
-    				tmsg->offset = MAX_SEND_DATA_SIZE;
-    				tmsg->recvtime = time(NULL);
-    			    strncpy(tmsg->frame, StrFrame, sizeof(tmsg->frame) - 1);
-    				cJSON_Delete(JsonFrame);
-    		        free(StrFrame);
-    					
-    			    pthread_rwlock_wrlock(&g_tox_msg_send_lock);
-    			    list_add_tail(&tmsg->list, &g_tox_msg_send_list);
-    			    pthread_rwlock_unlock(&g_tox_msg_send_lock);
-    				cJSON *RspJsonSend = cJSON_Parse(tmsg->frame);
-    				memcpy(sendmsg, tmsg->msg, MAX_SEND_DATA_SIZE);
-    				cJSON_AddStringToObject(RspJsonSend, "params", sendmsg);
-                	cJSON_AddNumberToObject(RspJsonSend, "more", 1);
-                	cJSON_AddNumberToObject(RspJsonSend, "offset", 0);
-    				char *RspStrSend = cJSON_PrintUnformatted_noescape(RspJsonSend);
-    				if (!RspStrSend) {
-    					DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print RspJsonSend err!");
-    					cJSON_Delete(RspJsonSend);
-    					break;
-    				}
-                    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"resp(%d:%s)",strlen(RspStrSend),RspStrSend);
-    				tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-                		(uint8_t *)RspStrSend, strlen(RspStrSend), NULL);
-    				cJSON_Delete(RspJsonSend);
-    				free(RspStrSend);
-    				break;
-    			}
-    		}
-            else
-            {
-            	tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-                	(uint8_t *)g_tox_retbuf, retlen, NULL);
-                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"resp(%d:%s)",retlen,g_tox_retbuf);
-    		}
-        }
-    }
-#if 0
-    if (msg_head.forward) 
-    {
-        //目标用户是本地用户
-        if(msg_head.to_userid)
-        {
-            im_pushmsg_callback(msg_head.to_userid,msg_head.im_cmdtype,TRUE,msg_head.api_version,msg_head.toxmsg);
-        }
-        else
-        {
-            im_tox_pushmsg_callback(userindex, msg_head.im_cmdtype,msg_head.api_version,msg_head.toxmsg);
-        }
-        free(msg_head.toxmsg);
-    }
+                pnr_msgcache_getid(CFD_NODEID_USERINDEX,&msgid);
+                if(m == g_daemon_tox.ptox_handle)
+                {
+                    cfd_rnodetox_msgnode_insert(g_daemon_tox.user_toxid,g_rlist_node[rid].nodeid,msg_head.im_cmdtype,msgid,retlen,g_tox_retbuf);
+                }
+                else
+                {
+                    cfd_rnodetox_msgnode_insert(g_rnode_tox.user_toxid,g_rlist_node[rid].routeid,msg_head.im_cmdtype,msgid,retlen,g_tox_retbuf);
+                }
+            }
 #endif
+        }
+        else
+        {
+            pnr_msgcache_getid(CFD_NODEID_USERINDEX,&msgid);
+            cfd_usermsgnode_insert(userindex, g_imusr_array.usrnode[userindex].user_toxid,
+                        g_imusr_array.usrnode[userindex].friends[friendnum].user_toxid, 
+                        g_tox_retbuf, retlen,msg_head.im_cmdtype, msg_head.msgid,msgid, NULL, NULL, NULL);
+        }
+    }
     return OK;
 errbreak:
     if(retcode)
@@ -21256,16 +21282,26 @@ errbreak:
         strcpy(g_tox_retbuf,ret_buff);
         if(nodemsg == TRUE)
         {
-            pnr_msgcache_getid(userindex, &msgid);
-            insert_tox_msgnode_v3(userindex, g_imusr_array.usrnode[userindex].user_toxid,
-                        g_imusr_array.usrnode[userindex].friends[friendnum].user_toxid, 
-                        ret_buff, strlen(ret_buff),msg_head.im_cmdtype, msg_head.msgid,
-                        msgid, NULL, NULL, NULL);
+            rid = cfd_rnodeid_by_toxfriendnum(m,friendnum);
+            if(rid > 0)
+            {
+                pnr_msgcache_getid(CFD_NODEID_USERINDEX,&msgid);
+                if(m == g_daemon_tox.ptox_handle)
+                {
+                    cfd_rnodetox_msgnode_insert(g_daemon_tox.user_toxid,g_rlist_node[rid].nodeid,msg_head.im_cmdtype,msgid,retlen,ret_buff);
+                }
+                else
+                {
+                    cfd_rnodetox_msgnode_insert(g_rnode_tox.user_toxid,g_rlist_node[rid].routeid,msg_head.im_cmdtype,msgid,retlen,ret_buff);
+                }
+            }
         }
         else
         {
-            tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-                        (uint8_t *)g_tox_retbuf, retlen, NULL);
+            pnr_msgcache_getid(CFD_NODEID_USERINDEX,&msgid);
+            cfd_usermsgnode_insert(userindex, g_imusr_array.usrnode[userindex].user_toxid,
+                        g_imusr_array.usrnode[userindex].friends[friendnum].user_toxid, 
+                        ret_buff, retlen,msg_head.im_cmdtype, msg_head.msgid,msgid, NULL, NULL, NULL);
         }
         free(ret_buff);
     }    
@@ -21319,11 +21355,12 @@ void im_send_file_by_tox(Tox *tox, struct lws_cache_msg_struct *msg, int push)
 void im_send_file_deal(struct im_user_msg_sendfile *pfile)
 {
     int from = 0;
-    int to = 0;
+    int to_uid = 0,rid = 0;
     int api_version = 0;
+    char to_uidstr[CFD_USER_PUBKEYLEN+1] = {0};
 
-    from = get_indexbytoxid(pfile->fromid);
-    to = get_indexbytoxid(pfile->toid);
+    from = cfd_getindexbyidstr(pfile->fromid);
+    cfd_toxidformatidstr(pfile->toid,to_uidstr);
     if(pfile->ver_str != 0)
     {
         api_version = PNR_API_VERSION_MAXNUM;
@@ -21332,9 +21369,13 @@ void im_send_file_deal(struct im_user_msg_sendfile *pfile)
     {
         api_version = PNR_API_VERSION_V1;
     }
-    if (to) {
-        im_pushmsg_callback(to, PNR_IM_CMDTYPE_PUSHFILE, TRUE, api_version,pfile);
-    } else {
+    cfd_checklastactive_byuidstr(to_uidstr,&to_uid,&rid);
+    if(to_uid > 0 && rid == CFD_RNODE_DEFAULT_RID)
+    {
+        im_pushmsg_callback(to_uid, PNR_IM_CMDTYPE_PUSHFILE, TRUE, api_version,pfile);
+    } 
+    else 
+    {
         im_pushmsg_callback(from, PNR_IM_CMDTYPE_PUSHFILE, FALSE, api_version,pfile);
     }
 }
@@ -21390,10 +21431,10 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 	resp->logid = htonl(pss->logid);
 	resp->segseq = pfile->segseq;
     action = ntohl(pfile->action);
-	memcpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
-	memcpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
+	strncpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
+	strncpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
     resp->timestamp = htonl((uint32)time(NULL));
-    if (strlen(pfile->fromid) < TOX_ID_STR_LEN) {
+    if (strlen(pfile->fromid) < CFD_USER_PUBKEYLEN) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "fromid(%s)-toid(%s) error", pfile->fromid, pfile->toid);
         return;
     }
@@ -21410,12 +21451,11 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 	//if (crcr == crct) {
     if (1) {
 		resp->code = 0;
-		index = get_indexbytoxid(pfile->fromid);
-        if (index == 0) 
+		index = cfd_getindexbyidstr(pfile->fromid);
+        if (index <= 0) 
         {
             resp->code = htons(2);
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get fromtoxid(%s) failed", 
-				pfile->fromid);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get fromtoxid(%s) failed",pfile->fromid);
         }
         else 
         {
@@ -21441,21 +21481,29 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 {
                     srcfrom = PNR_FILE_SRCFROM_MAILBAKUP;
                 }
-                //添加群文件处理
                 else if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//字符的0
                 {
-                    srcfrom = PNR_FILE_SRCFROM_GROUPSEND;
-                    gid = get_gidbygrouphid(pfile->toid);
-                    if(gid < 0)
-                    {            
-                        resp->code = htons(2);
-                        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get gid(%s) failed porperty_flag(0x%2x)", pfile->toid,pfile->porperty_flag);
-                        return;
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_rcv_file_deal_bin:get porperty_flag(%d)",pfile->porperty_flag);
+                    if(pfile->porperty_flag == CFD_FILE_PROPERTY_BAKALBUM || pfile->porperty_flag == CFD_FILE_PROPERTY_BAKFPATH)
+                    {
+                        srcfrom = PNR_FILE_SRCFROM_ALBUM;
                     }
                     else
                     {
-					    snprintf(fullfilename, sizeof(fullfilename), "%s%sg%d/%s", 
-						    DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH, gid,pfile->filename);
+                        //添加群文件处理
+                        srcfrom = PNR_FILE_SRCFROM_GROUPSEND;
+                        gid = get_gidbygrouphid(pfile->toid);
+                        if(gid < 0)
+                        {            
+                            resp->code = htons(2);
+                            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get gid(%s) failed porperty_flag(0x%2x)", pfile->toid,pfile->porperty_flag);
+                            return;
+                        }
+                        else
+                        {
+                            snprintf(fullfilename, sizeof(fullfilename), "%s%sg%d/%s", 
+                                DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH, gid,pfile->filename);
+                        }
                     }
                 }
                 else if(action == PNR_IM_MSGTYPE_AVATAR)
@@ -21604,6 +21652,7 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 	struct im_user_msg_sendfile_resp *resp = (struct im_user_msg_sendfile_resp *)retmsg;
 	struct im_user_msg_sendfile *pfile = (struct im_user_msg_sendfile *)pss->buf;
 
+    memset(resp,0,sizeof(struct im_user_msg_sendfile_resp));
 	/* first packet */
 	if (ntohl(*magic) == IM_MSG_MAGIC) {
 		switch (ntohl(*action)) {
@@ -21618,8 +21667,8 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 			pss->type = ntohl(*action);
 			memcpy(pss->buf, pmsg, msg_len);
 			pss->buflen = msg_len;
-			pss->user_index = get_indexbytoxid(pfile->fromid);
-			if (!pss->user_index) {
+			pss->user_index = cfd_getindexbyidstr(pfile->fromid);
+			if (pss->user_index <= 0) {
 				DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) err", pfile->fromid);
 				return ERROR;
 			}
@@ -21632,8 +21681,8 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 				resp->action = pfile->action;
 				resp->fileid = pfile->fileid;
 				resp->segseq = pfile->segseq;
-				memcpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
-				memcpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
+				strncpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
+				strncpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
 				resp->code = htons(5);
                 resp->timestamp = htonl((uint32)time(NULL));
 				resp->crc = htons(gen_crc16((uint8_t *)retmsg, sizeof(struct im_user_msg_sendfile_resp)));
@@ -21684,8 +21733,8 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
 				resp->action = pfile->action;
 				resp->fileid = pfile->fileid;
 				resp->segseq = pfile->segseq;
-				memcpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
-				memcpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
+				strncpy(resp->fromid, pfile->fromid, TOX_ID_STR_LEN);
+				strncpy(resp->toid, pfile->toid, TOX_ID_STR_LEN);
 				resp->code = htons(4);
                 resp->timestamp = htonl((uint32)time(NULL));
 				resp->crc = htons(gen_crc16((uint8_t *)retmsg, sizeof(struct im_user_msg_sendfile_resp)));
@@ -21718,7 +21767,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     cJSON *tmp_item = NULL;
 	cJSON *dup = NULL;
 	char *tmp_json_buff = NULL;
-	int msgid = 0,index = 0,addfriend_autoflag = FALSE;
+	int msgid = 0,index = 0,addfriend_autoflag = FALSE,src_msgid = 0;
     char filepath[UPLOAD_FILENAME_MAXLEN] = {0};
     char fileinfo[PNR_FILEINFO_MAXLEN+1] = {0};
     char fullfile[UPLOAD_FILENAME_MAXLEN*2] = {0};
@@ -21729,6 +21778,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     struct im_sendfile_struct sendfile;
     struct im_userdev_mapping_struct devinfo;
     struct im_sendmsg_msgstruct* psendmsg = NULL;
+    int rid = 0, f_uid=0,uid =0,ctype = PNR_MSG_CACHE_TYPE_TOXA;
 
     if(pmsg == NULL)
     {
@@ -21768,6 +21818,42 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     {
         case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",friend.type,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",friend.touser_toxid,TOX_ID_STR_LEN);
+            CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouterId",friend.friend_devid,TOX_ID_STR_LEN);
+            //这里需要先检测对应节点是否是已记录节点
+            if(strlen(friend.friend_devid) == TOX_ID_STR_LEN)
+            {
+                rid = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,friend.friend_devid);
+                if(rid <= 0)
+                {
+                    //新节点
+                    rid = cfd_rnodelist_getidleid();
+                    if(rid <= 0)
+                    {
+                        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rnodelist over");
+                        return ERROR;
+                    }
+                    cfd_rnodelist_addnewnode(rid,friend.friend_devid);
+                }
+            }
+            //也要检查是不是新用户
+            cfd_uinfolistgetdbid_byuidstr(friend.touser_toxid,&f_uid);
+            if(f_uid <= 0)
+            {
+                //新用户
+                f_uid = cfd_uinfolist_getidleid();
+                if(f_uid > 0 && f_uid < CFD_URECORD_MAXNUM)
+                {
+                    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NickName",friend.friend_nickname,TOX_ID_STR_LEN);
+                    cfd_uinfonode_addnew(f_uid,0,FALSE,0,0,friend.touser_toxid,friend.friend_nickname,NULL,NULL,NULL);
+                    cfd_uactive_addnew(f_uid,0,rid,friend.touser_toxid);
+                }
+                else
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user over");
+                    return ERROR;
+                }
+            }
             //自动添加的类型，直接这里处理了
             if(friend.type == PNR_ADDFRIEND_AUTOTYPE_BYEMAIL)
             {
@@ -21788,7 +21874,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             //这里需要反向一下
             if(friend.result == OK)
             {
-                index = get_indexbytoxid(friend.touser_toxid);
+                index = cfd_getindexbyidstr(friend.touser_toxid);
                 pnr_friend_dbinsert(friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
                 im_nodelist_addfriend(id,friend.touser_toxid,friend.fromuser_toxid,friend.nickname,friend.user_pubkey);
                 pnr_check_update_devinfo_bytoxid(index,friend.fromuser_toxid,devinfo.user_toxid,devinfo.user_devname);
@@ -21834,8 +21920,8 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             }
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",psendmsg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
-            index = get_indexbytoxid(psendmsg->touser_toxid);
-            if(index)
+            index = cfd_getindexbyidstr(psendmsg->touser_toxid);
+            if(index > 0)
             {
                 pnr_msglog_getid(index, &msgid);
                 if(msg_head.api_version == PNR_API_VERSION_V1)
@@ -21871,8 +21957,8 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             int tmp_msgid = 0;
             char* msgid_buff_end = NULL;
             char* tmp_msgid_head = NULL;
-            index = get_indexbytoxid(psendmsg->touser_toxid);
-            if(index)
+            index = cfd_getindexbyidstr(psendmsg->touser_toxid);
+            if(index > 0)
             {
                 msgid_buff_end = psendmsg->msg_buff + strlen(psendmsg->msg_buff);
                 tmp_msgid_head = psendmsg->msg_buff;
@@ -21910,8 +21996,8 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FriendId",psendmsg->touser_toxid,TOX_ID_STR_LEN);
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
             //这里要修改推送到app的msgid
-            index = get_indexbytoxid(psendmsg->touser_toxid);
-            if(index)
+            index = cfd_getindexbyidstr(psendmsg->touser_toxid);
+            if(index > 0)
             {
                 pnr_msglog_dbget_dbid_bylogid(index,psendmsg->log_id,psendmsg->fromuser_toxid,psendmsg->touser_toxid,&msgid);
                 cJSON_ReplaceItemInObject(params,"MsgId",cJSON_CreateNumber(msgid));
@@ -21934,8 +22020,8 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileInfo",fileinfo,PNR_FILEINFO_MAXLEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FilePath",filepath,UPLOAD_FILENAME_MAXLEN);
             //这里要修改推送到app的msgid
-            index = get_indexbytoxid(sendfile.touser_toxid);
-            if(index)
+            index = cfd_getindexbyidstr(sendfile.touser_toxid);
+            if(index > 0)
             {
                 p_realfilename = strrchr(filepath,'/');
                 if(p_realfilename != NULL)
@@ -21969,7 +22055,6 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     
     pnr_msgcache_getid(id, &msgid);
 	dup = cJSON_Duplicate(root, 1);
-    int src_msgid = 0;
     CJSON_GET_VARINT_BYKEYWORD(dup,tmp_item,tmp_json_buff,"msgid",src_msgid,0);
     if(src_msgid == 0)
     {
@@ -21982,7 +22067,6 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
 	pmsg = cJSON_PrintUnformatted(dup);
 	cJSON_Delete(dup);
     root = cJSON_Parse(pmsg);
-
     switch (msg_head.im_cmdtype) 
     {
         case PNR_IM_CMDTYPE_ADDFRIENDPUSH:
@@ -22003,36 +22087,50 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
     		
         case PNR_IM_CMDTYPE_ADDFRIENDREPLY:
         case PNR_IM_CMDTYPE_USERINFOPUSH:
+            cfd_uinfolistgetdbid_byuidstr(friend.fromuser_toxid,&uid);
+            if(uid > 0 && g_activeuser_list[uid].active_rid == CFD_RNODE_DEFAULT_RID)
+            {
+                ctype = PNR_MSG_CACHE_TYPE_LWS;
+            }
             pnr_msgcache_dbinsert(msgid, friend.fromuser_toxid, friend.touser_toxid, 
-                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, 0, 
-                PNR_MSG_CACHE_TYPE_TOXA, 0, "","");
+                msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, 0,ctype, 0, "","");
             free(pmsg);
             break;
         case PNR_IM_CMDTYPE_PUSHMSG:
+            cfd_uinfolistgetdbid_byuidstr(psendmsg->fromuser_toxid,&uid);
+            if(uid > 0 && g_activeuser_list[uid].active_rid == CFD_RNODE_DEFAULT_RID)
+            {
+                ctype = PNR_MSG_CACHE_TYPE_LWS;
+            }
             if(msg_head.api_version == PNR_API_VERSION_V1)
             {
                 pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                     msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
-                    PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
+                    ctype, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
             }
             else if(msg_head.api_version >= PNR_API_VERSION_V3)
             {
                 pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                     msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
-                    PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
+                    ctype, 0, psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
             }
             free(pmsg);
             break;
         case PNR_IM_CMDTYPE_DELMSGPUSH:
         case PNR_IM_CMDTYPE_READMSGPUSH:
+            cfd_uinfolistgetdbid_byuidstr(psendmsg->fromuser_toxid,&uid);
+            if(uid > 0 && g_activeuser_list[uid].active_rid == CFD_RNODE_DEFAULT_RID)
+            {
+                ctype = PNR_MSG_CACHE_TYPE_LWS;
+            }
     		if (msg_head.im_cmdtype == PNR_IM_CMDTYPE_DELMSGPUSH) {
-    			int userindex = get_indexbytoxid(psendmsg->touser_toxid);
+    			int userindex = cfd_getindexbyidstr(psendmsg->touser_toxid);
     			pnr_msgcache_dbdelete_by_logid(userindex, psendmsg);
                 pnr_msglog_dbdelete(userindex, 0, psendmsg->log_id, psendmsg->fromuser_toxid, psendmsg->touser_toxid);
             }
             pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, psendmsg->touser_toxid, 
                 msg_head.im_cmdtype, pmsg, strlen(pmsg), NULL, NULL, psendmsg->log_id, 
-                PNR_MSG_CACHE_TYPE_TOXA, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
+                ctype, 0, psendmsg->msg_srckey,psendmsg->msg_dstkey);
             free(pmsg);
             break;
 
@@ -22080,7 +22178,9 @@ int im_server_init(void)
     char user_spath[PNR_FILEPATH_MAXLEN+1] = {0};
 	char user_upath[PNR_FILEPATH_MAXLEN+1] = {0};
 	char user_mailpath[PNR_FILEPATH_MAXLEN+1] = {0};
+	char user_filespath[PNR_FILEPATH_MAXLEN+1] = {0};
     memset(&g_daemon_tox,0,sizeof(g_daemon_tox));
+    memset(&g_rnode_tox,0,sizeof(g_rnode_tox));
     memset(&g_imusr_array,0,sizeof(g_imusr_array));
     memset(&g_group_pushmsgs_cache,0,sizeof(g_group_pushmsgs_cache));
     if(access(PNR_AVATAR_FULLDIR,F_OK) != OK)
@@ -22093,6 +22193,8 @@ int im_server_init(void)
         snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",PNR_FILECACHE_FULLDIR);
         system(cmd);   
     }
+    //新的数据初始化
+    cfd_userdata_init();
     //用户账号信息初始化
 	pnr_account_init_fromdb();
 	for(i=0;i<=PNR_IMUSER_MAXNUM;i++)
@@ -22105,7 +22207,6 @@ int im_server_init(void)
         strcpy(g_imusr_array.usrnode[i].userinfo_pathurl,DAEMON_PNR_USERINFO_DIR);
         strcat(g_imusr_array.usrnode[i].userinfo_pathurl,g_imusr_array.usrnode[i].user_name);
         strcat(g_imusr_array.usrnode[i].userinfo_pathurl,"/");
-
 		if(access(g_imusr_array.usrnode[i].userdata_pathurl,F_OK) != OK)
         {
             snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userdata_pathurl);
@@ -22116,12 +22217,12 @@ int im_server_init(void)
             snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userinfo_pathurl);
             system(cmd);
 		}
-
 		if (i > 0) {
             snprintf(user_spath,PNR_FILEPATH_MAXLEN,"%ss",g_imusr_array.usrnode[i].userdata_pathurl);
             snprintf(user_rpath,PNR_FILEPATH_MAXLEN,"%sr",g_imusr_array.usrnode[i].userdata_pathurl);
             snprintf(user_upath,PNR_FILEPATH_MAXLEN,"%su",g_imusr_array.usrnode[i].userdata_pathurl);
             snprintf(user_mailpath,PNR_FILEPATH_MAXLEN,"%smail",g_imusr_array.usrnode[i].userdata_pathurl);
+            snprintf(user_filespath,PNR_FILEPATH_MAXLEN,"%sfiles",g_imusr_array.usrnode[i].userdata_pathurl);
 			if(access(user_spath,F_OK) != OK)
             {
      			snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_spath);
@@ -22142,8 +22243,12 @@ int im_server_init(void)
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_mailpath);
                 system(cmd);
             }
+            if(access(user_filespath,F_OK) != OK)
+            {
+                snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_filespath);
+                system(cmd);
+            }
 		}
-		
         strcpy(g_imusr_array.usrnode[i].userinfo_fullurl,g_imusr_array.usrnode[i].userinfo_pathurl);
         strcat(g_imusr_array.usrnode[i].userinfo_fullurl,PNR_DATAFILE_DEFNAME);
         /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_server_init(%d): user(%s) datapath(%s) datafile(%s)",
@@ -22154,7 +22259,6 @@ int im_server_init(void)
         INIT_LIST_HEAD(&g_lws_msglist[i].list);
         INIT_LIST_HEAD(&g_tox_msglist[i].list);
 		INIT_LIST_HEAD(&g_lws_cache_msglist[i].list);
-
         pthread_mutex_init(&(lws_msglock[i]),NULL);
 		pthread_mutex_init(&(lws_cache_msglock[i]),NULL);
         pthread_mutex_init(&(tox_msglock[i]),NULL);
@@ -22163,20 +22267,37 @@ int im_server_init(void)
         pthread_mutex_init(&(g_user_msgidlock[i]),NULL);
         pthread_mutex_init(&(g_user_toxdatalock[i]),NULL);
         pthread_mutex_init(&(g_toxmsg_cache_lock[i]),NULL);
-        pthread_mutex_init(&(g_uinfo_lock[i]),NULL);
-		//用户信息初始化,现在不用instance表了，直接在account表初始化的时候就赋值了
-        //pnr_usr_instance_get(i);
-        if(g_imusr_array.usrnode[i].user_toxid[0] != 0)
+        if(i == CFD_NODEID_USERINDEX)
+        {
+            //初始化数据库句柄
+            if (cfdsql_msglogdb_init(i) != OK){
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed", i);
+                return ERROR;
+            }
+            if (sql_msgcachedb_init(i) != OK) {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msgcache db failed", i);
+                return ERROR;
+            }            
+        }
+        else if(gp_localuser[i] != NULL)
         {
             g_imusr_array.cur_user_num ++;
+            strcpy(g_imusr_array.usrnode[i].user_nickname,gp_localuser[i]->uname);
+            strcpy(g_imusr_array.usrnode[i].user_toxid,gp_localuser[i]->uidstr);
+            strcpy(g_imusr_array.usrnode[i].user_pubkey,gp_localuser[i]->uidstr);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"###get user(%d) user_toxid(%s) nickname(%s)",
+                i,g_imusr_array.usrnode[i].user_toxid,g_imusr_array.usrnode[i].user_nickname);
+#if 0
             pnr_uidhash_get(i,0,g_imusr_array.usrnode[i].user_toxid,
                 &g_imusr_array.usrnode[i].hashid,g_imusr_array.usrnode[i].u_hashstr);
-            /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"id(%d) tox_id(%s) hashid(%d:%s)",
-                i,g_imusr_array.usrnode[i].user_toxid,g_imusr_array.usrnode[i].hashid,g_imusr_array.usrnode[i].u_hashstr);*/
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"id(%d) tox_id(%s) hashid(%d:%s)",
+                i,g_imusr_array.usrnode[i].user_toxid,g_imusr_array.usrnode[i].hashid,g_imusr_array.usrnode[i].u_hashstr);
+#endif
             //初始化好友列表
-            pnr_dbget_friendsall_byuserid(i,g_imusr_array.usrnode[i].user_toxid);
+            //pnr_dbget_friendsall_byuserid(i,g_imusr_array.usrnode[i].user_toxid);
+            cfd_dbget_friendsall_byindex(i);
             //初始化数据库句柄
-            if (sql_msglogdb_init(i) != OK){
+            if (cfdsql_msglogdb_init(i) != OK){
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "[%d]init msglog db failed", i);
                 return ERROR;
             }
@@ -22185,25 +22306,22 @@ int im_server_init(void)
                 return ERROR;
             }
         }
-
 		for (j = 0; j <= PNR_IMUSER_FRIENDS_MAXNUM; j++) {
 			pthread_mutex_init(&g_imusr_array.usrnode[i].friends[j].lock_sended, NULL);
 		}
         //lws句柄指针
         g_lws_handler[i] = NULL;
-
         //tox linknode 指针
         g_tox_linknode[i] = NULL;
     }
-
+    //这个需要用到用户数据库句柄，所以放在初始化后面
+    cfd_filelist_init();
     //用户消息缓存初始化
 	pnr_msgcache_init();
     //用户tox data信息初始化
     pnr_tox_datafile_init_fromdb();
     //群信息初始化
-    pnr_groupinfo_init();
-    //用户个人信息列表初始化
-    cfd_userinfo_init();
+    pnr_groupinfo_init();  
     return OK;
 }
 
@@ -22297,9 +22415,9 @@ int imuser_friendstatus_push(int index,int online_status)
            user.result = online_status;
 
            //先找到好友
-           friend_id=get_indexbytoxid(g_imusr_array.usrnode[index].friends[i].user_toxid);
+           friend_id=cfd_getindexbyidstr(g_imusr_array.usrnode[index].friends[i].user_toxid);
            //对于目标好友为本地用户
-           if(friend_id != 0)
+           if(friend_id <= 0)
            {
                 //再在好友的好友列表中找到自己，并且改变状态
                 for(j=0;j<PNR_IMUSER_FRIENDS_MAXNUM;j++)
@@ -22341,27 +22459,27 @@ int imuser_friendstatus_push(int index,int online_status)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-int imuser_frienduinfo_sysch(int uindex)
+int imuser_frienduinfo_sysch(int index)
 {
-    int i=0;
-    struct im_friend_msgstruct user;
-    memset(&user,0,sizeof(user));
-    //当前只考虑跨节点的好友，同步
-    for(i=0;i<PNR_IMUSER_FRIENDS_MAXNUM;i++)
+    int i = 0;
+    struct cfd_uinfo_struct user;
+    if(index<= 0 || index > PNR_IMUSER_MAXNUM || gp_localuser[index] == NULL)
     {
-       if(g_imusr_array.usrnode[uindex].friends[i].exsit_flag
-         && g_imusr_array.usrnode[uindex].friends[i].local == FALSE)
+        return ERROR;
+    }
+    memcpy(&user,gp_localuser[index],sizeof(struct cfd_uinfo_struct));
+    //当前只考虑跨节点的好友，同步
+    for(i=2;i<CFD_RNODE_MAXNUM;i++)
+    {
+       if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETTED)
        {
-           memset(&user,0,sizeof(user));
-           memcpy(user.fromuser_toxid,g_imusr_array.usrnode[uindex].user_toxid,TOX_ID_STR_LEN);
-           memcpy(user.touser_toxid,g_imusr_array.usrnode[uindex].friends[i].user_toxid,TOX_ID_STR_LEN);
-           user.uindex = uindex;
-           im_pushmsg_callback(uindex,PNR_IM_CMDTYPE_UINFOKEY_SYSCH,FALSE,PNR_API_VERSION_V6,(void *)&user);
+           user.local = i;
+           DEBUG_PRINT(DEBUG_LEVEL_INFO,"imuser_frienduinfo_sysch:user(%d:%s)",index,user.uidstr);
+           im_pushmsg_callback(index,PNR_IM_CMDTYPE_UINFOKEY_SYSCH,FALSE,PNR_API_VERSION_V6,(void *)&user);
        }
     }
     return OK;
 }
-
 /**********************************************************************************
   Function:      imuser_heartbeat_deal
   Description:   心跳处理
@@ -22493,13 +22611,13 @@ int im_global_info_show(char* pcmd)
             {
                 pbuf++;
             }
-            if(strlen(pbuf) != TOX_ID_STR_LEN)
+            if(strlen(pbuf) < CFD_USER_PUBKEYLEN)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_global_info_show:bad toxid(%s)",pbuf);
                 return ERROR;
             }
-            i = get_indexbytoxid(pbuf);
-            if(i == 0)
+            i = cfd_getindexbyidstr(pbuf);
+            if(i <= 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_global_info_show:not found toxid(%s)",pbuf);
                 return ERROR;
@@ -22838,8 +22956,8 @@ int im_delete_friend_predeal(char* user_id,char* friend_id)
     {
         return ERROR;
     }
-    user_index = get_indexbytoxid(user_id);
-    if(user_index == 0)
+    user_index = cfd_getindexbyidstr(user_id);
+    if(user_index <= 0)
     {
         return ERROR;
     }
@@ -22891,8 +23009,8 @@ int pnr_qrcode_encrype(char* src_msg,char* p_ret,int* ret_len)
         }
     }
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_create_account_qrcode:qrcode_buf(%s),len(%d)",qrcode_buf,srclen);
-    aes_key_setup(PNR_USN_KEY_V101_WORD, keyword, PNR_AES_CBC_KEYSIZE);
-    ret = aes_encrypt_cbc((unsigned char*)qrcode_buf,srclen,(unsigned char*)aes_result,keyword,PNR_AES_CBC_KEYSIZE,PNR_USN_IVKEY_V101_WORD);
+    aes_key_setup((unsigned char*)PNR_USN_KEY_V101_WORD, keyword, PNR_AES_CBC_KEYSIZE);
+    ret = aes_encrypt_cbc((unsigned char*)qrcode_buf,srclen,(unsigned char*)aes_result,keyword,PNR_AES_CBC_KEYSIZE,(unsigned char*)PNR_USN_IVKEY_V101_WORD);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_create_account_qrcode:aes_result(%d:%s)",ret,aes_result);
     pnr_base64_encode(aes_result,srclen,p_ret,ret_len);
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_create_account_qrcode:get(%d:%s)",*ret_len,p_ret);
@@ -22923,6 +23041,7 @@ int pnr_create_account_qrcode(char* p_usn,char* p_ret,int* ret_len)
     {
         return ERROR;
     }
+   
     strcpy(qrcode_buf,PNR_USN_KEY_VERSION_STR);
     strcat(qrcode_buf,g_daemon_tox.user_toxid);
     strcat(qrcode_buf,p_usn);
@@ -23824,7 +23943,7 @@ int im_debug_pushnewnotice_deal(char* pbuf)
     {
         return ERROR;
     }
-    if(strlen(pbuf) == TOX_ID_STR_LEN)
+    if(strlen(pbuf) < CFD_USER_PUBKEYLEN)
     {
         p_targetid = pbuf;
     }
@@ -24212,7 +24331,7 @@ int pnr_sysmsg_push(int cmd,int type,int apiversion,char* toid,char* info)
     {
         return ERROR;
     }
-    uindex = get_indexbytoxid(toid);
+    uindex = cfd_getindexbyidstr(toid);
     if(uindex <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get uindex(%s) failed",toid);
@@ -24829,7 +24948,7 @@ void *pnr_dev_register_task(void *para)
     cJSON * params = NULL;
     int pid = 0;
     int changeflag = FALSE;
-    while(g_p2pnet_init_flag != TRUE)
+    while(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         sleep(1);
     }
@@ -25081,11 +25200,11 @@ int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"input cmd(%d) params null",cmd);
         return ERROR;
     }
-    else if(f_id == 0xFF)
+    else if(f_id == -1)
     {
         for( i = 1; i < PNR_IMUSER_MAXNUM ; i++ )
         {
-            if(g_rnode[i].tox_id[0] == 0)
+            if(g_rlist_node[i].nodeid[0] == 0)
             {
                 f_id = check_and_add_friends(g_daemon_tox.ptox_handle,to_id,g_daemon_tox.userinfo_fullurl);
                 if(f_id < 0)
@@ -25096,10 +25215,10 @@ int pnr_rnode_msg_push(int cmd,char* to_id,void* param1,void* param2)
                 else
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",to_id);
-                    g_rnode[i].f_id = f_id;
-                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETTING;
+                    g_rlist_node[i].node_fid = f_id;
+                    g_rlist_node[i].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETTED;
                 }
-                strncpy(g_rnode[i].tox_id,to_id,TOX_ID_STR_LEN);
+                strncpy(g_rlist_node[i].nodeid,to_id,TOX_ID_STR_LEN);
             }
         }
     }
@@ -25206,76 +25325,6 @@ int pnr_rnode_debugmsg_send(char* pcmd)
         }
     }
     return pnr_rnode_msg_push(cmdtype,p_target_rid,param1,param2);
-}
-/*****************************************************************************
- 函 数 名  : pnr_router_node_friend_init
- 功能描述  : 节点启动后，所有有好友关系rid互相加好友
- 输入参数  : void arg  
- 输出参数  : 无
- 返 回 值  : 
- 调用函数  : 
- 被调函数  : 
- 
- 修改历史      :
-  1.日    期   : 2018年11月30日
-    作    者   : willcao
-    修改内容   : 新生成函数
-
-*****************************************************************************/
-int pnr_router_node_friend_init(void)
-{
-    char **dbResult; 
-    char *errmsg;
-    int nRow, nColumn,offset,i;
-    int f_num = 0;
-    char sql_cmd[SQL_CMD_LEN+1] = {0};
-
-    memset(g_rnode,0,sizeof(struct pnr_rid_node) * (PNR_IMUSER_MAXNUM+1));
-    snprintf(sql_cmd,SQL_CMD_LEN,"select devid,devname from userdev_mapping_tbl where devid !='%s' group by devid;",g_daemon_tox.user_toxid);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
-    if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow, 
-        &nColumn, &errmsg) == SQLITE_OK)
-    {
-        offset = nColumn; //字段值从offset开始呀
-        for( i = 0; i < nRow ; i++ )
-        {
-            if(dbResult[offset] != NULL)
-            {
-                strncpy(g_rnode[i+1].tox_id,dbResult[offset],TOX_ID_STR_LEN);
-                f_num = check_and_add_friends(g_daemon_tox.ptox_handle,g_rnode[i+1].tox_id,g_daemon_tox.userinfo_fullurl);
-                if(f_num < 0)
-                {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) failed",g_rnode[i+1].tox_id);
-                    g_rnode[i+1].c_status = PNR_RID_NODE_CSTATUS_CONNETERR;
-                    g_rnode[i+1].f_id = f_num;
-                }
-                else
-                {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",g_rnode[i+1].tox_id);
-                    g_rnode[i+1].f_id = f_num;
-                    g_rnode[i+1].c_status = PNR_RID_NODE_CSTATUS_CONNETTING;
-                }
-            }
-            if(dbResult[offset+1] != NULL)
-            {
-                strncpy(g_rnode[i+1].node_name,dbResult[offset+1],PNR_USERNAME_MAXLEN);
-            }
-            offset += nColumn;
-            if(i >= PNR_IMUSER_MAXNUM)
-            {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad rnode num over");
-                break;
-            }
-        }
-        sqlite3_free_table(dbResult);
-    }
-    else
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errmsg);
-        sqlite3_free(errmsg);
-        return ERROR;
-    }
-    return OK;
 }
 
 /**********************************************************************************
@@ -25568,10 +25617,11 @@ void *self_monitor_thread(void *para)
 {	
     struct pnr_monitor_errinfo info;
     memset(&info,0,sizeof(info));
-    while(g_p2pnet_init_flag != TRUE)
+    while(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
     {
         sleep(1);
     }
+    cfd_rnode_self_detch();
     strcpy(info.tox_id,g_daemon_tox.user_toxid);
     strcpy(info.mac,g_dev_hwaddr);
     info.dev_num = g_pnrdevtype;

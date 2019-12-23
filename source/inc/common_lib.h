@@ -155,7 +155,6 @@ enum {
 #define PNR_INDEX_HASHSTR_LEN 3
 #define PNR_BKDR_HASHSTR_LEN 8
 #define PNR_HASHID_MAXNUM   (PNR_IMUSER_FRIENDS_MAXNUM*PNR_IMUSER_MAXNUM)
-#define PNR_DEFAULT_DAEMON_USERINDEX    0//主通信tox用户
 #define PNR_DEFAULT_DATAVERSION  1
 #define PNR_ADMINUSER_PSN_INDEX    1 //默认给客户的admin账号只有一个
 #define PNR_ADMINUSER_DEFAULT_IDCODE    "QLCADMIN"
@@ -482,6 +481,7 @@ struct pnrdev_register_info
 {
     int dev_type;
     char rid[TOX_ID_STR_LEN+1];
+    char nid[TOX_ID_STR_LEN+1];
     char eth0_mac[MACSTR_MAX_LEN+1];
     char eth1_mac[MACSTR_MAX_LEN+1];
     char eth0_localip[IPSTR_MAX_LEN+1];

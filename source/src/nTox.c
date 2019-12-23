@@ -52,9 +52,8 @@
 #include "pn_imserver.h"
 #include "upload.h"
 #include "sql_db.h"
-#include "pn_imserver.h"
 #include "md5.h"
-
+#include "cfd_route.h"
 #if defined(_WIN32) || defined(__WIN32__) || defined (WIN32)
 #define c_sleep(x) Sleep(x)
 #else
@@ -64,47 +63,35 @@
 
 #define IP_MAX_SIZE 45
 #define DEFAULT_P2PID_FILENAME     "p2pid.txt"
+#define RNODE_P2PID_FILENAME     "rnodetid.txt"
 #define FRADDR_TOSTR_CHUNK_LEN 8
 #define FRAPUKKEY_TOSTR_BUFSIZE (TOX_PUBLIC_KEY_SIZE * 2 + 1)
 #define FRADDR_TOSTR_BUFSIZE (TOX_ADDRESS_SIZE * 2 + TOX_ADDRESS_SIZE / FRADDR_TOSTR_CHUNK_LEN + 1)
 
-//added by willcao
-#define immsgForward        "immsgForward"
-#define immsgForwardRes     "immsgForwardRes"
-#define immsgNodeMsg        "NodeMsg"
-#define immsgNodeMsgRly     "RNodeMsg"
-
-enum MSG_TYPE
-{
-	//added by willcao
-	TYPE_immsgForward = 0,
-	TYPE_immsgForwardRes,
-    TYPE_immsgNodeMsg,
-    TYPE_immsgNodeMsgRly,
-	TYPE_UNKNOW = 0xFF
-};
-
 const char *data_file_name = NULL;
-char path[100] = {DAEMON_PNR_TOP_DIR};
-Tox *qlinkNode = NULL;
-char dataPathFile[200] = {0};
+Tox *g_nidNode = NULL;
+Tox *g_ridNode = NULL;
+char gNidPathFile[200] = {0};
+char gRidPathFile[200] = {0};
+char  homeDirPath[100] = {DAEMON_PNR_TOP_DIR};
 extern struct im_user_array_struct g_imusr_array;
 extern int g_p2pnet_init_flag;//tox p2p网络初始化完成标识
 extern struct im_user_struct g_daemon_tox;
+extern struct im_user_struct g_rnode_tox;
 extern struct im_user_array_struct g_imusr_array;
 extern Tox* g_tox_linknode[PNR_IMUSER_MAXNUM+1];
 extern struct imuser_toxmsg_struct g_tox_msglist[PNR_IMUSER_MAXNUM+1];
 extern pthread_mutex_t tox_msglock[PNR_IMUSER_MAXNUM+1];
 extern struct pnr_tox_datafile_struct g_tox_datafile[PNR_IMUSER_MAXNUM+1];
-extern struct pnr_rid_node g_rnode[PNR_IMUSER_MAXNUM+1];
-char  homeDirPath[100] = {DAEMON_PNR_TOP_DIR};
 extern int g_udpdebug_flag;
 extern pthread_mutex_t g_user_toxdatalock[PNR_IMUSER_MAXNUM+1];
-
+extern struct cfd_nodeinfo_struct g_rlist_node[CFD_RNODE_MAXNUM+1];
+extern char g_dev_hwaddr[MACSTR_MAX_LEN];
+extern struct cfd_useractive_struct g_activeuser_list[CFD_URECORD_MAXNUM+1];
 int im_nodelist_addfriend(int index,char* from_user,char* to_user,char* nickname,char* userkey);
 int friend_Message_process(Tox* m, int friendnum, char *message);
 int map_msg(char *type);
-int writep2pidtofile(char *id);
+int writep2pidtofile(int node_flag,char *id);
 int processImMsgForward (Tox *m, cJSON* pJson,int friendnum);
 int processImMsgForwardRes(Tox *m, cJSON *pJson, int friendnum);
 static int save_data(Tox *m);
@@ -118,7 +105,6 @@ static void tox_file_chunk_request(Tox *tox, uint32_t friend_number,
     unsigned int i;
 	int *index = (int *)user_data;
 	File_Sender *sender = &file_senders[*index][0];
-    int msgid;
     int ret = 0;
     TOX_ERR_FILE_SEND_CHUNK err;
 	char filepath[256] = {0};
@@ -128,39 +114,34 @@ static void tox_file_chunk_request(Tox *tox, uint32_t friend_number,
         if (sender[i].file && sender[i].friendnum == friend_number 
 			&& sender[i].filenumber == file_number) {
 			get_file_name(sender[i].file, filepath, sizeof(filepath));
-
 			if (length == 0) {
                 fclose(sender[i].file);
-				
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "file(%s) transfer completed", filepath);
-
 				if (sender[i].msg) {
-	                pnr_msgcache_getid(sender[i].msg->userid, &msgid);
+                    cfd_usersend_textmessage(sender[i].msg->userid,sender[i].msg);
+#if 0
+                    pnr_msgcache_getid(sender[i].msg->userid, &msgid);
 					insert_tox_msgnode(sender[i].msg->userid, sender[i].msg->fromid, 
 						sender[i].msg->toid, sender[i].msg->msg, sender[i].msg->msglen, 
 						PNR_IM_CMDTYPE_PUSHFILE_TOX, 0, msgid, sender[i].msg->srckey, sender[i].msg->dstkey);
 					pnr_msgcache_dbdelete(sender[i].msg->msgid, sender[i].msg->userid);
-				}
-				
+#endif
+                }
 				memset(&sender[i], 0, sizeof(File_Sender));
 				break;
             }
-
             fseek(sender[i].file, position, SEEK_SET);
             VLA(uint8_t, data, length);
             int len = fread(data, 1, length, sender[i].file);
-
+            //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "file(%s) send(%d)", filepath,len);
             ret = tox_file_send_chunk(tox, friend_number, file_number, position, data, len, &err);
             if (ret == 0) {
 				if (sender[i].msg) {
 					sender[i].msg->filestatus = 0;
 				}
-
 				DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err(%d)!", filepath, err);
             }
-
 			sender[i].lastsndtime = time(NULL);
-
             break;
         }
     }
@@ -251,21 +232,21 @@ int map_msg(char* type)
 {
 	if (!strcmp(immsgForward, type)) 
     {
-		return TYPE_immsgForward;
+		return CFD_RNODEMSG_TYPE_FORWARD;
 	} 
     else if (!strcmp(immsgForwardRes, type)) 
     {
-        return TYPE_immsgForwardRes;
+        return CFD_RNODEMSG_TYPE_FORWARDRES;
     }
     else if (!strcmp(immsgNodeMsg, type)) 
     {
-        return TYPE_immsgNodeMsg;
+        return CFD_RNODEMSG_TYPE_NODEMSG;
     }
      else if (!strcmp(immsgNodeMsgRly, type)) 
     {
-        return TYPE_immsgNodeMsgRly;
+        return CFD_RNODEMSG_TYPE_NODEMSGRLY;
     }
-	return TYPE_UNKNOW;
+	return CFD_RNODEMSG_TYPE_BUTT;
 }
 
 struct tox_msg_cache g_toxmsg_caches[PNR_IMUSER_MAXNUM+1][PERUSER_TOXMSG_CACHENUM];
@@ -279,6 +260,7 @@ int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid
     char u_toxid[TOX_ID_STR_LEN+1] = {0};
     char buf_cache[1500] = {0};
     int i = 0,uid = -1;
+
     if(pJson == NULL)
     {
         return ERROR;
@@ -288,7 +270,8 @@ int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid
     CJSON_GET_VARINT_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"offset",offset,0);
     CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"data",buf_cache,1500);
     CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"user",u_toxid,TOX_ID_STR_LEN);
-    uid = get_indexbytoxid(u_toxid);
+
+    uid = cfd_getindexbyidstr(u_toxid);
     if(uid  <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad uid(%d:%s)",uid,u_toxid);
@@ -346,6 +329,7 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
     cJSON *pSub = NULL;
     int cache_id = -1;
     int uid = -1;
+    int msgtype = 0;
 
 	if (!message)
 		return -1;
@@ -396,29 +380,40 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
             pthread_mutex_unlock(&g_toxmsg_cache_lock[uid]);
         }
     }
-	pSub = cJSON_GetObjectItem(pJson, "type");
-	if (!pSub)
+    pSub = cJSON_GetObjectItem(pJson, "mtype");
+	if (pSub != NULL)
     {  
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json get type failed");
-		return -3;
+        msgtype= pSub->valueint;
     }
-	strcpy(type, pSub->valuestring);
-    switch (map_msg(type)) 
+    else
     {
-        case TYPE_immsgForward:
+	    pSub = cJSON_GetObjectItem(pJson, "type");
+        if (!pSub)
+        {  
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json get type failed");
+    		return -3;
+        }
+        strcpy(type, pSub->valuestring);
+        msgtype = map_msg(type);
+    }
+    switch (msgtype) 
+    {
+        case CFD_RNODEMSG_TYPE_FORWARD:
     		processImMsgForward(m, pJson, friendnum);
             break;
-        case TYPE_immsgForwardRes:
-        case TYPE_immsgNodeMsgRly:
+        case CFD_RNODEMSG_TYPE_FORWARDRES:
             processImMsgForwardRes(m, pJson, friendnum);
             break;
-        case TYPE_immsgNodeMsg:
+        case CFD_RNODEMSG_TYPE_NODEMSG:
             processImNodeMsg(m, pJson, friendnum);
             break;
-    	case TYPE_UNKNOW:
-    		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "UNKNOW Message(%s)", type);
-    		break;
+        case CFD_RNODEMSG_TYPE_NODEMSGRLY:
+            processNodeMsgRes(m, pJson, friendnum);
+            break;
+    	case CFD_RNODEMSG_TYPE_NONE:
+        case CFD_RNODEMSG_TYPE_BUTT:
     	default:
+    		DEBUG_PRINT(DEBUG_LEVEL_NORMAL, "UNKNOW Message(%s)", type);
     		break;
     }
 	cJSON_Delete(pJson);
@@ -427,11 +422,10 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
 
 static void print_formatted_message(Tox *m, char *message, int friendnum)
 {
-    char name[TOX_MAX_NAME_LENGTH + 1] = {0};
+    //char name[TOX_MAX_NAME_LENGTH + 1] = {0};
     
-    getfriendname_terminated(m, friendnum, name);
-
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rec friend(%s) msg(%s)", name, message);
+    //getfriendname_terminated(m, friendnum, name);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"rec friend(%s) msg(%s)", name, message);
 	friend_Message_process(m, friendnum, message);
 }
 
@@ -457,15 +451,15 @@ static void print_formatted_message(Tox *m, char *message, int friendnum)
 static void auto_accept_request(Tox *m, const uint8_t *public_key, 
     const uint8_t *data, size_t length, void *userdata)
 {
-	uint8_t fraddr_bin[TOX_ADDRESS_SIZE] = {0};
+	//uint8_t fraddr_bin[TOX_ADDRESS_SIZE] = {0};
     char fraddr_str[FRADDR_TOSTR_BUFSIZE] = {0};
 	Tox_Err_Friend_Add err;
 
 	fraddr_to_str(public_key, fraddr_str);
-		
 	uint32_t num = tox_friend_add_norequest(m, public_key, &err);
 	if (num == UINT32_MAX) {
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox add friend(%s) failed(%d)", fraddr_str, err);
+        if(err != TOX_ERR_FRIEND_ADD_ALREADY_SENT)
+		    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox add friend(%s) failed(%d)", fraddr_str, err);
 	} else {
 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "friend(%s) request accepted as friendnum (%d)", fraddr_str, num);
         save_data_new(m);
@@ -660,17 +654,11 @@ static void print_message_app(Tox *m, uint32_t friendnumber, TOX_MESSAGE_TYPE ty
 static void print_status_change(Tox *m, uint32_t friendnumber, 
     const uint8_t *string, size_t length, void *userdata)
 {
-    int *userindex = (int *)userdata;
+    //int *userindex = (int *)userdata;
     char name[TOX_MAX_NAME_LENGTH + 1];
 
     getfriendname_terminated(m, friendnumber, name);
-    if (*userindex == 0) {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO, "app friend(%d)(%s) status changed to %s.", 
-            friendnumber, name, string);
-    } else {
-        DEBUG_PRINT(DEBUG_LEVEL_INFO, "router friend(%d)(%s) status changed to %s.", 
-            friendnumber, name, string);
-    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "router friend(%d)(%s) status changed to %s.", friendnumber, name, string);
 }
 
 /*****************************************************************************
@@ -713,9 +701,9 @@ void on_friend_name(Tox *m, uint32_t friendnumber, const uint8_t *string,
     return;
 }
 
-static Tox *load_data(void)
+static Tox *load_data(char* datafile)
 {
-    FILE *data_file = fopen(data_file_name, "r");
+    FILE *data_file = fopen(datafile, "r");
     uint8_t* data = NULL;
 	struct Tox_Options options;
 	
@@ -742,7 +730,7 @@ static Tox *load_data(void)
         options.savedata_length = size;
         Tox *m = tox_new(&options, NULL);
         if (fclose(data_file) < 0) {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"[!] load_data close file(%s) failed!",data_file_name);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"[!] load_data close file(%s) failed!",datafile);
         }
         free(data);
         return m;
@@ -788,26 +776,18 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	char filepath[512] = {0};
 	int dirindex = 0;
 	char *realfilename = filename;
+    char uidstr[CFD_USER_PUBKEYLEN+1] = {0};
     int gid =0;
     char* ptmp = NULL;
-	
-	//tox save file to app's dir
-	if (*index == 0) {
-		for (i = 1; i <= g_imusr_array.max_user_num; i++) {
-			if (g_imusr_array.usrnode[i].appid == friend_number) {
-				dirindex = i;
-				break;
-			}
-		}
-
-		if (i == PNR_IMUSER_MAXNUM) {
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get friend(%d) index err.", friend_number);
-			return;
-		}
-	} else {
-		dirindex = *index;
-	}
-
+	//检测是否新版本有toid的头缀
+	ptmp = strchr(filename,',');
+    if(ptmp)
+    {
+        filename = ptmp+1;
+        strncpy(uidstr,realfilename,CFD_USER_PUBKEYLEN);
+        dirindex = cfd_uinfolistgetindex_byuidstr(uidstr);
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"file_request_accept:get friendnumber(%d) index(%d) filename(%s)",friend_number,dirindex,filename);
 	if (type != TOX_FILE_KIND_DATA) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Refused invalid file type.");
 		tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_CANCEL, 0);
@@ -874,7 +854,7 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);
 			} else {
 				realfilename = (char*)filename;
-				snprintf(filepath, sizeof(filepath), "%ss/%s", 
+				snprintf(filepath, sizeof(filepath), "%sr/%s", 
 	            	g_imusr_array.usrnode[dirindex].userdata_pathurl, realfilename);				
 			}
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"###rec filename(%s),filepath(%s)",(char*)filename,filepath);
@@ -891,17 +871,14 @@ static void file_request_accept(Tox *tox, uint32_t friend_number, uint32_t file_
 		}
 
 		//DEBUG_PRINT(DEBUG_LEVEL_INFO, "FILE:%p--%d", rcv[i].file, i);
-		
 		rcv[i].lastrcvtime = time(NULL);
 		rcv[i].filenumber = file_number;
+		rcv[i].uindex = dirindex;
 		rcv[i].friendnum = friend_number;
-
 		strncpy(rcv[i].filename, realfilename, UPLOAD_FILENAME_MAXLEN - 1);			
 	}
-	
    	DEBUG_PRINT(DEBUG_LEVEL_INFO, "friend_number: %u is sending us: %s--%d of size %lu\n", 
 		friend_number, realfilename, file_number, file_size);
-
     if (tox_file_control(tox, friend_number, file_number, TOX_FILE_CONTROL_RESUME, 0)) {
 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "Start accept file transfer.");
 	} else {
@@ -919,7 +896,6 @@ static void file_print_control(Tox *tox, uint32_t friend_number, uint32_t file_n
         return;
     }
 	File_Sender *sender = &file_senders[*index][0];
-	
     if (control == TOX_FILE_CONTROL_CANCEL) {
         unsigned int i;
         for (i = 0; i < NUM_FILE_SENDERS; ++i) {
@@ -927,11 +903,9 @@ static void file_print_control(Tox *tox, uint32_t friend_number, uint32_t file_n
             if (sender[i].file && sender[i].msg && sender[i].msg->friendnum == friend_number 
 				&& sender[i].filenumber == file_number) {
                 fclose(sender[i].file);
-                
                 sender[i].msg->filestatus = 0;
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) cancelled!", 
                     sender[i].msg->filename);
-                
 				memset(&sender[i], 0, sizeof(File_Sender));
 				break;
             }
@@ -948,60 +922,37 @@ static void write_file(Tox *tox, uint32_t friendnumber, uint32_t filenumber,
 	char filepath[UPLOAD_FILENAME_MAXLEN * 2] = {0};
 	int dirindex = 0;
 
-	if (*index == 0) {
-		for (i = 1; i <= g_imusr_array.max_user_num; i++) {
-			if (g_imusr_array.usrnode[i].appid == friendnumber) {
-				dirindex = i;
-				break;
-			}
-		}
-
-		if (i == PNR_IMUSER_MAXNUM) {
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get friend(%d) index err.", friendnumber);
-			return;
-		}
-
-		snprintf(filepath, UPLOAD_FILENAME_MAXLEN * 2, 
-			WS_SERVER_INDEX_FILEPATH "/usr%d/s/%s", dirindex, rcv->filename);
-	} else {
-		dirindex = *index;
-
-		snprintf(filepath, UPLOAD_FILENAME_MAXLEN * 2, 
-			WS_SERVER_INDEX_FILEPATH "/usr%d/r/%s", dirindex, rcv->filename);
-	}
-	
 	for (i = 0; i < NUM_FILE_RCV; i++) {
 		if (rcv[i].filenumber == filenumber && rcv[i].friendnum == friendnumber)
 			break;
 	}
-
 	if (i == NUM_FILE_RCV) {
 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) get free filenumber(%d) err\n", 
             *index, filenumber);
 		tox_file_control(tox, friendnumber, filenumber, TOX_FILE_CONTROL_CANCEL, 0);
 		return;
 	}
-						
-    if (length == 0) {
+    dirindex = rcv[i].uindex;
+    snprintf(filepath, UPLOAD_FILENAME_MAXLEN * 2, WS_SERVER_INDEX_FILEPATH "/usr%d/r/%s", dirindex, rcv->filename);
+    if (length == 0) 
+    {
 		fclose(rcv[i].file);
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "file(%s) transfer from friend(%u) completed\n" , 
             rcv[i].filename, friendnumber);
         memset(&rcv[i], 0, sizeof(File_Rcv));
         return;
     }
-	
 	fseek(rcv[i].file, position, SEEK_SET);
-	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "[%d]--filefd:%p--pos:%d--len:%d", i, rcv[i].file, position, length);
-	if (fwrite(data, sizeof(uint8_t), length, rcv[i].file) != length) {
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user[%d]--filefd(%s)--pos:%d--len:%d", dirindex, filepath, position, length);
+	if (fwrite(data, sizeof(uint8_t), length, rcv[i].file) != length) 
+    {
         fclose(rcv[i].file);
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Error writing to file(%d-%s)\n", errno, rcv[i].filename);
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "Error writing to file(%d-%s)", errno, rcv[i].filename);
         memset(&rcv[i], 0, sizeof(File_Rcv));
 		unlink(filepath);
 		tox_file_control(tox, friendnumber, filenumber, TOX_FILE_CONTROL_CANCEL, 0);
 	}
-
 	rcv[i].lastrcvtime = time(NULL);
-
 	return;
 }
 int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,int* ppm_friendid)
@@ -1035,6 +986,49 @@ int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,
     }
     return ERROR;
 }
+int cfd_rnodeid_by_toxfriendnum(Tox *tox, uint32_t friendnumber)
+{
+	uint8_t fr_bin[TOX_ADDRESS_SIZE];
+    char fr_str[FRADDR_TOSTR_BUFSIZE];
+    int i = 0;
+
+    if(tox == NULL)
+    {
+        return -1;
+    }
+
+	if (tox_friend_get_public_key(tox, friendnumber, fr_bin, NULL)) {
+		frpuk_to_str(fr_bin, fr_str);
+	}
+    else
+    {
+        return -1;
+    }
+    if(tox == g_daemon_tox.ptox_handle)
+    {
+         for(i = 1; i<= CFD_RNODE_MAXNUM; i++)
+        {
+            if(strncasecmp(fr_str,g_rlist_node[i].nodeid,TOX_PUBLIC_KEY_SIZE) == OK)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"rid(%d) get nodeid(%s)",i,fr_str);
+                return i;
+            }
+        }
+    }
+    else
+    {
+        for(i = 1; i<= CFD_RNODE_MAXNUM; i++)
+        {
+            if(strncasecmp(fr_str,g_rlist_node[i].routeid,TOX_PUBLIC_KEY_SIZE) == OK)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"rid(%d) get routeid(%s)",i,fr_str);
+                return i;
+            }
+        }
+    }
+    return ERROR;
+}
+
 int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex)
 {
 	uint8_t fr_bin[TOX_ADDRESS_SIZE];
@@ -1106,14 +1100,15 @@ static void print_online(Tox *tox, uint32_t friendnumber, TOX_CONNECTION status,
 }
 static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION status, void *userdata)
 {
-    uint8_t fr_bin[TOX_ADDRESS_SIZE];
-    char fr_str[FRADDR_TOSTR_BUFSIZE];
+    uint8_t fr_bin[TOX_ADDRESS_SIZE] = {0};
+    char fr_str[FRADDR_TOSTR_BUFSIZE] = {0};
     int i = 0;
     if(tox == NULL)
     {
         return;
     }
-
+    /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"###tox(%p) friendnumber(%d) status(%d),##(%p %p)",
+        tox,friendnumber,status,g_daemon_tox.ptox_handle,g_rnode_tox.ptox_handle);*/
 	if (tox_friend_get_public_key(tox, friendnumber, fr_bin, NULL)) {
 		frpuk_to_str(fr_bin, fr_str);
 	}
@@ -1121,25 +1116,45 @@ static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION s
     {
         return;
     }
-
-	if(friendnumber > 0 && friendnumber <= PNR_IMUSER_MAXNUM)
+    if(tox == g_daemon_tox.ptox_handle)
     {
-        for(i=0;i<=PNR_IMUSER_MAXNUM;i++)
+        for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
         {
-            if(strncasecmp(fr_str,g_rnode[i].tox_id,TOX_PUBLIC_KEY_SIZE) == OK)
+            if(strncasecmp(fr_str,g_rlist_node[i].nodeid,TOX_PUBLIC_KEY_SIZE) == OK)
             {
                 if (status)
                 {
-        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###rnode(%d:%d:%s) went online.",i,g_rnode[i].f_id,g_rnode[i].tox_id);
-                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETTED;
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###node(%d:%d:%s) went online.",i,g_rlist_node[i].node_fid,g_rlist_node[i].nodeid);
+                    g_rlist_node[i].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETTED;
+                    cfd_nodeonline_notice_send(g_rlist_node[i].id);
                 }
                 else
                 {
-        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###rnode(%d:%d:%s) went offline.",i,g_rnode[i].f_id,g_rnode[i].tox_id);
-                    g_rnode[i].c_status = PNR_RID_NODE_CSTATUS_CONNETCLOSE;
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###node(%d:%d:%s) went offline.",i,g_rlist_node[i].node_fid,g_rlist_node[i].nodeid);
+                    g_rlist_node[i].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETCLOSE;
                 }
                 break;
-            }   
+            }
+        }
+    }
+    else
+    {
+        for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
+        {
+            if(strncasecmp(fr_str,g_rlist_node[i].routeid,TOX_PUBLIC_KEY_SIZE) == OK)
+            {
+                if (status)
+                {
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###route(%d:%d:%s) went online.",i,g_rlist_node[i].route_fid,g_rlist_node[i].routeid);
+                    g_rlist_node[i].route_cstatus= CFD_RID_NODE_CSTATUS_CONNETTED;
+                }
+                else
+                {
+        	 		DEBUG_PRINT(DEBUG_LEVEL_INFO, "###route(%d:%d:%s) went offline.",i,g_rlist_node[i].route_fid,g_rlist_node[i].routeid);
+                    g_rlist_node[i].route_cstatus= CFD_RID_NODE_CSTATUS_CONNETCLOSE;
+                }
+                break;
+            }
         }
     }
     return;
@@ -1178,41 +1193,71 @@ static void tox_connection_status(Tox *tox, TOX_CONNECTION connection_status,
 
     case TOX_CONNECTION_TCP:
     case TOX_CONNECTION_UDP:
-		for (i = 0; i < PNR_IMUSER_FRIENDS_MAXNUM; i++) {
-		   if (g_imusr_array.usrnode[*index].friends[i].exsit_flag) {
-		       friend_id = get_indexbytoxid(g_imusr_array.usrnode[*index].friends[i].user_toxid);
-		       if (friend_id == 0) {
-		       		//避免好友关系丢失导致无法接收消息
-					check_and_add_friends(tox, g_imusr_array.usrnode[*index].friends[i].user_toxid, 
-						g_imusr_array.usrnode[*index].userinfo_fullurl);
-				}
-			}
+		for (i = 0; i < PNR_IMUSER_FRIENDS_MAXNUM; i++) 
+        {
+		    if (g_imusr_array.usrnode[*index].friends[i].exsit_flag) 
+            {
+                friend_id = cfd_getindexbyidstr(g_imusr_array.usrnode[*index].friends[i].user_toxid);
+                if (friend_id <= 0) 
+                {
+                    //避免好友关系丢失导致无法接收消息
+                    check_and_add_friends(tox, g_imusr_array.usrnode[*index].friends[i].user_toxid, 
+                    g_imusr_array.usrnode[*index].userinfo_fullurl);
+                }
+            }
 		}
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%s) online proto(%d)", name, connection_status);
         break;
     }
 }
 
-int CreatedP2PNetwork(void)
+int CreatedP2PNetwork(int node_flag)
 {
     char idstring[200] = {0};
     Tox *m = NULL;
 	int on = 0;
-    int userindex = 0;
     int newdata_flag = FALSE;
+    int userindex = 0;
+    char *datafile = NULL;
+    char server_name[PNR_USERNAME_MAXLEN] = {0};
 
-    data_file_name = strcpy(dataPathFile, PNR_DAEMON_TOX_DATAFILE);
-    tox_datafile_check(PNR_DEFAULT_DAEMON_USERINDEX,(char *)data_file_name,&newdata_flag);
-    m = load_data();	
-    if (!m) {
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        strcpy(gNidPathFile,PNR_DAEMON_TOX_DATAFILE);
+        userindex = CFD_NODEID_USERINDEX;
+        datafile = gNidPathFile;
+        strcpy(server_name,"Node_");
+        strcat(server_name,g_dev_hwaddr);
+    }
+    else
+    {
+        strcpy(gRidPathFile,PNR_RNODE_TOX_DATAFILE);
+        userindex = CFD_ROUTEID_USERINDEX;
+        datafile = gRidPathFile;
+        strcpy(server_name,"Route_");
+        strcat(server_name,g_dev_hwaddr);
+    }
+    tox_datafile_check(userindex,datafile,&newdata_flag);
+    m = load_data(datafile);	
+    if (!m) 
+    {
 		m = tox_new(NULL, NULL);
     }
-
-    qlinkNode = m;
-    g_daemon_tox.ptox_handle = m;
-    strcpy(g_daemon_tox.userinfo_fullurl,data_file_name);
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        g_nidNode = m;
+        g_daemon_tox.ptox_handle = m;
+        strcpy(g_daemon_tox.userinfo_fullurl,datafile);
+    }
+    else
+    {
+        g_ridNode = m;
+        g_rnode_tox.ptox_handle = m;
+        strcpy(g_rnode_tox.userinfo_fullurl,datafile);
+    }
     tox_callback_friend_request(m, auto_accept_request);
-	tox_callback_friend_message(m, print_message_app);
+	//tox_callback_friend_message(m, print_message_app);
+	tox_callback_friend_message(m, print_message);
     tox_callback_friend_name(m, on_friend_name);
     tox_callback_friend_status_message(m, print_status_change);
     //tox_callback_friend_connection_status(m, print_online);
@@ -1222,19 +1267,29 @@ int CreatedP2PNetwork(void)
     tox_callback_file_recv_control(m, file_print_control);
     tox_callback_file_recv(m, file_request_accept);
     tox_callback_file_chunk_request(m, tox_file_chunk_request);
-
     get_id(m, idstring);
-    strncpy(g_daemon_tox.user_toxid, idstring, TOX_ID_STR_LEN);
-    g_daemon_tox.user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
-    g_p2pnet_init_flag = TRUE;
-	DEBUG_PRINT(DEBUG_LEVEL_INFO,"get daemon tox_id(%s)",g_daemon_tox.user_toxid);
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        strncpy(g_daemon_tox.user_toxid, idstring, TOX_ID_STR_LEN);
+        g_daemon_tox.user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+        g_p2pnet_init_flag += CFD_NODE_TOXID_NID;
+    	DEBUG_PRINT(DEBUG_LEVEL_INFO,"get daemon tox_id(%s) g_p2pnet_init_flag(%d)",g_daemon_tox.user_toxid,g_p2pnet_init_flag);
+    }
+    else
+    {
+        strncpy(g_rnode_tox.user_toxid, idstring, TOX_ID_STR_LEN);
+        g_rnode_tox.user_onlinestatus = USER_ONLINE_STATUS_ONLINE;
+        g_p2pnet_init_flag += CFD_NODE_TOXID_RID;
+    	DEBUG_PRINT(DEBUG_LEVEL_INFO,"get route tox_id(%s) g_p2pnet_init_flag(%d)",g_rnode_tox.user_toxid,g_p2pnet_init_flag);
+    }
+
     if(newdata_flag == TRUE)
     {   
         save_data_new(m);
 	}
 
 	if (idstring[0])
-		writep2pidtofile(idstring);
+		writep2pidtofile(node_flag,idstring);
 
 	/*20180124,wenchao,use Tox Bootstrap,Begin*/
 	int nodeslist_ret = load_DHT_nodeslist();
@@ -1242,40 +1297,34 @@ int CreatedP2PNetwork(void)
 		DEBUG_PRINT(DEBUG_LEVEL_INFO,"DHT nodeslist failed to load");
 	}
 	/*20180124,wenchao,use Tox Bootstrap,End*/
+    tox_self_set_name(m, (uint8_t *)server_name, strlen(server_name), NULL);
 
-    const char *name = "PNR_IM_SERVER";
-    tox_self_set_name(m, (uint8_t *)name, strlen(name), NULL);
-
-    //在rid起来之后创建admin用户的二维码    
-    adminaccount_qrcode_init();
-    //连接有好友关系的其他rid
-    pnr_router_node_friend_init();
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        adminaccount_qrcode_init();
+    }
+    cfd_rnode_friend_connect(node_flag);
     while (1) {
         do_tox_connection(m);
-
         if (tox_self_get_connection_status(m)) {
 			if (on == 0) {
                 on = 1;
-				DEBUG_PRINT(DEBUG_LEVEL_INFO,"[%s] connected to DHT, check the name", name);
+				DEBUG_PRINT(DEBUG_LEVEL_INFO,"[%s] connected to DHT, check the name", server_name);
 			}
 		} else {
 			if (on == 1) {
 				on = 0;
-				DEBUG_PRINT(DEBUG_LEVEL_INFO,"[%s] Reconnecting to DHT", name);
+				DEBUG_PRINT(DEBUG_LEVEL_INFO,"[%s] Reconnecting to DHT", server_name);
 			}
 		}
-        
         tox_iterate(m, &userindex);
 		usleep(tox_iteration_interval(m) * 1000);
     }
 
     tox_kill(m);
-	qlinkNode = NULL;
 	m = NULL;
-   
     return 0;
 }
-
 /*****************************************************************************
  函 数 名  : imtox_send_file
  功能描述  : 发送文件接口
@@ -1303,54 +1352,46 @@ int imtox_send_file(Tox *tox, struct lws_cache_msg_struct *msg, int push)
 	FILE *pf = NULL;
 	uint32_t filenum;
 	int i = 0;
-	File_Sender *sender = &file_senders[msg->userid][0];
+	File_Sender *sender = &file_senders[CFD_NODEID_USERINDEX][0];
 	char *fname = strrchr(msg->filepath, '/') + 1;
 	char pathreal[512] = {0};
 	char pushfilename[255] = {0};
-
+    char touidstr[CFD_USER_PUBKEYLEN+1] = {0};
 	snprintf(pathreal, sizeof(pathreal), WS_SERVER_INDEX_FILEPATH "%s", msg->filepath);
-
 	pf = fopen(pathreal, "rb");
 	if (!pf) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "open file(%s) err", pathreal);
         return -1;
     }
-
-	fseek(pf, 0, SEEK_END);
-	filesize = ftell(pf);
-	fseek(pf, 0, SEEK_SET);
-
+    filesize = msg->filesize;
     if(push == TRUE)
     {
 	    snprintf(pushfilename, 255, "%s:%s", msg->fromid, fname);
     }
     else
     {
-	    snprintf(pushfilename, 255, "%s", fname);
+        cfd_toxidformatidstr(msg->toid,touidstr);
+	    snprintf(pushfilename, 255, "%s,%s",touidstr,fname);
     }
-	filenum = tox_file_send(tox, msg->friendnum, 
-        TOX_FILE_KIND_DATA, filesize, 0, (uint8_t *)pushfilename, strlen(pushfilename), 0);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"imtox_send_file: send file(%s) size(%d) to friend(%d)",pathreal,filesize,msg->friendnum);
+    filenum = tox_file_send(tox,msg->friendnum,TOX_FILE_KIND_DATA,filesize,0,(uint8_t *)pushfilename,strlen(pushfilename),0);
 	if (filenum == -1) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err", msg->filename);
         return -2;
     }
-
 	for (i = 0; i < NUM_FILE_SENDERS; i++) {
 		if (!sender[i].file)
 			break;
 	}
-
 	if (i < NUM_FILE_SENDERS) {
 		sender[i].file = pf;
 		sender[i].filenumber = filenum;
 		sender[i].friendnum = msg->friendnum;
 		sender[i].msg = msg;
 	} else {
-	    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err, "
-            "too many files send", msg->filepath);
+	    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err,too many files send", msg->filepath);
 		return -3;
 	}
-	
 	return filenum;
 }
 
@@ -1412,22 +1453,19 @@ int imtox_send_file_to_app(Tox *tox, int friendnum, char *fromid, char *filepath
 			break;
 		}
 	}
-
 	if (i < NUM_FILE_SENDERS) {
 		sender[i].file = pf;
 		sender[i].filenumber = filenum;
 		sender[i].friendnum = friendnum;
 		sender[i].lastsndtime = time(NULL);
 	} else {
-	    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err, "
-            "too many files send", filepath);
+	    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err,too many files send", filepath);
 		return -3;
 	}
-	
 	return filenum;
 }
 
-int writep2pidtofile(char *id)
+int writep2pidtofile(int node_flag,char *id)
 {
 	char filepath_name[200]= {0};
 	FILE *data_file = NULL;
@@ -1435,26 +1473,33 @@ int writep2pidtofile(char *id)
 	if (!id)
 		return -1;
 
-	strcpy(filepath_name, path);
-	strcat(filepath_name, DEFAULT_P2PID_FILENAME);
+	strcpy(filepath_name, DAEMON_PNR_TOP_DIR);
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        strcat(filepath_name, DEFAULT_P2PID_FILENAME);
+    }
+    else
+    {
+        strcat(filepath_name, RNODE_P2PID_FILENAME);
+    }
 	data_file = fopen(filepath_name, "w");
 
-	if (!data_file) {
+	if (!data_file) 
+    {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "open file error in writep2pidtofile func");
 		return -2;
 	}
-	
-	if (fwrite(id, sizeof(uint8_t), strlen(id), data_file) != strlen(id)) {
+	if (fwrite(id, sizeof(uint8_t), strlen(id), data_file) != strlen(id)) 
+    {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "write file error in writep2pidtofile func" );
 		fclose(data_file);
 		return -3;
 	}
-
-	if (fclose(data_file) < 0) {
+	if (fclose(data_file) < 0) 
+    {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "close file error in writep2pidtofile func" );
 		return -4;
 	}
-	
 	return 0;
 }
 
@@ -1514,10 +1559,15 @@ static int save_data_new(Tox *m)
     {
         return 0;
     }
-    if(m == qlinkNode)
+    if(m == g_nidNode)
     {
-        userindex = PNR_DEFAULT_DAEMON_USERINDEX;
-        data_filename = dataPathFile;
+        userindex = CFD_NODEID_USERINDEX;
+        data_filename = gNidPathFile;
+    }
+    else if(m == g_ridNode)
+    {
+        userindex = CFD_ROUTEID_USERINDEX;
+        data_filename = gRidPathFile;
     }
     else
     {
@@ -1922,6 +1972,91 @@ int add_friends_force(Tox *plinknode, char *friendid, char *msg)
 	}
 }
 
+/*****************************************************************************
+ 函 数 名  : cfd_add_friends_force
+ 功能描述  : 强制重新添加好友
+ 输入参数  : Tox *plinknode  
+             char *friendid  
+             char *datafile  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年12月4日
+    作    者   : lichao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int cfd_add_friends_force(int node_flag, char *friendid, char *msg)
+{
+	int friendLoc;
+    Tox * p_srclink = NULL;
+	if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        p_srclink = g_daemon_tox.ptox_handle;
+    }
+    else
+    {
+        p_srclink = g_rnode_tox.ptox_handle;
+    }
+	if (!friendid)
+		return -2;
+
+	friendLoc = GetFriendNumInFriendlist_new(p_srclink, friendid);
+	if (friendLoc >= 0) 
+    {
+        tox_friend_delete(p_srclink, friendLoc, NULL);
+	}
+    unsigned char *bin_string = hex_string_to_bin(friendid);
+    TOX_ERR_FRIEND_ADD error;
+    uint32_t num = tox_friend_add(p_srclink, bin_string, (const uint8_t *)msg, strlen(msg), &error);
+    free(bin_string);
+    char numstring[100] = {0};
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "add_friends_force:send msg(%d:%s) ret(%d)",strlen(msg), msg ,error);
+    switch (error) {
+        case TOX_ERR_FRIEND_ADD_TOO_LONG:
+            sprintf(numstring, "[i] Message is too long.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_NO_MESSAGE:
+            sprintf(numstring, "[i] Please add a message to your request.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_OWN_KEY:
+            sprintf(numstring, "[i] That appears to be your own ID.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_ALREADY_SENT:
+            sprintf(numstring, "[i] Friend request already sent.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_BAD_CHECKSUM:
+            sprintf(numstring, "[i] Address has a bad checksum.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_SET_NEW_NOSPAM:
+            sprintf(numstring, "[i] New nospam set.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_MALLOC:
+            sprintf(numstring, "[i] malloc error.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_NULL:
+            sprintf(numstring, "[i] message was NULL.");
+            break;
+
+        case TOX_ERR_FRIEND_ADD_OK:
+            sprintf(numstring, "[i] Added friend as %d.", num);
+            save_data_new(p_srclink);
+            break;
+    }
+
+	return num;
+}
+
 int get_index_by_toxhandle(Tox* ptox)
 {
     int i = 0;
@@ -1939,7 +2074,7 @@ int get_friendid_bytoxid(int userid,char* friend_name)
 {
     int i = 0;
 
-    if( userid <=0 || userid > PNR_IMUSER_MAXNUM || friend_name == NULL || strlen(friend_name) != TOX_ID_STR_LEN)
+    if( userid <=0 || userid > PNR_IMUSER_MAXNUM || friend_name == NULL)
     {
         return -1;
     }
@@ -1975,7 +2110,7 @@ int if_friend_available(int userindex, char *friendid)
 {
 	int id = 0;
 
-	id = get_friendid_bytoxid(userindex, friendid);
+	id = cfd_getfriendid_byidstr(userindex, friendid);
 	if (id == -1) {
 		return 0;
 	}
@@ -2010,7 +2145,6 @@ int insert_tox_file_msgnode(int userid, char *from, char *to,
     int logid, int msgid, int ftype,char* skey, char* dkey)
 {
     DEBUG_PRINT(DEBUG_LEVEL_INFO, "add tox file cache!msgid(%d)", msgid);
-    
     return pnr_msgcache_dbinsert(msgid, from, to, type, 
         pmsg, msglen, filename, filepath, logid, PNR_MSG_CACHE_TYPE_TOXF, ftype, skey, dkey);
 }
@@ -2222,35 +2356,75 @@ int insert_tox_msgnode_v3(int userid, char *from, char *to,
 *****************************************************************************/
 int tox_msg_response(Tox *m, cJSON *pJson, int friendnum,int nodemsg)
 {
-    cJSON *msgid = cJSON_GetObjectItem(pJson, "msgid");
+    cJSON *msgid = NULL;
     cJSON *ret = NULL;
     char *msg = NULL;
+    char* pusr = NULL;
+    char toidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    cJSON* user_info = NULL;
 
     ret = cJSON_CreateObject();
     if (!ret) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "create json err");
         return -1;
     }
-
-    if (!msgid) {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get msgid err");
-        return -1;
-    }
-
     if(nodemsg == FALSE)
     {
-        cJSON_AddItemToObject(ret, "type", cJSON_CreateString(immsgForwardRes));
+        user_info = cJSON_GetObjectItem( pJson,"from");
+        if(user_info == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user fail");
+            return ERROR;
+        }
+        pusr = user_info->valuestring;
+        cfd_toxidformatidstr(pusr,toidstr);
+        cJSON_AddItemToObject(ret, "mtype", cJSON_CreateNumber(CFD_RNODEMSG_TYPE_FORWARDRES));
+        cJSON_AddItemToObject(ret, "toid", cJSON_CreateString(toidstr));
+        user_info = cJSON_GetObjectItem ( pJson, "listid" );
+        if(user_info != NULL)
+        {
+            cJSON_AddItemToObject(ret, "listid", cJSON_CreateNumber(user_info->valueint));
+        }
     }
     else
     {
-        cJSON_AddItemToObject(ret, "type", cJSON_CreateString(immsgNodeMsgRly));
+        cJSON_AddItemToObject(ret, "mtype", cJSON_CreateNumber(CFD_RNODEMSG_TYPE_NODEMSGRLY));
+    }
+    msgid = cJSON_GetObjectItem(pJson, "msgid");
+    if (!msgid) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get msgid err");
+        return -1;
     }
     cJSON_AddItemToObject(ret, "msgid", cJSON_CreateNumber(msgid->valueint));
     msg = cJSON_PrintUnformatted(ret);
-    tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL, 
-        (uint8_t *)msg, strlen(msg), NULL);
+    tox_friend_send_message(m, friendnum, TOX_MESSAGE_TYPE_NORMAL,(uint8_t *)msg, strlen(msg),NULL);
     free(msg);
     cJSON_Delete(ret);
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : processNodeMsgRes
+ 功能描述  : 处理节点确认消息
+ 输入参数  : Tox *m         
+             cJSON *pJson   
+             int friendnum  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月18日
+    作    者   : lichao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int processNodeMsgRes(Tox *m, cJSON *pJson, int friendnum)
+{
+    cJSON *msgid = cJSON_GetObjectItem(pJson, "msgid");
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "processNodeMsgRes :msgid(%d)", msgid->valueint);
+    pnr_msgcache_dbdelete(msgid->valueint, CFD_NODEID_USERINDEX);
     return OK;
 }
 /*****************************************************************************
@@ -2272,17 +2446,31 @@ int tox_msg_response(Tox *m, cJSON *pJson, int friendnum,int nodemsg)
 *****************************************************************************/
 int processImMsgForwardRes(Tox *m, cJSON *pJson, int friendnum)
 {
-    char toxid[TOX_ID_STR_LEN + 1] = {0};
-    int id = 0;
+    int uid = 0;
+    char* pusr = NULL;
+    char toidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    cJSON* user_info = NULL;
     cJSON *msgid = cJSON_GetObjectItem(pJson, "msgid");
 
-    get_id(m, toxid);
-    id = get_indexbytoxid(toxid);
-
-    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get tox msg response!"
-        "user(%d) msgid(%d)", id, msgid->valueint);
-
-    pnr_msgcache_dbdelete(msgid->valueint, id);
+    user_info = cJSON_GetObjectItem ( pJson, "listid" );
+    if(user_info)
+    {
+        uid = user_info->valueint;
+    }
+    else
+    {
+        user_info = cJSON_GetObjectItem ( pJson, "toid" );
+        if(user_info == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user fail");
+            return ERROR;
+        }
+        pusr = user_info->valuestring;
+        cfd_toxidformatidstr(pusr,toidstr);
+        uid = cfd_uinfolistgetindex_byuidstr(toidstr);
+    }
+    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get tox msg response!user(%d) msgid(%d)", uid, msgid->valueint);
+    pnr_msgcache_dbdelete(msgid->valueint, uid);
     return OK;
 }
 
@@ -2293,16 +2481,14 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
     char* pmsg_decode = NULL;
     char* pmsg = NULL;
     char* pusr = NULL;
-    int index = 0;
+    char toidstr[CFD_USER_PUBKEYLEN+1] = {0};
+    int index = 0,uid = 0;
     int msg_len = 0,tar_msglen = 0;;
-    
 	if (NULL == pJson)
 	{
 		return -1;
 	}
-
     tox_msg_response(m, pJson, friendnum,FALSE);
-    
     user_info = cJSON_GetObjectItem ( pJson, "user" );
     if(user_info == NULL)
     {
@@ -2310,17 +2496,21 @@ int processImMsgForward(Tox *m, cJSON *pJson, int friendnum)
         return ERROR;
     }
     pusr = user_info->valuestring;
-    index = get_indexbytoxid(pusr);
-    if(index == 0)
+    cfd_toxidformatidstr(pusr,toidstr);
+    cfd_uinfolistgetdbid_byuidstr(toidstr,&uid);
+    index = cfd_uinfolistgetindex_byuidstr(toidstr);
+    if(index <= 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s) fail",pusr);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s) fail",toidstr);
         return ERROR;
     }
-    if(g_imusr_array.usrnode[index].init_flag != TRUE
-        || memcmp(g_imusr_array.usrnode[index].user_toxid,pusr,TOX_ID_STR_LEN)!= OK)
+    if(uid > 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s:%d) fail",pusr,index);
-        return ERROR;
+        if(g_activeuser_list[uid].active_rid != CFD_RNODE_DEFAULT_RID)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"!!!!rcv forward msg to user(%s),but active_rid(%d)",toidstr,g_activeuser_list[uid].active_rid);
+            return ERROR;
+        }
     }
     data_info = cJSON_GetObjectItem ( pJson, "data" );
 	if ( NULL == data_info )
@@ -2350,7 +2540,7 @@ int processImNodeMsg(Tox *m, cJSON *pJson, int friendnum)
     char* pmsg_decode = NULL;
     char* pmsg = NULL;
     char* pusr = NULL;
-    int index = 0;
+    int index = 0,idlen = 0;
     int msg_len = 0,tar_msglen = 0;;
     
 	if (NULL == pJson)
@@ -2365,16 +2555,18 @@ int processImNodeMsg(Tox *m, cJSON *pJson, int friendnum)
         return ERROR;
     }
     pusr = user_info->valuestring;
-    index = get_indexbytoxid(pusr);
-    if(index == 0)
+    idlen = strlen(pusr);
+    if(idlen == TOX_ID_STR_LEN)
+    {
+        index = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,pusr);
+    }
+    else
+    {
+        index = cfd_uinfolistgetindex_byuidstr(pusr);
+    }
+    if(index <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s) fail",pusr);
-        return ERROR;
-    }
-    if(g_imusr_array.usrnode[index].init_flag != TRUE
-        || memcmp(g_imusr_array.usrnode[index].user_toxid,pusr,TOX_ID_STR_LEN)!= OK)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"find user(%s:%d) fail",pusr,index);
         return ERROR;
     }
     data_info = cJSON_GetObjectItem ( pJson, "data" );
@@ -2458,9 +2650,13 @@ int tox_datafile_backup(int user_index,char* datafile)
             memset(&g_tox_datafile[user_index],0,sizeof(struct pnr_tox_datafile_struct));
             g_tox_datafile[user_index].user_index = user_index;
             g_tox_datafile[user_index].data_version = PNR_DEFAULT_DATAVERSION;
-            if(user_index == PNR_DEFAULT_DAEMON_USERINDEX)
+            if(user_index == CFD_NODEID_USERINDEX)
             {
                 strcpy(g_tox_datafile[user_index].toxid,g_daemon_tox.user_toxid);
+            }
+            else if(user_index == CFD_ROUTEID_USERINDEX)
+            {
+                strcpy(g_tox_datafile[user_index].toxid,g_rnode_tox.user_toxid);
             }
             else
             {
@@ -2478,7 +2674,7 @@ int tox_datafile_backup(int user_index,char* datafile)
             pnr_tox_datafile_md5update_byid(user_index,g_tox_datafile[user_index].data_version,g_tox_datafile[user_index].datafile_md5);
         }
         snprintf(sys_cmd,CMD_MAXLEN,"cp -f %s %s",datafile,g_tox_datafile[user_index].datafile_bakpath);
-        system(sys_cmd);  
+        system(sys_cmd);
     }
     return OK;
 }

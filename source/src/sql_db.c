@@ -6,12 +6,14 @@
 #include <curl/curl.h>
 #include <syslog.h>
 #include "common_lib.h"
+#include "cfd_route.h"
 #include "sql_db.h"
 #include "pn_imserver.h"
 
 sqlite3 *g_db_handle = NULL;
 sqlite3 *g_friendsdb_handle = NULL;
 sqlite3 *g_emaildb_handle = NULL;
+sqlite3 *g_rnodedb_handle = NULL;
 sqlite3 *g_msglogdb_handle[PNR_IMUSER_MAXNUM+1] = {0};
 sqlite3 *g_msgcachedb_handle[PNR_IMUSER_MAXNUM+1] = {0};
 sqlite3 *g_groupdb_handle = NULL;
@@ -243,6 +245,7 @@ int32 dbget_singstr_result(void* obj, int n_columns, char** column_values,char**
 int sql_db_sync(int cur_db_version)
 {
     int8* errMsg = NULL;
+    int count = 0;
     int8 sql_cmd[SQL_CMD_LEN] = {0};
 
     if(cur_db_version == DB_VERSION_V1)
@@ -468,6 +471,29 @@ int sql_db_sync(int cur_db_version)
         cfd_update_uinfotbl();
         cur_db_version++;
     }
+    if(cur_db_version == DB_VERSION_V12)
+    {
+        //初始化新版groupinfo_tbl表
+        snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) FROM sqlite_master WHERE type=\"table\" AND name = \"groupinfo_tbl\";");
+        if(sqlite3_exec(g_groupdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        } 
+        if(count <= 0)
+        {
+            snprintf(sql_cmd,SQL_CMD_LEN,"create table groupinfo_tbl(id integer primary key autoincrement,ginfoseq,gname,owner,gsn,ownerid,verify,manager,userlist,nodelist);");
+            if(sqlite3_exec(g_groupdb_handle,sql_cmd,0,0,&errMsg))
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+                sqlite3_free(errMsg);
+                return ERROR;
+            } 
+        }
+        cfd_rnodedb_init();
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -541,7 +567,16 @@ int sql_db_check(void)
 		unlink(PNR_EMAIL_DB);
 		return ERROR;
     }
-	
+	if(access(DB_RNODE_FILE, F_OK)!=0)
+	{ 
+		ret += sql_rnodedb_init();
+	}
+	else if(sqlite3_open(DB_RNODE_FILE, &g_rnodedb_handle) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite3_open rnode.db failed");
+		unlink(DB_RNODE_FILE);
+		return ERROR;
+    }
 	//获取当前数据库版本
 	snprintf(sql_cmd,SQL_CMD_LEN,"select value from generconf_tbl where name='%s';",DB_VERSION_KEYWORD);
     if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&cur_db_version,&errMsg))
@@ -610,7 +645,166 @@ int cfg_getmails_byuindex(int uindex,char* mailslist)
         }
         sqlite3_free_table(dbResult);
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfg_getmails_byuindex:sql(%s) user(%d) get mailinfo(%s)",sql_cmd,uindex,mailslist);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfg_getmails_byuindex:sql(%s) user(%d) get mailinfo(%s)",sql_cmd,uindex,mailslist);
+    return OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : cfd_rnode_uinfo_dbget
+ 功能描述  : 解析数据库的uinfo数据
+ 输入参数  : void *obj        
+             int cols         
+             char **colval    
+             char **colnames  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年10月17日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int cfd_rnode_uinfo_dbget(void *obj, int colnum, char **colval, char **colnames)
+{
+	struct lws_cache_msg_struct *msg = NULL;
+	struct lws_cache_msg_struct *tmsg = NULL;
+    struct lws_cache_msg_struct *n = NULL;
+	int len = 0;
+
+	if (colnum < 12) {
+		DEBUG_PRINT(DEBUG_LEVEL_INFO, "colume num err!(%d)", colnum);
+		return OK;
+	}
+
+    //id,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid
+    for (int i = 0; i < colnum; i++) {
+        if (!colval[i]) {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "colume item null!");
+		    return OK;
+        }
+    }
+	
+	len = strtoul(colval[6], NULL, 0);
+	if (len > 1400) {
+		return OK;
+	}
+
+	msg = (struct lws_cache_msg_struct *)malloc(sizeof(*msg) + len + 1);
+	if (!msg) {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "malloc err!");
+		return OK;
+	}
+
+    memset(msg, 0, sizeof(*msg));
+	msg->msgid = strtoul(colval[0], NULL, 0);
+    msg->type = strtoul(colval[3], NULL, 0);
+    msg->ctype = strtoul(colval[4], NULL, 0);
+    msg->filesize = strtoul(colval[9], NULL, 0);
+    msg->logid = strtoul(colval[10], NULL, 0);
+    msg->ftype = strtoul(colval[11], NULL, 0);
+	msg->msglen = len;
+	msg->timestamp = time(NULL);
+    msg->notice_flag = TRUE; //重启后不推送
+    memcpy(msg->fromid, colval[1], TOX_ID_STR_LEN);
+    memcpy(msg->toid, colval[2], TOX_ID_STR_LEN);
+	memcpy(msg->msg, colval[5], len);
+    strncpy(msg->filename, colval[7], UPLOAD_FILENAME_MAXLEN - 1);
+    strncpy(msg->filepath, colval[8], UPLOAD_FILENAME_MAXLEN*2 - 1);
+#if (DB_CURRENT_VERSION < DB_VERSION_V3)
+    strncpy(msg->srckey, colval[12], PNR_RSA_KEY_MAXLEN);
+    strncpy(msg->dstkey, colval[13], PNR_RSA_KEY_MAXLEN);
+#else
+    strncpy(msg->sign, colval[12], PNR_RSA_KEY_MAXLEN);
+    strncpy(msg->nonce, colval[13], PNR_RSA_KEY_MAXLEN);
+    strncpy(msg->prikey, colval[14], PNR_RSA_KEY_MAXLEN);
+#endif
+    switch (msg->ctype) {
+    case PNR_MSG_CACHE_TYPE_LWS:
+    case PNR_MSG_CACHE_TYPE_TOXA:
+    case PNR_MSG_CACHE_TYPE_TOXAF:
+        msg->userid = cfd_getindexbyidstr(msg->toid);
+        if (msg->userid <= 0) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err!", msg->fromid);
+    		return OK;
+        }
+        break;
+
+    case PNR_MSG_CACHE_TYPE_TOX:
+    case PNR_MSG_CACHE_TYPE_TOXF:
+        msg->userid = cfd_getindexbyidstr(msg->fromid);
+        if (msg->userid <= 0) 
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err!", msg->fromid);
+    		return OK;
+        }
+        break;
+
+     default:
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "cache msg type(%d) err!", msg->type);
+        return OK;
+    }
+	pthread_mutex_lock(&lws_cache_msglock[msg->userid]);
+    if (!list_empty(&g_lws_cache_msglist[msg->userid].list)) {
+		list_for_each_safe(tmsg, n, &g_lws_cache_msglist[msg->userid].list, struct lws_cache_msg_struct, list) {
+			if (tmsg->logid && tmsg->logid == msg->logid) {
+				goto OUT;
+			}
+		}
+		
+		list_for_each_safe(tmsg, n, &g_lws_cache_msglist[msg->userid].list, struct lws_cache_msg_struct, list) {
+			if (tmsg->msgid > msg->msgid) {
+				list_add_before(&msg->list, &tmsg->list);
+				goto OUT;
+			}
+		}
+	}
+	list_add_tail(&msg->list, &g_lws_cache_msglist[msg->userid].list);
+
+OUT:
+    pthread_mutex_unlock(&lws_cache_msglock[msg->userid]);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) add cached msg(%s)!", msg->userid, msg->msg);
+
+	return OK;
+}
+
+/***********************************************************************************
+  Function:      cfd_dbid_getby_uid
+  Description:  根据用户账号获取rnode列表中id
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbid_getby_uid(char * uid,int* dbid)
+{
+    int8* errMsg = NULL;
+	char sql_cmd[MSGSQL_CMD_LEN] = {0};
+    int target_id = 0;    
+
+    if(uid == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_dbid_getby_uid bad uid");
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"select id from rnode_uinfo_tab where idstring='%s';",uid);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,dbget_int_result,&target_id,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    *dbid = target_id;
     return OK;
 }
 
@@ -818,6 +1012,75 @@ int cfd_dbinsert_uinfo_newrecord(struct cfd_userinfo_struct* pnode)
             pnode->uindex,pnode->fid,pnode->local,pnode->version,pnode->friendseq,pnode->eminfoseq,
             pnode->userid,pnode->devid,pnode->usn,pnode->nickname,pnode->avatar,pnode->md5,pnode->mailinfo);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    } 
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbupdate_rnodename_bymac
+  Description:  rnodelist表中更新节点名称
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbupdate_rnodename_bymac(char* pmac,char* rname)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(rname == NULL || pmac == NULL)
+    {
+        return ERROR;
+    }
+    //rnode_list_tab(id integer primary key autoincrement,type,weight,mac,nodeid,routeid,rname,info);
+    snprintf(sql_cmd,SQL_CMD_LEN,"update rnode_list_tab set rname='%s' where mac='%s';",
+            rname,pmac);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    } 
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_dbupdate_rnodename_byid
+  Description:  rnodelist表中更新节点名称
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_dbupdate_rnodename_byid(int id,char* rname)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(rname == NULL || id < 0)
+    {
+        return ERROR;
+    }
+    //rnode_list_tab(id integer primary key autoincrement,type,weight,mac,nodeid,routeid,rname,info);
+    snprintf(sql_cmd,SQL_CMD_LEN,"update rnode_list_tab set rname='%s' where id=%d;",rname,id);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
@@ -1085,6 +1348,78 @@ int sql_groupinfodb_init(void)
 }
 
 /***********************************************************************************
+  Function:      sql_rnodedb_init
+  Description:  rnode模块的数据库初始化
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int sql_rnodedb_init(void)
+{
+    int8* errMsg = NULL;
+    int8 sql_cmd[SQL_CMD_LEN] = {0};
+
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"sql_rnodedb_init start");
+    if(sqlite3_open(DB_RNODE_FILE, &g_rnodedb_handle) != OK)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_rnodedb_init failed");
+        return ERROR;
+    }
+	//初始化表
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_uinfo_tab(id integer primary key autoincrement,local,uindex,uinfoseq,friendseq,friendnum,createtime,version,type,capacity,idstring,uname,mailinfo,avatar,atamd5,info);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_list_tab(id integer primary key autoincrement,type,weight,mac,nodeid,routeid,rname,info);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_changelog_tab(id integer primary key autoincrement,timestamp,type,uindex,seq,action,version,srcrid,dstrid,srcuid,dstuid,info);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_uactive_tab(id,lastactive,uindex,status,activenode,nodenum,idstring,nodelist);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_friends_tab(id integer primary key autoincrement,createtime,status,uindex,uid,fid,oneway,uidstr,fidstr,remark,info);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"create table rnode_oldusermap_tab(id integer primary key autoincrement,uindex,nodeid,idstr,toxid,devid);");
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	return OK;
+}
+
+/***********************************************************************************
   Function:      sql_emaillinfodb_init
   Description:  email模块的数据库初始化
   Calls:
@@ -1161,11 +1496,9 @@ int sql_msglogdb_init(int index)
 {
     int8* errMsg = NULL;
     int8 sql_cmd[SQL_CMD_LEN] = {0};
-    int db_id = 0;
 	char dbfile[128] = {0};
 
 	snprintf(dbfile, sizeof(dbfile), "%spnrouter_msglog.db", g_imusr_array.usrnode[index].userdata_pathurl);
-
 	if (access(dbfile, F_OK) != 0) {
 #ifdef OPENWRT_ARCH
         if(sqlite3_open_v2(dbfile, &g_msglogdb_handle[index], SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE | SQLITE_OPEN_CREATE, NULL) != OK){
@@ -1200,16 +1533,6 @@ int sql_msglogdb_init(int index)
 	        sqlite3_free(errMsg);
 	        return ERROR;
 	    }
-        //初始化filelist_tbl表
-		snprintf(sql_cmd,SQL_CMD_LEN,"create table filelist_tbl("
-		    "userindex,timestamp,id integer primary key autoincrement,version,"
-		    "msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey);");
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
 	} 
     else 
 	{
@@ -1241,31 +1564,157 @@ int sql_msglogdb_init(int index)
         return ERROR;
     }
     g_imusr_array.usrnode[index].msglog_dbid++;
-    //获取当前db的id最大值,来判断是否有filelist表
+    return OK;
+}
+
+/***********************************************************************************
+  Function:      cfdsql_msglogdb_init
+  Description:  模块的数据库初始化
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfdsql_msglogdb_init(int index)
+{
+    int8* errMsg = NULL;
+    int8 sql_cmd[SQL_CMD_LEN] = {0};
+    int db_id = 0;
+    char dbfile[128] = {0};
+
+    snprintf(dbfile, sizeof(dbfile), "%spnrouter_msglog.db", g_imusr_array.usrnode[index].userdata_pathurl);
+    if (access(dbfile, F_OK) != 0) {
+#ifdef OPENWRT_ARCH
+        if(sqlite3_open_v2(dbfile, &g_msglogdb_handle[index], SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE | SQLITE_OPEN_CREATE, NULL) != OK){
+	        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
+	        return ERROR;
+	    }
+	    //设置数据库的写同步，在系统断电的情况下可能丢失数据
+	    sqlite3_exec(g_msglogdb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);
+        //开启WAL模式
+        //sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA journal_mode=WAL; ", 0,0,0);
+#else
+        if (sqlite3_open(dbfile, &g_msglogdb_handle[index]) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_msglogdb_init failed");
+            return ERROR;
+        }
+#endif 
+        //初始化msglog表
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_msglog_tbl("
+    		    "userindex,timestamp,id integer primary key autoincrement,"
+    		    "logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey);");
+	    if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+	    {
+	        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+	        sqlite3_free(errMsg);
+	        return ERROR;
+	    }
+        //初始化filelist_tbl表
+		snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_filelist_tbl("
+		    "id integer primary key autoincrement,userindex,timestamp,version,depens,"
+		    "msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey);");
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        //插入默认目录
+		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+	} 
+    else 
+	{
+#ifdef OPENWRT_ARCH
+        if(sqlite3_open_v2(dbfile, &g_msglogdb_handle[index], SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_SHAREDCACHE | SQLITE_OPEN_CREATE, NULL) != OK){
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "db open failed");
+            return ERROR;
+        }
+        //设置数据库的写同步，在系统断电的情况下可能丢失数据
+        sqlite3_exec(g_msglogdb_handle[index], "PRAGMA synchronous = OFF; ", 0,0,0);
+        //开启WAL模式
+        //sqlite3_exec(g_msgcachedb_handle[index], "PRAGMA journal_mode=WAL; ", 0,0,0);
+#else
+        if (sqlite3_open(dbfile, &g_msglogdb_handle[index]) != OK)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql_msglogdb_init failed");
+            return ERROR;
+        }
+#endif 
+    }
+	
+    //获取当前db的id最大值
     memset(sql_cmd,0,SQL_CMD_LEN);
-    snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from filelist_tbl;");
+    snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from cfd_msglog_tbl;");
+    if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&g_imusr_array.usrnode[index].msglog_dbid,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    g_imusr_array.usrnode[index].msglog_dbid++;
+    //获取当前db的id最大值,来判断是否有cfd_filelist_tbl表
+    memset(sql_cmd,0,SQL_CMD_LEN);
+    snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from cfd_filelist_tbl;");
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&db_id,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
         sqlite3_free(errMsg);
         memset(sql_cmd,0,SQL_CMD_LEN);
-        snprintf(sql_cmd,SQL_CMD_LEN,"create table filelist_tbl("
-		    "userindex,timestamp,id integer primary key autoincrement,version,"
-		    "msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey);");
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_filelist_tbl("
+		    "id integer primary key autoincrement,userindex,timestamp,version,depens,"
+		    "msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey);");
         if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
             sqlite3_free(errMsg);
             return ERROR;
         }
-        else
+        //插入默认目录
+		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
         {
-            return OK;
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
         }
     }
+    else if(db_id == 0)
+    {
+         //插入默认目录
+		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+    }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfdsql_msglogdb_init:user(%d) db_id(%d)",index,db_id);
     return OK;
 }
-
 /***********************************************************************************
   Function:      qlv_db_init
   Description:  模块的数据库初始化
@@ -1728,8 +2177,10 @@ int pnr_dbget_friendsall_byuserid(int id,char* userid)
             snprintf(g_imusr_array.usrnode[id].friends[i].user_remarks,PNR_USERNAME_MAXLEN,"%s",dbResult[index+4]);
             g_imusr_array.usrnode[id].friends[i].exsit_flag =  TRUE;
             g_imusr_array.usrnode[id].friends[i].online_status = USER_ONLINE_STATUS_OFFLINE;
+#if 0
             pnr_uidhash_get(id,i+1,g_imusr_array.usrnode[id].friends[i].user_toxid,
                 &g_imusr_array.usrnode[id].friends[i].hashid,g_imusr_array.usrnode[id].friends[i].u_hashstr);
+#endif
             memset(&tmp_devinfo,0,sizeof(tmp_devinfo));
             strcpy(tmp_devinfo.user_toxid,g_imusr_array.usrnode[id].friends[i].user_toxid);
             if(pnr_usrdev_mappinginfo_sqlget(&tmp_devinfo) == OK)
@@ -1783,20 +2234,7 @@ int pnr_friend_dbinsert(char* from_toxid,char* to_toxid,char* nickname,char* use
     {
         return ERROR;
     }
-
-	for(index=1;index<=g_imusr_array.max_user_num;index++)
-    {
-        if(strcmp(from_toxid,g_imusr_array.usrnode[index].user_toxid) == OK)
-        {
-            break;
-        }
-    }
-    if(index > g_imusr_array.max_user_num)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"not find user(%s)",from_toxid);
-        return ERROR;
-    }
-	
+    index = cfd_getindexbyidstr(from_toxid);
     //这里要检查一下，避免重复插入
 	snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from friends_tbl where userid='%s' and friendid='%s';",from_toxid,to_toxid);
     if(sqlite3_exec(g_friendsdb_handle,sql_cmd,dbget_int_result,&count,&errMsg))
@@ -1805,7 +2243,6 @@ int pnr_friend_dbinsert(char* from_toxid,char* to_toxid,char* nickname,char* use
 		sqlite3_free(errMsg);
         return ERROR;
 	}
-	
     if(count > 0)
     {
         snprintf(sql_cmd,SQL_CMD_LEN,"update friends_tbl set friendname='%s',userkey='%s',oneway=0 where userid='%s' and friendid='%s';",
@@ -1824,6 +2261,7 @@ int pnr_friend_dbinsert(char* from_toxid,char* to_toxid,char* nickname,char* use
         sqlite3_free(errMsg);
         return ERROR;
     }
+    cfd_friendsrecord_add(index,from_toxid,to_toxid,nickname);
     return OK;
 }
 /***********************************************************************************
@@ -1845,28 +2283,17 @@ int pnr_friend_dbdelete(char* from_toxid,char* to_toxid, int oneway)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
-    int index = 0;
 
     if(from_toxid == NULL || to_toxid == NULL)
     {
         return ERROR;
     }
-    for(index=1;index<=g_imusr_array.max_user_num;index++)
+	if (oneway) 
     {
-        if(strcmp(from_toxid,g_imusr_array.usrnode[index].user_toxid) == OK)
-        {
-            break;
-        }
-    }
-    if(index > g_imusr_array.max_user_num)
-    {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"not find user(%s)",from_toxid);
-        return ERROR;
-    }
-
-	if (oneway) {
 		snprintf(sql_cmd,SQL_CMD_LEN,"update friends_tbl set oneway=%d where userid='%s' and friendid='%s';",oneway, from_toxid,to_toxid);
-	} else {
+	} 
+    else 
+	{
 		snprintf(sql_cmd,SQL_CMD_LEN,"delete from friends_tbl where userid='%s' and friendid='%s';",from_toxid,to_toxid);
 	}
 	
@@ -1877,14 +2304,15 @@ int pnr_friend_dbdelete(char* from_toxid,char* to_toxid, int oneway)
         sqlite3_free(errMsg);
         return ERROR;
     }
-
-	if (!oneway) {
+    //同步更新
+    cfd_friendsrecord_delete(from_toxid,to_toxid,oneway);
+	if (!oneway) 
+    {
 		if(pnr_filelog_delete_byfiletype(PNR_IM_MSGTYPE_ALL,from_toxid,to_toxid) != OK)
 	    {
 	        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_friend_dbdelete:pnr_filelog_delete_byfiletype error");
 	    }
 	}
-	
     return OK;
 }
 /***********************************************************************************
@@ -2106,7 +2534,7 @@ int pnr_msglog_getid(int index, int *logid)
     g_imusr_array.usrnode[index].msglog_dbid++;
     pthread_mutex_unlock(&(g_user_msgidlock[index]));
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msglog_getid(%d)",index,*logid);
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msglog_getid(%d)",index,*logid);
     return OK;
 }
 
@@ -2131,9 +2559,11 @@ int pnr_msglog_delid(int index, int id)
 	char sql[MSGSQL_CMD_LEN] = {0};
 
     //msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey,sign,nonce,prikey
-	snprintf(sql, MSGSQL_CMD_LEN, "delete from msg_tbl where id=%d);", id);
-		
-    if (sqlite3_exec(g_msglogdb_handle[index], sql, 0, 0, &err)) {
+	//snprintf(sql, MSGSQL_CMD_LEN, "delete from msg_tbl where id=%d);", id);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+	snprintf(sql, MSGSQL_CMD_LEN, "delete from cfd_msglog_tbl where id=%d);", id);
+    if (sqlite3_exec(g_msglogdb_handle[index], sql, 0, 0, &err)) 
+    {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
         sqlite3_free(err);
         return ERROR;
@@ -2165,7 +2595,11 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
     char *p_newdkey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     char* p_sql = NULL;
+    int sql_len = MSGSQL_CMD_LEN;
     int sql_malloc_flag = FALSE;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL)
     {
         return ERROR;
@@ -2179,6 +2613,7 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2196,11 +2631,12 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
     {
         p_newdkey = dkey;
     }
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
 
-	if (log_id) {
-		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from msg_tbl where from_user='%s' and logid=%d;",
-			from_toxid, log_id);
-
+	if (log_id) 
+    {
+		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from cfd_msglog_tbl where from_user='%s' and logid=%d;",from_idstr, log_id);
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
 		int ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
@@ -2218,6 +2654,7 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
 	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
 
+#if 0
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
     snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
@@ -2240,7 +2677,13 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
             "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
             recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);
     }
-
+#endif
+#else
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+            "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+            "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+            recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_newskey,p_newdkey);
 #endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
@@ -2257,7 +2700,6 @@ int pnr_msglog_dbinsert(int recode_userindex,int msgtype,int log_id,int msgstatu
     }
     return OK;
 }
-
 /***********************************************************************************
   Function:      pnr_msglog_dbinsert_specifyid
   Description:  插入一条记录
@@ -2282,7 +2724,9 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
     char *p_newdkey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     char* p_sql = NULL;
-    int sql_malloc_flag = FALSE;
+    int sql_malloc_flag = FALSE,sql_len = MSGSQL_CMD_LEN;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
     
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
     {
@@ -2297,6 +2741,7 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2314,27 +2759,28 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
     {
         p_newdkey = dkey;
     }
-
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
 	if (log_id) {
-		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from msg_tbl where from_user='%s' and logid=%d;",
-			from_toxid, log_id);
 
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
-		int ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
+        int ret = 0;
+        snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from cfd_msglog_tbl where from_user='%s' and logid=%d;",from_idstr, log_id);
+		ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
 		if (ret == SQLITE_OK) {
 			if (nRow > 0) {
-				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg exist(fromid:%s--logid:%d)", from_toxid, log_id);
+				DEBUG_PRINT(DEBUG_LEVEL_INFO, "msg repeat(fromid:%s--logid:%d)", from_toxid, log_id);
 				sqlite3_free_table(dbResult);
-				return OK;
+				//return OK;
 			}
 		} else {
 			DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql err(%s)", sql_cmd);
 			sqlite3_free(errMsg);
 		}
 	}
-	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
+#if 0
 #if (DB_CURRENT_VERSION < DB_VERSION_V3)
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey);
     snprintf(p_sql, MSGSQL_CMD_LEN, "insert into msg_tbl "
@@ -2357,6 +2803,13 @@ int pnr_msglog_dbinsert_specifyid(int recode_userindex,int msgtype,int db_id,int
             "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
             recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_newskey,p_newdkey);  
     }
+#endif
+#else
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+        recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_newskey,p_newdkey);
 #endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
@@ -2397,7 +2850,9 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
     char *p_newskey = "";
     char *p_newdkey = "";
     char* p_sql = NULL;
-    int sql_malloc_flag = FALSE;
+    int sql_malloc_flag = FALSE,sql_len = MSGSQL_CMD_LEN;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
     {
         return ERROR;
@@ -2411,6 +2866,7 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2429,6 +2885,7 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
         p_newdkey = dkey;
     }
 //修改为直接插入    
+#if 0
 #if 0
     //msg_tbl(id integer primary key autoincrement,fromid,toid,type,ctype,msg,len,filename,filepath,filesize,logid,ftype,skey,dkey,sign,nonce,prikey
     snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set userindex=%d,"
@@ -2461,6 +2918,15 @@ int pnr_msglog_dbupdate(int recode_userindex,int msgtype,int log_id,int msgstatu
     }
 #endif
 #endif    
+#else
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+           "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+           "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','','%s');",
+           recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_newskey,p_newdkey);
+#endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
@@ -2498,7 +2964,9 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
     char *p_prikey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     char* p_sql = NULL;
-    int sql_malloc_flag = FALSE;
+    int sql_malloc_flag = FALSE,sql_len = MSGSQL_CMD_LEN;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
     
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL)
     {
@@ -2513,6 +2981,7 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2534,11 +3003,11 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
     {
         p_prikey = prikey;
     }
-
-	if (log_id) {
-		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from msg_tbl where from_user='%s' and logid=%d;",
-			from_toxid, log_id);
-
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
+	if (log_id) 
+    {
+		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from cfd_msglog_tbl where from_user='%s' and logid=%d;",from_idstr, log_id);
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
 		int ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
@@ -2555,6 +3024,7 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
 	}
 	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
+#if 0
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,sign,nonce,prikey);
     if(sql_malloc_flag == TRUE)
     {
@@ -2570,6 +3040,13 @@ int pnr_msglog_dbinsert_v3(int recode_userindex,int msgtype,int log_id,int msgst
             "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
             recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
     }
+#else
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+        "values(%d,%d,null,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+        recode_userindex,(int)time(NULL),log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+#endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) 
     {
@@ -2615,7 +3092,9 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
     char *p_prikey = "";
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
     char* p_sql = NULL;
-    int sql_malloc_flag = FALSE;
+    int sql_malloc_flag = FALSE,sql_len = MSGSQL_CMD_LEN;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
     
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) {
         return ERROR;
@@ -2629,6 +3108,7 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2650,11 +3130,11 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
     {
         p_nonce = nonce;
     }
-
-	if (log_id) {
-		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from msg_tbl where from_user='%s' and logid=%d;",
-			from_toxid, log_id);
-
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
+	if (log_id)
+    {
+		snprintf(sql_cmd, MSGSQL_CMD_LEN, "select id from cfd_msglog_tbl where from_user='%s' and logid=%d;",from_toxid, log_id);
 		char **dbResult = NULL;
 		int nRow = 0, nColumn = 0;
 		int ret = sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, &nColumn, &errMsg);
@@ -2671,6 +3151,7 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
 	}
 	
     pthread_mutex_lock(&(g_user_msgidlock[recode_userindex]));
+#if 0
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey,sign,nonce,prikey);
     if(sql_malloc_flag == TRUE)
     {
@@ -2686,6 +3167,13 @@ int pnr_msglog_dbinsert_specifyid_v3(int recode_userindex,int msgtype,int db_id,
             "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
             recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
     }
+#else
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+        recode_userindex,(int)time(NULL),db_id,log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+#endif
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbinsert:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
@@ -2729,7 +3217,9 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
     char *p_nonce = "";
     char *p_prikey = "";
     char* p_sql = NULL;
-    int sql_malloc_flag = FALSE;
+    int sql_malloc_flag = FALSE,sql_len = MSGSQL_CMD_LEN;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
 
     if (from_toxid == NULL || to_toxid == NULL || pmsg == NULL) 
     {
@@ -2744,6 +3234,7 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
             return ERROR;
         }
         sql_malloc_flag = TRUE;
+        sql_len = MSGSQL_ALLOC_MAXLEN;
     }
     else
     {
@@ -2765,6 +3256,7 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
     {
         p_prikey = prikey;
     }
+#if 0
     //table msg_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey,sign,nonce,prikey);
     if(sql_malloc_flag == TRUE)
     {
@@ -2780,6 +3272,15 @@ int pnr_msglog_dbupdate_v3(int recode_userindex,int msgtype,int log_id,int msgst
             "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
             recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_toxid,to_toxid,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
     }
+#else
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(p_sql, sql_len, "insert into cfd_msglog_tbl "
+        "(userindex,timestamp,id,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,sign,nonce,prikey) "
+        "values(%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s');",
+        recode_userindex,(int)time(NULL),log_id,log_id,msgtype,msgstatus,from_idstr,to_idstr,pmsg,ext,ext2,p_sign,p_nonce,p_prikey);
+#endif    
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",p_sql);
     if (sqlite3_exec(g_msglogdb_handle[recode_userindex], p_sql, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",p_sql,errMsg);
@@ -2822,7 +3323,8 @@ int pnr_msglog_dbupdate_stauts_byid(int index,int db_id,int msgstatus)
         return ERROR;
     }
     //这里要检查一下
-    snprintf(sql_cmd,SQL_CMD_LEN,"select status from msg_tbl where userindex=%d and id=%d;",index,db_id);
+    //snprintf(sql_cmd,SQL_CMD_LEN,"select status from msg_tbl where userindex=%d and id=%d;",index,db_id);
+    snprintf(sql_cmd,SQL_CMD_LEN,"select status from cfd_msglog_tbl where userindex=%d and id=%d;",index,db_id);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&cur_status,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
@@ -2834,10 +3336,11 @@ int pnr_msglog_dbupdate_stauts_byid(int index,int db_id,int msgstatus)
     {
         return OK;
     }
-    /*"userindex,timestamp,id integer primary key autoincrement,
-            logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey*/
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set status=%d where userindex=%d and id=%d;",msgstatus,index,db_id);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate_stauts_byid:sql_cmd(%s)",sql_cmd);
+    /*"userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,ext,ext2,skey,dkey*/
+    //snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set status=%d where userindex=%d and id=%d;",msgstatus,index,db_id);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(sql_cmd, MSGSQL_CMD_LEN, "update cfd_msglog_tbl set status=%d where userindex=%d and id=%d;",msgstatus,index,db_id);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate_stauts_byid:sql_cmd(%s)",sql_cmd);
     if (sqlite3_exec(g_msglogdb_handle[index], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
@@ -2867,7 +3370,7 @@ int pnr_msglog_dbget_logid_byid(int index,int id,int* logid)
     int target_id = 0;    
 
     //这里要检查一下
-    snprintf(sql_cmd,SQL_CMD_LEN,"select logid from msg_tbl where id=%d;",id);
+    snprintf(sql_cmd,SQL_CMD_LEN,"select logid from cfd_msglog_tbl where id=%d;",id);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&target_id,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
@@ -2896,14 +3399,18 @@ int pnr_msglog_dbget_dbid_bylogid(int index,int log_id,char* from,char* to,int* 
 {
 	int8* errMsg = NULL;
 	char sql_cmd[MSGSQL_CMD_LEN] = {0};
-    int target_id = 0;    
+    int target_id = 0;
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+
     if(from == NULL || to == NULL)
     {
         return ERROR;
     }
+    cfd_toxidformatidstr(from,from_idstr);
+    cfd_toxidformatidstr(to,to_idstr);
     //这里要检查一下
-    snprintf(sql_cmd,SQL_CMD_LEN,"select id from msg_tbl where logid=%d and from_user='%s' and to_user='%s';",
-    log_id,from,to);
+    snprintf(sql_cmd,SQL_CMD_LEN,"select id from cfd_msglog_tbl where logid=%d and from_user='%s' and to_user='%s';",log_id,from_idstr,to_idstr);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&target_id,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
@@ -3019,9 +3526,16 @@ int pnr_msglog_dbget_byid(int index,int db_id,struct im_sendmsg_msgstruct* pmsg)
         return ERROR;
     }
     //这里要检查一下
+#if 0
     snprintf(sql_cmd,SQL_CMD_LEN,"select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,ext,ext2,sign,nonce,"
 				"prikey,id from msg_tbl where id=%d",db_id);
+#else
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select id,logid,timestamp,status,"
+				"from_user,to_user,msg,msgtype,filepath,filesize,sign,nonce,"
+				"prikey,id from cfd_msglog_tbl where id=%d",db_id);
+#endif
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,pnr_msglog_dbget_callbak,pmsg,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sql(%s) get cur_status failed",sql_cmd);
@@ -3053,8 +3567,10 @@ int pnr_msglog_dbupdate_filename_byid(int uindex,int dbid,char* filename, char* 
     if (filename == NULL || filepath == NULL) {
         return ERROR;
     }
-    snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set msg='%s',ext='%s' where id=%d;",filename,filepath,dbid);
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",sql_cmd);
+    //snprintf(sql_cmd, MSGSQL_CMD_LEN, "update msg_tbl set msg='%s',ext='%s' where id=%d;",filename,filepath,dbid);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(sql_cmd, MSGSQL_CMD_LEN, "update cfd_msglog_tbl set msg='%s',filepath='%s' where id=%d;",filename,filepath,dbid);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbupdate:sql_cmd(%s)",sql_cmd);
     if (sqlite3_exec(g_msglogdb_handle[uindex], sql_cmd, 0, 0, &errMsg)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
@@ -3087,16 +3603,24 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
     int offset = 0, i = 0;
 	int filetype = 0;
 	char filepath[UPLOAD_FILENAME_MAXLEN * 2] = {0};
+    char from_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char to_idstr[CFD_USER_PUBKEYLEN+1] = {0};
 
     if(from_toxid == NULL || to_toxid == NULL)
     {
         return ERROR;
     }
-
 	//delete file
-	snprintf(sql_cmd, SQL_CMD_LEN, "select msgtype,ext from msg_tbl where "
-		"logid=%d and from_user='%s' and to_user='%s';",
-		log_id, from_toxid, to_toxid);
+#if 0
+    snprintf(sql_cmd, SQL_CMD_LEN, "select msgtype,ext from msg_tbl where "
+		"logid=%d and from_user='%s' and to_user='%s';",log_id, from_toxid, to_toxid);
+#else
+    cfd_toxidformatidstr(from_toxid,from_idstr);
+    cfd_toxidformatidstr(to_toxid,to_idstr);
+    //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+    snprintf(sql_cmd, SQL_CMD_LEN, "select msgtype,filepath from cfd_msglog_tbl where "
+        "logid=%d and from_user='%s' and to_user='%s';",log_id, from_idstr, to_idstr);
+#endif
     if (sqlite3_get_table(g_msglogdb_handle[recode_userindex], sql_cmd, &dbResult, &nRow, 
             &nColumn, &errMsg) == SQLITE_OK)
     {
@@ -3116,38 +3640,41 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
 				unlink(filepath);
 				break;
 			}
-
 			offset += nColumn;
         }
-
 		sqlite3_free_table(dbResult);
 	}
 			
     if(log_id != 0)
     {
+#if 0    
         snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where "
-            "logid=%d and from_user='%s' and to_user='%s';",
-            log_id, from_toxid, to_toxid);
+            "logid=%d and from_user='%s' and to_user='%s';",log_id, from_toxid, to_toxid);
+#else
+        //cfd_msglog_tbl(userindex,timestamp,id integer primary key autoincrement,logid,msgtype,status,from_user,to_user,msg,filepath,filesize,skey,dkey)
+        snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where "
+            "logid=%d and from_user='%s' and to_user='%s';",log_id, from_idstr, to_idstr);
+#endif
     }
     else//为0就删除两人见全部数据
     {
         //删除某一类型消息全部记录
         if(msgtype >= PNR_IM_MSGTYPE_TEXT && msgtype <= PNR_IM_MSGTYPE_AVATAR)
         {
-            snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where "
+            snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where "
                 "((from_user='%s' and to_user='%s') or "
-                "(from_user='%s' and to_user='%s')) and msgtype=%d;",from_toxid,to_toxid,to_toxid,from_toxid,msgtype);
-        
+                "(from_user='%s' and to_user='%s')) and msgtype=%d;",
+                from_idstr,to_idstr,to_idstr,from_idstr,msgtype);
         }
         //删除两人之间所有类型消息记录
         else
         {
-            snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where "
+            snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where "
                 "((from_user='%s' and to_user='%s') or "
-                "(from_user='%s' and to_user='%s'));",from_toxid,to_toxid,to_toxid,from_toxid);
+                "(from_user='%s' and to_user='%s'));",
+                from_idstr,to_idstr,to_idstr,from_idstr);
         }
     }
-    
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_msglog_dbdelete:sql_cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_msglogdb_handle[recode_userindex],sql_cmd,0,0,&errMsg))
     {
@@ -3155,7 +3682,6 @@ int pnr_msglog_dbdelete(int recode_userindex,int msgtype,int log_id,
         sqlite3_free(errMsg);
         return ERROR;
     }
-    
     return OK;
 }
 
@@ -3199,7 +3725,7 @@ int pnr_msgcache_getid(int index, int *msgid)
     g_imusr_array.usrnode[index].cachelog_dbid++;
     pthread_mutex_unlock(&(g_user_msgidlock[index]));
 #endif
-	DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msgcache_getid(%d)",index,*msgid);
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d) pnr_msgcache_getid(%d)",index,*msgid);
     return OK;
 }
 /*****************************************************************************
@@ -3229,7 +3755,7 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     int ret = 0;
 	int8 *err = NULL;
 	char sql[MSGSQL_CMD_LEN] = {0};
-    int userid = 0;
+    int userid = 0,idstr_len = 0;
     int filesize = 0;
     struct stat fstat;
     struct lws_cache_msg_struct *msg = NULL;
@@ -3242,6 +3768,8 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
     int msg_totallen = 0;
     char* p_sql = NULL;
     int sql_malloc_flag = FALSE;
+    char idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char* pidstr = NULL;
 
     if(len <= 0)
     {
@@ -3283,8 +3811,19 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
         fname = filename;
     }
 
-    if (ctype == PNR_MSG_CACHE_TYPE_TOX || ctype == PNR_MSG_CACHE_TYPE_TOXF) {
-        userid = get_indexbytoxid(fromid);
+    if (ctype == PNR_MSG_CACHE_TYPE_TOX || ctype == PNR_MSG_CACHE_TYPE_TOXF) 
+    {
+        idstr_len = strlen(fromid);
+        if(idstr_len == TOX_ID_STR_LEN)
+        {
+            cfd_olduseridstr_getbytoxid(fromid,idstr);
+            pidstr = idstr;
+        }
+        else
+        {
+            pidstr = fromid;
+        }
+        userid = cfd_uinfolistgetindex_byuidstr(pidstr);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", fromid);
             if(sql_malloc_flag == TRUE)
@@ -3294,8 +3833,20 @@ int pnr_msgcache_dbinsert(int msgid, char *fromid, char *toid, int type,
             return ERROR;
         }
 		snprintf(fpath, sizeof(fpath), "/user%d/s/%s", userid, fname);
-    } else {
-        userid = get_indexbytoxid(toid);
+    }
+    else
+    {
+        idstr_len = strlen(toid);
+        if(idstr_len == TOX_ID_STR_LEN)
+        {
+            cfd_olduseridstr_getbytoxid(toid,idstr);
+            pidstr = idstr;
+        }
+        else
+        {
+            pidstr = toid;
+        }
+        userid = cfd_uinfolistgetindex_byuidstr(pidstr);    
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", toid);
             if(sql_malloc_flag == TRUE)
@@ -3484,13 +4035,15 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
     int ret = 0;
 	int8 *err = NULL;
 	char sql[MSGSQL_CMD_LEN] = {0};
-    int userid = 0;
+    int userid = 0,idstr_len = 0;;
     int filesize = 0;
     struct stat fstat;
     struct lws_cache_msg_struct *msg = NULL;
 	struct lws_cache_msg_struct *tmsg = NULL;
     struct lws_cache_msg_struct *n = NULL;
     char fpath[PNR_FILEPATH_MAXLEN+1] = {0};
+    char idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char* pidstr = NULL;
     char *fname = "";
     char *p_sign = "";
     char *p_nonce = "";
@@ -3537,8 +4090,19 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
         fname = filename;
     }
 
-    if (ctype == PNR_MSG_CACHE_TYPE_TOX || ctype == PNR_MSG_CACHE_TYPE_TOXF) {
-        userid = get_indexbytoxid(fromid);
+    if (ctype == PNR_MSG_CACHE_TYPE_TOX || ctype == PNR_MSG_CACHE_TYPE_TOXF) 
+    {
+        idstr_len = strlen(fromid);
+        if(idstr_len == TOX_ID_STR_LEN)
+        {
+            cfd_olduseridstr_getbytoxid(fromid,idstr);
+            pidstr = idstr;
+        }
+        else
+        {
+            pidstr = fromid;
+        }
+        userid = cfd_uinfolistgetindex_byuidstr(pidstr);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", fromid);
             if(sql_malloc_flag == TRUE)
@@ -3548,8 +4112,20 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
             return ERROR;
         }
 		snprintf(fpath, sizeof(fpath), "/user%d/s/%s", userid, fname);
-    } else {
-        userid = get_indexbytoxid(toid);
+    }
+    else 
+    {
+        idstr_len = strlen(toid);
+        if(idstr_len == TOX_ID_STR_LEN)
+        {
+            cfd_olduseridstr_getbytoxid(toid,idstr);
+            pidstr = idstr;
+        }
+        else
+        {
+            pidstr = toid;
+        }
+        userid = cfd_uinfolistgetindex_byuidstr(pidstr);
         if (!userid) {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err", toid);
             if(sql_malloc_flag == TRUE)
@@ -3558,7 +4134,6 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
             }  
             return ERROR;
         }
-
 		snprintf(fpath, sizeof(fpath), "/user%d/r/%s", userid, fname);
     }
     if(filepath)
@@ -3728,18 +4303,15 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
     //cJSON *root = NULL;
     //cJSON *params = NULL;
     //cJSON *jmsg = NULL;
-
-	snprintf(sql, MSGSQL_CMD_LEN, "delete from msg_tbl "
-		"where id=%d;", msgid);
+    if (userid > PNR_IMUSER_MAXNUM) {
+        return OK;
+    }
+	snprintf(sql, MSGSQL_CMD_LEN, "delete from msg_tbl where id=%d;", msgid);
 	//DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)", sql);
     if (sqlite3_exec(g_msgcachedb_handle[userid], sql, 0, 0, &err)) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
         sqlite3_free(err);
         return ERROR;
-    }
-
-    if (userid > PNR_IMUSER_MAXNUM) {
-        return OK;
     }
 	pthread_mutex_lock(&lws_cache_msglock[userid]);
 	list_for_each_safe(msg, n, &g_lws_cache_msglist[userid].list, 
@@ -3786,20 +4358,11 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
                 }
 #endif
                 break;
-
 			case PNR_MSG_CACHE_TYPE_TOX:
-				if (msg->type == PNR_IM_CMDTYPE_DELFRIENDPUSH) {
-					int friendnum = GetFriendNumInFriendlist_new(g_tox_linknode[userid], msg->toid);
-					if (friendnum >= 0) {
-						tox_friend_delete(g_tox_linknode[userid], friendnum, NULL);
-					}
-				}
-
 				pthread_mutex_lock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
 				if (g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended == msg->msgid)
 					g_imusr_array.usrnode[msg->userid].friends[msg->friendid].sended = 0;
 				pthread_mutex_unlock(&g_imusr_array.usrnode[msg->userid].friends[msg->friendid].lock_sended);
-
 				break;
             }
 			
@@ -3861,16 +4424,18 @@ int pnr_msgcache_dbdelete_by_logid(int index, struct im_sendmsg_msgstruct *msg)
 			switch (ctype) {
 			case PNR_MSG_CACHE_TYPE_TOX:
 			case PNR_MSG_CACHE_TYPE_TOXF:
-				userid = get_indexbytoxid(msg->fromuser_toxid);
-		        if (!userid) {
+				userid = cfd_getindexbyidstr(msg->fromuser_toxid);
+		        if (userid <=0)
+                {
 		            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get from(%s) index err", msg->fromuser_toxid);
 					continue;
 				}
 				break;
 
 			default:
-				userid = get_indexbytoxid(msg->touser_toxid);
-		        if (!userid) {
+				userid = cfd_getindexbyidstr(msg->touser_toxid);
+		        if (userid <= 0)
+                {
 		            DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get to(%s) index err", msg->touser_toxid);
 					continue;
 				}
@@ -3987,7 +4552,7 @@ int pnr_msgcache_dbdelete_by_friendid(int index, char *friendid)
 	struct lws_cache_msg_struct *cmsg = NULL;
     struct lws_cache_msg_struct *ctmp = NULL;
 
-	snprintf(sql, SQL_CMD_LEN, "delete from msg_tbl where toid=%s;", friendid);
+	snprintf(sql, SQL_CMD_LEN, "delete from msg_tbl where toid='%s';", friendid);
 	if (sqlite3_exec(g_msgcachedb_handle[index], sql, 0, 0, &err)) {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sqlite cmd(%s) err(%s)", sql, err);
 		sqlite3_free(err);
@@ -4082,8 +4647,9 @@ int pnr_msgcache_dbget(void *obj, int colnum, char **colval, char **colnames)
     case PNR_MSG_CACHE_TYPE_LWS:
     case PNR_MSG_CACHE_TYPE_TOXA:
     case PNR_MSG_CACHE_TYPE_TOXAF:
-        msg->userid = get_indexbytoxid(msg->toid);
-        if (!msg->userid) {
+        msg->userid = cfd_getindexbyidstr(msg->toid);
+        if (msg->userid <= 0) 
+        {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err!", msg->fromid);
     		return OK;
         }
@@ -4091,8 +4657,9 @@ int pnr_msgcache_dbget(void *obj, int colnum, char **colval, char **colnames)
 
     case PNR_MSG_CACHE_TYPE_TOX:
     case PNR_MSG_CACHE_TYPE_TOXF:
-        msg->userid = get_indexbytoxid(msg->fromid);
-        if (!msg->userid) {
+        msg->userid = cfd_getindexbyidstr(msg->fromid);
+        if (msg->userid <= 0) 
+        {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR, "get user(%s) index err!", msg->fromid);
     		return OK;
         }
@@ -4165,6 +4732,13 @@ int pnr_msgcache_init(void)
     		}
         }
 	}
+    //rnodemsg 直接清除
+    snprintf(sql, SQL_CMD_LEN, "delete from msg_tbl;");
+    if (sqlite3_exec(g_msgcachedb_handle[CFD_NODEID_USERINDEX], sql, pnr_msgcache_dbget, NULL, &err))
+    {
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "sql cmd(%s) err(%s)", sql, err);
+		sqlite3_free(err);
+	}
     return OK;
 }
 
@@ -4199,7 +4773,8 @@ int pnr_filelog_delete_byid(int msgid,char* user_id,char* friend_id)
 
     db_ret.buf_len = PNR_FILEPATH_MAXLEN;
     db_ret.pbuf = filepath;
-    snprintf(sql_cmd,SQL_CMD_LEN,"select ext from msg_tbl where logid=%d;",msgid);
+    //snprintf(sql_cmd,SQL_CMD_LEN,"select ext from msg_tbl where logid=%d;",msgid);
+    snprintf(sql_cmd,SQL_CMD_LEN,"select filepath from cfd_msglog_tbl where logid=%d;",msgid);
 	DEBUG_PRINT(DEBUG_LEVEL_INFO, "pnr_filelog_delete_byid:sql_cmd(%s)",sql_cmd);
     if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_singstr_result,&db_ret,&errMsg))
     {
@@ -4306,9 +4881,14 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
     int nRow, nColumn;
     int i,offset,msgid = 0;
 	int userindex = 0;
+    char user_idstr[CFD_USER_PUBKEYLEN+1] = {0};
+    char friend_idstr[CFD_USER_PUBKEYLEN+1] = {0};
 
-	userindex = get_indexbytoxid(user_id);
-	if (!userindex) {
+    cfd_toxidformatidstr(user_id,user_idstr);
+    cfd_toxidformatidstr(friend_id,friend_idstr);
+	userindex = cfd_getindexbyidstr(user_idstr);
+	if (userindex <= 0) 
+    {
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "not found user(%s)", user_id);
 		return ERROR;
 	}
@@ -4317,17 +4897,16 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
     {
         //仅仅删除聊天消息
         case PNR_IM_MSGTYPE_TEXT:
-            pnr_msglog_dbdelete(userindex,filetype,0,user_id,friend_id);
+            pnr_msglog_dbdelete(userindex,filetype,0,user_idstr,friend_idstr);
             break;  
         //删除某一类型的文件记录
         case PNR_IM_MSGTYPE_IMAGE:
         case PNR_IM_MSGTYPE_AUDIO:
         case PNR_IM_MSGTYPE_MEDIA:
         case PNR_IM_MSGTYPE_FILE:
-            snprintf(sql_cmd,SQL_CMD_LEN,"select id,ext from msg_tbl where from_user='%s' and to_user='%s' and msgtype=%d;",
-                user_id,friend_id,filetype);
-            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
-                    &nColumn, &errMsg) == SQLITE_OK)
+            //snprintf(sql_cmd,SQL_CMD_LEN,"select id,ext from msg_tbl where from_user='%s' and to_user='%s' and msgtype=%d;",user_id,friend_id,filetype);
+            snprintf(sql_cmd,SQL_CMD_LEN,"select id,filepath from cfd_msg_tbl where from_user='%s' and to_user='%s' and msgtype=%d;",user_idstr,friend_idstr,filetype);
+            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow,&nColumn, &errMsg) == SQLITE_OK)
             {
                 offset = nColumn; //字段值从offset开始呀
                 for( i = 0; i < nRow ; i++ )
@@ -4345,7 +4924,8 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }
-                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    //snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where id=%d",msgid);
                     if(sqlite3_exec(g_friendsdb_handle,sql_cmd,0,0,&errMsg))
                     {
                         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4358,11 +4938,16 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
             }
             break;
         case PNR_IM_MSGTYPE_FILEALL:
+#if 0
             snprintf(sql_cmd,SQL_CMD_LEN,"select id,ext from msg_tbl where from_user='%s' and to_user='%s'"
                 " and (msgtype=%d or msgtype=%d or msgtype=%d or msgtype=%d);",user_id,friend_id,
                 PNR_IM_MSGTYPE_IMAGE,PNR_IM_MSGTYPE_AUDIO,PNR_IM_MSGTYPE_MEDIA,PNR_IM_MSGTYPE_FILE);
-            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
-                    &nColumn, &errMsg) == SQLITE_OK)
+#else
+            snprintf(sql_cmd,SQL_CMD_LEN,"select id,filepath from cfd_msglog_tbl where from_user='%s' and to_user='%s'"
+                " and (msgtype=%d or msgtype=%d or msgtype=%d or msgtype=%d);",user_idstr,friend_idstr,
+                PNR_IM_MSGTYPE_IMAGE,PNR_IM_MSGTYPE_AUDIO,PNR_IM_MSGTYPE_MEDIA,PNR_IM_MSGTYPE_FILE);
+#endif
+            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow,&nColumn, &errMsg) == SQLITE_OK)
             {
                 offset = nColumn; //字段值从offset开始呀
                 for( i = 0; i < nRow ; i++ )
@@ -4380,7 +4965,8 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }
-                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    //snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where id=%d",msgid);
                     if(sqlite3_exec(g_friendsdb_handle,sql_cmd,0,0,&errMsg))
                     {
                         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4393,12 +4979,18 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
             }
             break;
         case PNR_IM_MSGTYPE_ALL:
+#if 0
             snprintf(sql_cmd,SQL_CMD_LEN,"select id,ext from msg_tbl where ((from_user='%s' and to_user='%s')"
 				" or (from_user='%s' and to_user='%s'))"
 				" and msgtype in (%d,%d,%d,%d);",user_id,friend_id,friend_id,user_id,
                 PNR_IM_MSGTYPE_IMAGE,PNR_IM_MSGTYPE_AUDIO,PNR_IM_MSGTYPE_MEDIA,PNR_IM_MSGTYPE_FILE);
-            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow, 
-                    &nColumn, &errMsg) == SQLITE_OK)
+#else
+            snprintf(sql_cmd,SQL_CMD_LEN,"select id,filepath from cfd_msglog_tbl where ((from_user='%s' and to_user='%s')"
+                " or (from_user='%s' and to_user='%s'))"
+                " and msgtype in (%d,%d,%d,%d);",user_idstr,friend_idstr,friend_idstr,user_idstr,
+                PNR_IM_MSGTYPE_IMAGE,PNR_IM_MSGTYPE_AUDIO,PNR_IM_MSGTYPE_MEDIA,PNR_IM_MSGTYPE_FILE);
+#endif
+            if(sqlite3_get_table(g_msglogdb_handle[userindex], sql_cmd, &dbResult, &nRow,&nColumn, &errMsg) == SQLITE_OK)
             {
                 offset = nColumn; //字段值从offset开始呀
                 for( i = 0; i < nRow ; i++ )
@@ -4416,7 +5008,8 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }
-                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    //snprintf(sql_cmd,SQL_CMD_LEN,"delete from msg_tbl where id=%d",msgid);
+                    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_msglog_tbl where id=%d",msgid);
                     if(sqlite3_exec(g_msglogdb_handle[userindex],sql_cmd,0,0,&errMsg))
                     {
                         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -4427,7 +5020,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                 //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get nRow(%d) nColumn(%d)",nRow,nColumn);
                 sqlite3_free_table(dbResult);
             }
-            pnr_msglog_dbdelete(userindex,PNR_IM_MSGTYPE_TEXT,0,user_id,friend_id);
+            pnr_msglog_dbdelete(userindex,PNR_IM_MSGTYPE_TEXT,0,user_idstr,friend_idstr);
             break;
     }
     return OK;
@@ -4569,14 +5162,6 @@ int pnr_account_init_fromdb(void)
             if(userindex > 0 && userindex <= PNR_IMUSER_MAXNUM)
             {
                 g_account_array.account[tmpid].index = userindex;
-                if(g_account_array.account[tmpid].active == TRUE)
-                {
-                    strcpy(g_imusr_array.usrnode[userindex].user_nickname,g_account_array.account[tmpid].nickname);
-                    strcpy(g_imusr_array.usrnode[userindex].user_toxid,g_account_array.account[tmpid].toxid);
-                    strcpy(g_imusr_array.usrnode[userindex].user_pubkey,g_account_array.account[tmpid].user_pubkey);
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"###get user(%d) user_toxid(%s) nickname(%s)",
-                        userindex,g_imusr_array.usrnode[userindex].user_toxid,g_imusr_array.usrnode[userindex].user_nickname);
-                }
             }
             offset += nColumn;
          }
@@ -4742,7 +5327,7 @@ int pnr_userdev_mapping_dbupdate(char* user_id,char* dev_id,char* dev_name)
     }
     if(user.id == 0)
     {
-        index = get_indexbytoxid(user.user_toxid);
+        index = cfd_getindexbyidstr(user.user_toxid);
         //新记录，插入
         memset(sql_cmd,0,SQL_CMD_LEN);
         snprintf(sql_cmd, SQL_CMD_LEN, "insert into userdev_mapping_tbl values(NULL,%d,'%s','%s','%s');",
@@ -5441,7 +6026,7 @@ int pnr_userinfo_dbupdate(struct pnr_userinfo_struct* puser)
     {
         return ERROR;
     }
-    if(strlen(puser->userid) != TOX_ID_STR_LEN)
+    if(strlen(puser->userid) < CFD_USER_PUBKEYLEN)
     {
         return ERROR;
     }
@@ -6587,17 +7172,16 @@ int pnr_logcache_dbinsert(int cmd,char* fromid,char* toid,char* msg,char* ext)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_filelist_dbinsert(int uindex,int msgid,int filetype,int srcfrom,int size,
-                            char* from,char* to,char* filename,char* filepath,
-                            char* md5,char* fileinfo,char* skey,char* dkey)
+int pnr_filelist_dbinsert(int uindex,int msgid,int ftype,int depens,int srcfrom,int size,int pathid,int fileid,
+                            char* from,char* to,char* fname,char* fpath,char* md5,char* finfo,char* skey,char* dkey)
 {
-	int8* errMsg = NULL;
+    int8* errMsg = NULL;
     char* p_fileinfo = "";
     char* p_skey = "";
     char* p_dkey = "";
-	char sql_cmd[SQL_CMD_LEN] = {0};
+    char sql_cmd[SQL_CMD_LEN] = {0};
 
-    if(filename  == NULL || to == NULL || filename == NULL || filepath == NULL || md5 == NULL)
+    if(fname  == NULL || to == NULL || fname == NULL || fpath == NULL || md5 == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:input err");
         return ERROR;
@@ -6615,13 +7199,13 @@ int pnr_filelist_dbinsert(int uindex,int msgid,int filetype,int srcfrom,int size
     {
         p_dkey = dkey;
     }
-    if(fileinfo != NULL)
+    if(finfo != NULL)
     {
-        p_fileinfo = fileinfo;
+        p_fileinfo = finfo;
     }
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"insert into filelist_tbl values(%d,%d,null,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','%s');",
-             uindex,(int)time(NULL),WS_FILELIST_VERSION,msgid,filetype,srcfrom,size,from,to,filename,filepath,md5,p_fileinfo,p_skey,p_dkey);
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values(null,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,'%s','%s','%s','%s','%s','%s','%s','%s');",
+             uindex,(int)time(NULL),WS_FILELIST_VERSION,depens,msgid,ftype,srcfrom,size,pathid,fileid,from,to,fname,fpath,md5,p_fileinfo,p_skey,p_dkey);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbinsert:sql(%s)",sql_cmd);
     if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
     {
@@ -6646,8 +7230,7 @@ int pnr_filelist_dbinsert(int uindex,int msgid,int filetype,int srcfrom,int size
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int size,
-                            char* md5,char* fileinfo,char* skey,char* dkey)
+int pnr_filelist_dbupdate_fileinfo_byid(int id,int uindex,int size,char* md5,char* fileinfo,char* fname,char* skey,char* dkey)
 {
 	int8* errMsg = NULL;
     int attach_flag = FALSE;
@@ -6659,11 +7242,25 @@ int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int 
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad");
         return ERROR;
     }
-    snprintf(sql_cmd,SQL_CMD_LEN,"update filelist_tbl set ");
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_filelist_tbl set ");
     if(size > 0)
     {
         attach_flag = TRUE;
         snprintf(sql_tmpstr,CMD_MAXLEN,"size=%d",size);
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(fname)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",fname='%s'",md5);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"fname='%s'",md5);
+            attach_flag = TRUE;
+        }
         strcat(sql_cmd,sql_tmpstr);
     }
     if(md5)
@@ -6723,9 +7320,8 @@ int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int 
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad sql_cmd(%s)",sql_cmd);
         return ERROR;
     }
-    snprintf(sql_tmpstr,CMD_MAXLEN," where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    snprintf(sql_tmpstr,CMD_MAXLEN," where id=%d",id);
     strcat(sql_cmd,sql_tmpstr);
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbupdate_fileinfo_bymsgid:sql(%s)",sql_cmd);
     if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
     {
@@ -6750,7 +7346,7 @@ int pnr_filelist_dbupdate_fileinfo_bymsgid(int uindex,int msgid,int srcfrom,int 
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char* filename)
+int pnr_filelist_dbupdate_filename_byid(int uindex,int id,char* filename)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
@@ -6760,8 +7356,8 @@ int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_filename_bymsgid:bad params");
         return ERROR;
     }
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"update filelist_tbl set filename='%s' where userindex=%d and srcfrom=%d and msgid=%d",filename,uindex,srcfrom,msgid);
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_filelist_tbl set fname='%s' where id=%d",filename,id);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbupdate_filename_bymsgid:sql(%s)",sql_cmd);
     if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
     {
@@ -6788,63 +7384,59 @@ int pnr_filelist_dbupdate_filename_bymsgid(int uindex,int msgid,int srcfrom,char
 int32 pnr_filelist_dbinfo_dbget(void* obj, int n_columns, char** column_values,char** column_names)
 {
     int i =0;
-    if(n_columns < 8)
+    if(n_columns < 17)
     {
         return ERROR;
     }
-	struct pnr_file_dbinfo_struct* p_file = (struct pnr_file_dbinfo_struct*)obj;
+	struct cfd_fileinfo_struct* p_file = (struct cfd_fileinfo_struct*)obj;
     if(p_file == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinfo_dbget obj is null");
         return ERROR;
     }
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
-    p_file->uid = atoi(column_values[i++]);
-    p_file->timestamp = atoi(column_values[i++]);
-    p_file->id = atoi(column_values[i++]);
-    p_file->info_ver = atoi(column_values[i++]);
-    p_file->msgid = atoi(column_values[i++]);
-    p_file->filetype = atoi(column_values[i++]);
-    p_file->srcfrom = atoi(column_values[i++]);
-    p_file->filesize = atoi(column_values[i++]);
-    if(column_values[i] != NULL)
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    p_file->id = atoi(column_values[i]);
+    p_file->uindex = atoi(column_values[i+1]);
+    p_file->timestamp = atoi(column_values[i+2]);
+    p_file->info_ver = atoi(column_values[i+3]);
+    p_file->depens = atoi(column_values[i+4]);
+    p_file->msgid = atoi(column_values[i+5]);
+    p_file->type = atoi(column_values[i+6]);
+    p_file->srcfrom = atoi(column_values[i+7]);
+    p_file->size= atoi(column_values[i+8]);
+    p_file->pathid = atoi(column_values[i+9]);
+    p_file->fileid = atoi(column_values[i+10]);
+    if(column_values[i+11] != NULL)
     {
-        strncpy(p_file->from,column_values[i],TOX_ID_STR_LEN);
+        strncpy(p_file->from,column_values[i+11],TOX_ID_STR_LEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+12] != NULL)
     {
-        strncpy(p_file->to,column_values[i],TOX_ID_STR_LEN);
+        strncpy(p_file->to,column_values[i+12],TOX_ID_STR_LEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+13] != NULL)
     {
-        strncpy(p_file->filename,column_values[i],PNR_FILENAME_MAXLEN);
+        strncpy(p_file->name,column_values[i+13],PNR_FILENAME_MAXLEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+14] != NULL)
     {
-        strncpy(p_file->filepath,column_values[i],PNR_FILEPATH_MAXLEN);
+        strncpy(p_file->path,column_values[i+14],PNR_FILEPATH_MAXLEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+15] != NULL)
     {
-        strncpy(p_file->md5,column_values[i],PNR_MD5_VALUE_MAXLEN);
+        strncpy(p_file->md5,column_values[i+15],PNR_MD5_VALUE_MAXLEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+16] != NULL)
     {
-        strncpy(p_file->fileinfo,column_values[i],PNR_FILEINFO_MAXLEN);
+        strncpy(p_file->finfo,column_values[i+16],PNR_FILEINFO_MAXLEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+17] != NULL)
     {
-        strncpy(p_file->srckey,column_values[i],PNR_RSA_KEY_MAXLEN);
+        strncpy(p_file->skey,column_values[i+17],PNR_RSA_KEY_MAXLEN);
     }
-    i++;
-    if(column_values[i] != NULL)
+    if(column_values[i+18] != NULL)
     {
-        strncpy(p_file->dstkey,column_values[i],PNR_RSA_KEY_MAXLEN);
+        strncpy(p_file->dkey,column_values[i+18],PNR_RSA_KEY_MAXLEN);
     }
 	return OK;
 }
@@ -6863,7 +7455,7 @@ int32 pnr_filelist_dbinfo_dbget(void* obj, int n_columns, char** column_values,c
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file_dbinfo_struct* p_file_dbinfo)
+int pnr_filelist_dbinfo_getbyid(int uindex,int id,struct cfd_fileinfo_struct* p_file_dbinfo)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
@@ -6872,9 +7464,9 @@ int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad params");
         return ERROR;
     }
-    memset(p_file_dbinfo,0,sizeof(struct pnr_file_dbinfo_struct));
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"select * from filelist_tbl where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    memset(p_file_dbinfo,0,sizeof(struct cfd_fileinfo_struct));
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_filelist_tbl where id=%d",id);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbinfo_getbyid:sql(%s)",sql_cmd);
      if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,pnr_filelist_dbinfo_dbget,p_file_dbinfo,&errMsg))
     {
@@ -6899,7 +7491,7 @@ int pnr_filelist_dbinfo_getbyid(int uindex,int msgid,int srcfrom,struct pnr_file
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int pnr_filelist_dbdelete_byid(int uindex,int msgid,int srcfrom)
+int pnr_filelist_dbdelete_byid(int uindex,int id)
 {
 	int8* errMsg = NULL;
 	char sql_cmd[SQL_CMD_LEN] = {0};
@@ -6908,8 +7500,8 @@ int pnr_filelist_dbdelete_byid(int uindex,int msgid,int srcfrom)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbinsert:bad params");
         return ERROR;
     }
-    //filelist_tbl(userindex,timestamp,id integer primary key autoincrement,version,msgid,filetype,srcfrom,size,fromid,toid,filename,filepath,md5,fileinfo,skey,dkey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"delete from filelist_tbl where userindex=%d and srcfrom=%d and msgid=%d",uindex,srcfrom,msgid);
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_filelist_tbl where userindex=%d and id=%d",uindex,id);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbdelete_byid:sql(%s)",sql_cmd);
      if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,NULL,NULL,&errMsg))
     {
@@ -7271,7 +7863,7 @@ int pnr_emconfig_mails_dbget_byuindex(int uindex,char* pmails)
         sqlite3_free(errMsg);
         return ERROR;
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_num_dbget_byuindex(%s) count(%s)",sql_cmd,pmails);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_emconfig_num_dbget_byuindex(%s) mails(%s)",sql_cmd,pmails);
     return OK;
 }
 
