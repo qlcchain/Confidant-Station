@@ -3301,9 +3301,13 @@ int cfd_filelist_addpath(int index,int pathid,int depens,char* pathname)
     {
         src_from = PNR_FILE_SRCFROM_ALBUM;
     }
-    else
+    else if(depens == CFD_DEPNEDS_FOLDER)
     {
         src_from = PNR_FILE_SRCFROM_FOLDER;
+    }
+    else
+    {
+        src_from = PNR_FILE_SRCFROM_WXPATH;
     }
     pnr_filelist_dbinsert(index,0,g_filelists[index].paths[pathid].type,depens,src_from,0,pathid,0,
         "","",pathname,"","","","","");
@@ -3326,7 +3330,7 @@ int cfd_filelist_addpath(int index,int pathid,int depens,char* pathname)
 ***********************************************************************************/
 int cfd_filelist_rename(int index,int type,int depens,int pid,int fid,char* newname,char*oldname)
 {
-    int getid = 0,i = 0;
+    int getid = -1,i = 0;
     if(newname  == NULL || oldname == NULL || index <= 0 || index > PNR_IMUSER_MAXNUM)
     {
         return CFD_FILEACTION_RETURN_BADPARAMS;
@@ -3343,14 +3347,14 @@ int cfd_filelist_rename(int index,int type,int depens,int pid,int fid,char* newn
             return CFD_FILEACTION_RETURN_BADPARAMS;
         }
         cfd_filelist_dbgetfileid_byname(index,depens,pid,newname,&getid);
-        if(getid > 0)
+        if(getid >= 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get newfilename(%s) failed",newname);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get newfilename(%s) exsit fileid(%d)",newname,getid);
             return CFD_FILEACTION_RETURN_FILENAMEREPEAT;
         }
-        getid = 0;
+        getid = -1;
         cfd_filelist_dbgetfileid_byname(index,depens,pid,oldname,&getid);
-        if(getid == 0)
+        if(getid < 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get oldfile(%s) failed",oldname);
             return CFD_FILEACTION_RETURN_NOTARGET;
@@ -3403,7 +3407,7 @@ int cfd_filelist_rename(int index,int type,int depens,int pid,int fid,char* newn
 ***********************************************************************************/
 int cfd_filelist_delete(int index,int type,int depens,int pid,int fid,char*name)
 {
-    int getid = 0;
+    int getid = -1;
     char fullpath[PNR_FILEPATH_MAXLEN+1] = {0};
     if(name == NULL || index <= 0 || index > PNR_IMUSER_MAXNUM)
     {
@@ -3422,9 +3426,9 @@ int cfd_filelist_delete(int index,int type,int depens,int pid,int fid,char*name)
             return CFD_FILEACTION_RETURN_BADPARAMS;
         }
         cfd_filelist_dbgetfileid_byname(index,depens,pid,name,&getid);
-        if(getid == 0)
+        if(getid < 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get newfilename(%s) failed",name);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_filelist_delete:get filename(%d:%d:%s) failed",depens,pid,name);
             return CFD_FILEACTION_RETURN_FILENAMEREPEAT;
         }
         pnr_filelist_dbdelete_byid(index,g_filelists[index].files[getid].id);
@@ -3436,7 +3440,7 @@ int cfd_filelist_delete(int index,int type,int depens,int pid,int fid,char*name)
             if (access(fullpath, F_OK) == OK)
             {
                 unlink(fullpath);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_filelist_delete:user(%d) delete delete file(%d:%s)",index,fullpath);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_filelist_delete:user(%d) delete delete file(%d:%s)",index,getid,fullpath);
             }
         }
         memset(&g_filelists[index].files[getid],0,sizeof(struct cfd_fileinfo_struct));
@@ -3518,7 +3522,7 @@ int cfd_filelist_init(void)
                             strcpy(puser->paths[id].name,dbResult[offset+5]);
                         }
                     }
-                    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"####get id(%d) patch(%d:%d:%d)",id,puser->paths[id].depens,puser->paths[id].type);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"####user(%d:%d) get id(%d) patch(%d:%d:%s)",index,i,id,puser->paths[id].depens,puser->paths[id].type,puser->paths[id].name);
                     offset += nColumn;
                 }
                 sqlite3_free_table(dbResult);
@@ -6518,7 +6522,7 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    int ret_code = 0,depends = 0,pathid = 0,sort = 0,startid = 0;
+    int ret_code = 0,depens = 0,pathid = 0,sort = 0,startid = 0;
     char* ret_buff = NULL;
     char userid[TOX_ID_STR_LEN+1] = {0};
     char pname[PNR_FILENAME_MAXLEN+1] = {0};
@@ -6535,7 +6539,7 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Depens",depends,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Depens",depens,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathId",pathid,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",pname,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sort",sort,0);
@@ -6548,7 +6552,7 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullfileslist_deal:bad uid(%s)",userid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
-    else if(pathid <=0 || pathid > CFD_PATHS_MAXNUM || depends <=0)
+    else if(pathid <=0 || pathid > CFD_PATHS_MAXNUM || depens <=0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullfileslist_deal:bad pathid(%d)",pathid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
@@ -6582,18 +6586,19 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_code == OK)
     {
         cJSON_AddItemToObject(ret_params, "PathId", cJSON_CreateNumber(pathid));
-        cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateNumber(pathid));
+        cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(pname));
+        cJSON *pJsonArry = cJSON_CreateArray();
+        cJSON *pJsonsub = NULL;
+        if(pJsonArry == NULL)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+            cJSON_Delete(ret_root);
+            return ERROR;
+        }
+        cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
         if(g_filelists[uindex].paths[pathid].filenum > 0)
         {
-            cJSON *pJsonArry = cJSON_CreateArray();
-            cJSON *pJsonsub = NULL;
-            if(pJsonArry == NULL)
-            {
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
-                cJSON_Delete(ret_root);
-                return ERROR;
-            }
-            cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
+            
            //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
             snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,timestamp,version,depens,type,size,pathid,fileid,"
                     "fname,fpath,md5,fileinfo,skey from cfd_filelist_tbl where pathid=%d and type!=%d and type!=%d ",
@@ -6684,7 +6689,6 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     cJSON_AddStringToObject(pJsonsub,"Paths",tmpfile.path);
                     cJSON_AddStringToObject(pJsonsub,"Finfo",tmpfile.finfo);
                     cJSON_AddStringToObject(pJsonsub,"FKey",tmpfile.skey);
-                    cJSON_AddStringToObject(pJsonsub,"Md5",tmpfile.md5);
                 }
             }
         }
@@ -6747,7 +6751,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FName",newfile.name,PNR_FILENAME_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FKey",newfile.skey,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"FInfo",newfile.finfo,PNR_FILEINFO_MAXLEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",newfile.path,PNR_FILEPATH_MAXLEN);
+    //CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",newfile.path,PNR_FILEPATH_MAXLEN);
 
     //参数检查
     uindex = cfd_getindexbyidstr(userid);
@@ -6765,9 +6769,9 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     else
     {
         if(g_filelists[uindex].paths[newfile.pathid].depens != newfile.depens
-            || strcmp(g_filelists[uindex].paths[newfile.pathid].name,newfile.path) != OK)
+            || strlen(g_filelists[uindex].paths[newfile.pathid].name) <= 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:bad input");
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:bad input pathid(%d)",newfile.pathid);
             ret_code = CFD_BAKFILE_RETURN_NOPATH;
         }
         else if(g_filelists[uindex].files_num >= CFD_FILES_MAXNUM)
@@ -6782,9 +6786,13 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
             {
                 srcfrom = PNR_FILE_SRCFROM_ALBUM;
             }
-            else
+            else if(newfile.depens == CFD_DEPNEDS_FOLDER)
             {
                 srcfrom = PNR_FILE_SRCFROM_FOLDER;
+            }
+            else
+            {
+                srcfrom = PNR_FILE_SRCFROM_WXPATH;
             }
             PNR_REAL_FILEPATH_GET(newfile.path,uindex,srcfrom,src_fileid,newfile.pathid,(char*)"");
             snprintf(fullpath, PNR_FILEPATH_MAXLEN, WS_SERVER_INDEX_FILEPATH"%s",newfile.path);
@@ -6906,7 +6914,7 @@ int cfd_fileaction_deal(cJSON * params,char* retmsg,int* retmsg_len,
 
     //参数检查
     uindex = cfd_getindexbyidstr(userid);
-    if ((depens != CFD_DEPNEDS_ALBUM && depens != CFD_DEPNEDS_FOLDER)
+    if ((depens < CFD_DEPNEDS_ALBUM || depens >= CFD_DEPNEDS_BUTT)
         ||(type != CFD_FILEACTION_TYPE_FILE && type != CFD_FILEACTION_TYPE_PATH)
         ||(action < CFD_FILEACTION_REACTION_RENAME || action >= CFD_FILEACTION_REACTION_BUTT)
         ||(uindex <= 0))

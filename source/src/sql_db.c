@@ -1638,6 +1638,26 @@ int cfdsql_msglogdb_init(int index)
             sqlite3_free(errMsg);
             return ERROR;
         }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
 	} 
     else 
 	{
@@ -1697,6 +1717,26 @@ int cfdsql_msglogdb_init(int index)
             sqlite3_free(errMsg);
             return ERROR;
         }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
     }
     else if(db_id == 0)
     {
@@ -1705,6 +1745,26 @@ int cfdsql_msglogdb_init(int index)
 		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
 		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
 		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        }
+        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
+		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
         if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -7501,7 +7561,7 @@ int pnr_filelist_dbdelete_byid(int uindex,int id)
         return ERROR;
     }
     //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
-    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_filelist_tbl where userindex=%d and id=%d",uindex,id);
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from cfd_filelist_tbl where userindex=%d and id=%d;",uindex,id);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbdelete_byid:sql(%s)",sql_cmd);
      if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,NULL,NULL,&errMsg))
     {

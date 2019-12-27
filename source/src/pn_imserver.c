@@ -21488,6 +21488,10 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                     {
                         srcfrom = PNR_FILE_SRCFROM_ALBUM;
                     }
+                    else if(pfile->porperty_flag == CFD_FILE_PROPERTY_WXPATH)
+                    {
+                        srcfrom = PNR_FILE_SRCFROM_WXPATH;
+                    }
                     else
                     {
                         //添加群文件处理

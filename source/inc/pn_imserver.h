@@ -246,6 +246,7 @@ enum PNR_FILE_SRCFROM_ENUM
     PNR_FILE_SRCFROM_MAILBAKUP = 7,
     PNR_FILE_SRCFROM_ALBUM = 8, //来自于相册文件夹
     PNR_FILE_SRCFROM_FOLDER = 9, //来自于加密文件夹
+    PNR_FILE_SRCFROM_WXPATH = 10, //来自于微信加密文件夹
     PNR_FILE_SRCFROM_BUTT,
 };
 enum CFD_FILE_PROPERTY_ENUM
@@ -255,12 +256,15 @@ enum CFD_FILE_PROPERTY_ENUM
     CFD_FILE_PROPERTY_EMAIL = 2,
     CFD_FILE_PROPERTY_BAKALBUM = 3,
     CFD_FILE_PROPERTY_BAKFPATH = 4,
+    CFD_FILE_PROPERTY_WXPATH = 5,
     CFD_FILE_PROPERTY_BUTT
 };
 enum CFD_DEPNEDS_ENUM
 {
     CFD_DEPNEDS_ALBUM = 1,
     CFD_DEPNEDS_FOLDER = 2,
+    CFD_DEPNEDS_WXPATH = 3,
+    CFD_DEPNEDS_BUTT,
 };
 enum CFD_FILEACTION_TYPE_ENUM
 {
@@ -277,6 +281,10 @@ enum CFD_FILEACTION_REACTION_ENUM
 
 #define CFDFPATH_ALBUM_DEFAULTPATHID 1
 #define CFDFPATH_ALBUM_DEFAULTPATHNAME  "DXEnqFUsqgv3GqjxG19iRPqy7J" //默认相册 base58编码
+#define CFDFPATH_FOLDER_DEFAULTPATHID 2
+#define CFDFPATH_WXPATH_DEFAULTPATHID 3
+#define CFDFPATH_WXPATH_DEFAULTPATHNAME  "5CwFayso7a5JBPV4dL9nfaE3hxaHP" //默认相册 base58编码
+
 struct cfd_filepath_struct
 {
     int id;
@@ -1390,6 +1398,9 @@ struct im_user_msg_sendfile {
             break;\
         case PNR_FILE_SRCFROM_FOLDER:\
             snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/files/F%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
+        case PNR_FILE_SRCFROM_WXPATH:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/files/W%03dS%02dF%u",uid,uid,srcfrom,fid);\
             break;\
         default:\
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad srcfrom(%d)",srcfrom);\
