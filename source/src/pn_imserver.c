@@ -1802,7 +1802,7 @@ void im_send_msg_deal(int direction)
 					
 					msg->timestamp = time(NULL);
                     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) ctype(%d) cmd(%d) msg_len(%d)",msg->userid,msg->ctype,msg->type,msg->msglen);
-                    if (msg->resend > 50) {
+                    if (msg->resend > 30) {
                         //DEBUG_PRINT(DEBUG_LEVEL_ERROR, "send msg failed!(user:%d:%s)", 
                         //  msg->userid, msg->msg);
                         //pnr_msgcache_dbdelete_nolock(msg);
@@ -1822,6 +1822,9 @@ void im_send_msg_deal(int direction)
                         {     
                             cfd_tox_send_message(g_daemon_tox.ptox_handle,g_rlist_node[node_num].node_fid,msg->msg,msg->msglen,msg->msgid);
                             msg->resend++;
+                            if (msg->resend > 10){
+                                pnr_msgcache_dbdelete_nolock(msg);
+                            }
                         }
                     }
                     else

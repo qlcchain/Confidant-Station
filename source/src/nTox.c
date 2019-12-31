@@ -251,7 +251,7 @@ int map_msg(char* type)
 
 struct tox_msg_cache g_toxmsg_caches[PNR_IMUSER_MAXNUM+1][PERUSER_TOXMSG_CACHENUM];
 pthread_mutex_t g_toxmsg_cache_lock[PNR_IMUSER_MAXNUM+1];
-int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid)
+int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid,int msg_type)
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
@@ -271,13 +271,19 @@ int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid
     CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"data",buf_cache,1500);
     CJSON_GET_VARSTR_BYKEYWORD(pJson,tmp_item,tmp_json_buff,"user",u_toxid,TOX_ID_STR_LEN);
 
-    uid = cfd_getindexbyidstr(u_toxid);
-    if(uid  <= 0)
+    if(msg_type == CFD_RNODEMSG_TYPE_FORWARD || msg_type == CFD_RNODEMSG_TYPE_FORWARDRES)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad uid(%d:%s)",uid,u_toxid);
-        return ERROR;
+        uid = cfd_getindexbyidstr(u_toxid);
+        if(uid  <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad uid(%d:%s)",uid,u_toxid);
+            return ERROR;
+        }
     }
-
+    else
+    {
+        uid = 0;
+    }
     if(offset < 0 || (offset+1500) > IM_JSON_MAXLEN)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad offset(%d)",offset);
@@ -337,12 +343,27 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
 	cJSON *pJson = cJSON_Parse(message);
 	if (!pJson)																						  
 		return -2;
-
+    pSub = cJSON_GetObjectItem(pJson, "mtype");
+	if (pSub != NULL)
+    {  
+        msgtype= pSub->valueint;
+    }
+    else
+    {
+	    pSub = cJSON_GetObjectItem(pJson, "type");
+        if (!pSub)
+        {  
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json get type failed");
+    		return -3;
+        }
+        strcpy(type, pSub->valuestring);
+        msgtype = map_msg(type);
+    }
     pSub = cJSON_GetObjectItem(pJson, "more");
     if(pSub)
     {
         //如果有more字段标明是分片数据
-        firend_toxmsg_segcache(friendnum,pJson,&cache_id,&uid);
+        firend_toxmsg_segcache(friendnum,pJson,&cache_id,&uid,msgtype);
         if(cache_id < 0)
         {
             cJSON_Delete(pJson);
@@ -380,22 +401,7 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
             pthread_mutex_unlock(&g_toxmsg_cache_lock[uid]);
         }
     }
-    pSub = cJSON_GetObjectItem(pJson, "mtype");
-	if (pSub != NULL)
-    {  
-        msgtype= pSub->valueint;
-    }
-    else
-    {
-	    pSub = cJSON_GetObjectItem(pJson, "type");
-        if (!pSub)
-        {  
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"json get type failed");
-    		return -3;
-        }
-        strcpy(type, pSub->valuestring);
-        msgtype = map_msg(type);
-    }
+
     switch (msgtype) 
     {
         case CFD_RNODEMSG_TYPE_FORWARD:

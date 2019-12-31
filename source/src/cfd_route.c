@@ -3775,7 +3775,7 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse retbuf(%s) err!", pmsg);
                 break;
             }
-            cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "params");
+            cJSON *RspJsonParams = cJSON_GetObjectItem(RspJson, "data");
             if (!RspJsonParams) 
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "parse params(%s) err!", pmsg);
@@ -3796,7 +3796,7 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
                 break;
             }
             cJSON_Delete(RspJson);
-            cJSON_DeleteItemFromObject(JsonFrame, "params");
+            cJSON_DeleteItemFromObject(JsonFrame, "data");
             char *StrFrame = cJSON_PrintUnformatted_noescape(JsonFrame);
             if (!StrFrame) {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "print frame err!");
@@ -3827,7 +3827,7 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
 
             cJSON *RspJsonSend = cJSON_Parse(tmsg->frame);
             memcpy(sendmsg, tmsg->msg, MAX_SEND_DATA_SIZE);
-            cJSON_AddStringToObject(RspJsonSend, "params", sendmsg);
+            cJSON_AddStringToObject(RspJsonSend, "data", sendmsg);
             cJSON_AddNumberToObject(RspJsonSend, "more", 1);
             cJSON_AddNumberToObject(RspJsonSend, "offset", 0);
             char *RspStrSend = cJSON_PrintUnformatted_noescape(RspJsonSend);
