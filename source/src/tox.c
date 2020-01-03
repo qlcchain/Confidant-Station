@@ -1185,7 +1185,7 @@ uint32_t tox_friend_send_message(Tox *tox, uint32_t friend_number, Tox_Message_T
     Messenger *m = tox->m;
     uint32_t message_id = 0;
     set_message_error(m_send_message_generic(m, friend_number, type, message, length, &message_id), &new_error);
-    DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"tox_friend_send_message(%d:%s) ret(%d)",length,message,new_error);
+    //DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"tox_friend_send_message(%d:%s) ret(%d)",length,message,new_error);
     return message_id;
 }
 

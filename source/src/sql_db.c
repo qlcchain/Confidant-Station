@@ -4431,7 +4431,6 @@ int pnr_msgcache_dbdelete(int msgid, int userid)
 		}
 	}
     pthread_mutex_unlock(&lws_cache_msglock[userid]);
-
 	return OK;
 }
 

@@ -363,18 +363,17 @@ int32_t m_addfriend_with_create_time(Messenger *m, const uint8_t *address, const
 
 int32_t m_addfriend_norequest(Messenger *m, const uint8_t *real_pk)
 {
-    if (getfriend_id(m, real_pk) != -1) {
-        return FAERR_ALREADYSENT;
-    }
-
+    int f_id = -1;
     if (!public_key_valid(real_pk)) {
         return FAERR_BADCHECKSUM;
     }
-
     if (id_equal(real_pk, nc_get_self_public_key(m->net_crypto))) {
         return FAERR_OWNKEY;
     }
-
+    f_id = getfriend_id(m, real_pk);
+    if (f_id >= 0) {        
+        m_delfriend(m, f_id);
+    }
     return init_new_friend(m, real_pk, FRIEND_CONFIRMED);
 }
 

@@ -367,6 +367,7 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
         if(cache_id < 0)
         {
             cJSON_Delete(pJson);
+            //DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cache save");
             return 0;
         }
         else
@@ -1122,6 +1123,7 @@ static void print_online_rnode(Tox *tox, uint32_t friendnumber, TOX_CONNECTION s
     {
         return;
     }
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"print_online_rnode:tox(%p:%p:%p) friend(%s)",tox,g_daemon_tox.ptox_handle,g_rnode_tox.ptox_handle,fr_str);
     if(tox == g_daemon_tox.ptox_handle)
     {
         for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
@@ -2020,7 +2022,10 @@ int cfd_add_friends_force(int node_flag, char *friendid, char *msg)
     uint32_t num = tox_friend_add(p_srclink, bin_string, (const uint8_t *)msg, strlen(msg), &error);
     free(bin_string);
     char numstring[100] = {0};
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "add_friends_force:send msg(%d:%s) ret(%d)",strlen(msg), msg ,error);
+	if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO, "cfd_add_friends_force:add friend(%s) friendLoc(%d) ret(%d)",friendid,friendLoc,num);
+    }   
     switch (error) {
         case TOX_ERR_FRIEND_ADD_TOO_LONG:
             sprintf(numstring, "[i] Message is too long.");

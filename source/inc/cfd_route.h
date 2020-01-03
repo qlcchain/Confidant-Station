@@ -265,7 +265,7 @@ struct cfd_node_online_msgstruct
 {
     int to_rid;
     struct cfd_node_online_msghead head;
-    struct cfd_innode_users_info users[PNR_IMUSER_MAXNUM+1];
+    struct cfd_innode_users_info users[PNR_IMUSER_ALLDEV_MAXNUM+1];
 };
 int get_uindexbyuid(char* p_uid);
 int cfd_uinfolist_getidleid(void);
