@@ -57,6 +57,10 @@ struct cfd_olddata_mapping* gp_localoldusers[PNR_IMUSER_MAXNUM+1];
 
 struct cfd_userfilelist_struct g_filelists[PNR_IMUSER_MAXNUM+1];
 struct cfd_node_online_msghead g_nodeonline_info;
+struct cfd_node_online_msgstruct g_onlinemsg;
+char g_cacheonline_data[IM_MSG_PAYLOAD_MAXLEN+1] = {0};
+pthread_mutex_t g_onlinemsg_lock = PTHREAD_MUTEX_INITIALIZER;
+
 int g_nodeonline_info_ok = FALSE;
 //外部全局变量
 extern sqlite3 *g_db_handle;
@@ -3761,6 +3765,7 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
 {
     struct tox_msg_send tmsg;
     char sendmsg[1500] = {0};
+    int total_datalen = 0,offset = 0;
     if(ptox == NULL || pmsg == NULL)
     {
         return ERROR;
@@ -3787,11 +3792,19 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
             cJSON_Delete(RspJson);
             return ERROR;
         }
+        total_datalen = strlen(RspStrParams);
+        //特殊处理，剥离双引号
+        if(RspStrParams[0] == '\"')
+        {
+            RspStrParams[total_datalen-1] = '\0';
+            total_datalen -= 2;
+            offset = 1;
+        }
         memset(&tmsg,0,sizeof(tmsg));
-        tmsg.msg = RspStrParams;
+        tmsg.msg = RspStrParams+offset;
         tmsg.msgid = msgid;
         tmsg.friendnum = friend_num;
-        tmsg.msglen = strlen(RspStrParams);
+        tmsg.msglen = total_datalen;
         for(;tmsg.offset < tmsg.msglen;)
         {
             cJSON *JsonFrame = cJSON_Duplicate(RspJson, true);
@@ -3849,7 +3862,7 @@ int cfd_tox_send_message(Tox* ptox,int friend_num,char*pmsg,int msglen,int msgid
 ***********************************************************************************/
 int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
 {
-    int rid = 0, ret = 0,to_uid =0;
+    int rid = 0, ret = 0,to_uid =0,to_index = 0;
     char *ptox_msg = NULL;
     char* pmsg_base64 = NULL;
     int tar_msglen = 0;
@@ -3866,16 +3879,25 @@ int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get user(%d) to_id(%s) msg(%s)failed",mlist_id,pmsg->toid,pmsg->msg);
         return ERROR;
     }
-    rid =g_activeuser_list[to_uid].active_rid;
+    rid = g_activeuser_list[to_uid].active_rid;
+    to_index = g_activeuser_list[to_uid].uindex;
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_usersend_textmessage:send(%d:%s) cmd(%d) rid(%d)",to_uid,to_idstring,pmsg->type,rid);
     if(rid == CFD_RNODE_DEFAULT_RID)
     {
         //走本地
-        if (g_imusr_array.usrnode[to_uid].user_online_type == USER_ONLINE_TYPE_LWS
-            && g_imusr_array.usrnode[to_uid].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
+        if (g_imusr_array.usrnode[to_index].user_online_type == USER_ONLINE_TYPE_LWS
+            && g_imusr_array.usrnode[to_index].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
         {
-            insert_lws_msgnode_ring(to_uid, pmsg->msg, pmsg->msglen);
+            insert_lws_msgnode_ring(to_index, pmsg->msg, pmsg->msglen);
             pmsg->resend++;
+            //这里针对消息推送的时候不是本地消息，但是轮询时变成本地消息的情况(这时候消息还在消息发送方的列表中，没办法删除)
+            if(mlist_id != to_index)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_usersend_textmessage:list(%d) touser(%d) changed",mlist_id,to_index);
+                pthread_mutex_unlock(&lws_cache_msglock[mlist_id]);
+                pnr_msgcache_dbdelete(pmsg->msgid, mlist_id);
+                pthread_mutex_lock(&lws_cache_msglock[mlist_id]);
+            }
         }
         else//推送通知
         {
@@ -4039,7 +4061,6 @@ int cfd_rnode_self_detch(void)
     strcpy(g_nodeonline_info.routeid,g_rlist_node[CFD_RNODE_DEFAULT_RID].routeid);
     strcpy(g_nodeonline_info.rname,g_rlist_node[CFD_RNODE_DEFAULT_RID].rname);
     g_nodeonline_info_ok = TRUE;
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_rnode_self_detch ok");
     return OK;
 }
 /**********************************************************************************
@@ -4655,35 +4676,34 @@ int cfd_toxidformatidstr(char* p_toxid,char* p_idstr)
 int cfd_nodeonline_notice_send(int rid)
 {
     int unum = 0,i = 0;
-    struct cfd_node_online_msgstruct msg;
     while(g_nodeonline_info_ok != TRUE)
     {
-        sleep(1);
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_nodeonline_notice_send:waiting");
+        usleep(5000);
     }
-    memset(&msg,0,sizeof(msg));
-    memcpy(&msg.head,&g_nodeonline_info,sizeof(struct cfd_node_online_msghead));
+    pthread_mutex_lock(&g_onlinemsg_lock);
+    memset(&g_onlinemsg,0,sizeof(g_onlinemsg));
+    memcpy(&g_onlinemsg.head,&g_nodeonline_info,sizeof(struct cfd_node_online_msghead));
     for(i=0;i<CFD_URECORD_MAXNUM;i++)
     {
         if(g_ruser_list[i].index > 0)
         {
-            msg.users[unum].uid = i;
-            msg.users[unum].index = g_ruser_list[i].index;
-            msg.users[unum].friend_seq = g_ruser_list[i].friend_seq;
-            msg.users[unum].uinfo_seq = g_ruser_list[i].uinfo_seq;
+            g_onlinemsg.users[unum].uid = i;
+            g_onlinemsg.users[unum].index = g_ruser_list[i].index;
+            g_onlinemsg.users[unum].friend_seq = g_ruser_list[i].friend_seq;
+            g_onlinemsg.users[unum].uinfo_seq = g_ruser_list[i].uinfo_seq;
             pthread_mutex_lock(&g_activeuser_lock[i]);
-            msg.users[unum].last_active = g_activeuser_list[i].active_time;
-            msg.users[unum].active_rid = g_activeuser_list[i].active_rid;
+            g_onlinemsg.users[unum].last_active = g_activeuser_list[i].active_time;
+            g_onlinemsg.users[unum].active_rid = g_activeuser_list[i].active_rid;
             pthread_mutex_unlock(&g_activeuser_lock[i]);
-            strcpy(msg.users[unum].idstr,g_ruser_list[i].uidstr);
+            strcpy(g_onlinemsg.users[unum].idstr,g_ruser_list[i].uidstr);
             unum++;
         }
     }
-    msg.head.innode_usernum = unum;
+    g_onlinemsg.head.innode_usernum = unum;
     if(rid > 0)
     {
-        msg.to_rid = rid;
-        im_pushmsg_callback(CFD_NODEID_USERINDEX,PNR_IM_CMDTYPE_RNODEONLINE_NOTICE,FALSE,PNR_API_VERSION_V6,(void *)&msg);
+        g_onlinemsg.to_rid = rid;
+        im_pushmsg_callback(CFD_NODEID_USERINDEX,PNR_IM_CMDTYPE_RNODEONLINE_NOTICE,FALSE,PNR_API_VERSION_V6,(void *)&g_onlinemsg);
     }
     else
     {
@@ -4691,11 +4711,12 @@ int cfd_nodeonline_notice_send(int rid)
         {
             if(g_rlist_node[i].id > 0)
             {
-                msg.to_rid = i;
-                im_pushmsg_callback(CFD_NODEID_USERINDEX,PNR_IM_CMDTYPE_RNODEONLINE_NOTICE,FALSE,PNR_API_VERSION_V6,(void *)&msg);
+                g_onlinemsg.to_rid = i;
+                im_pushmsg_callback(CFD_NODEID_USERINDEX,PNR_IM_CMDTYPE_RNODEONLINE_NOTICE,FALSE,PNR_API_VERSION_V6,(void *)&g_onlinemsg);
             }
         }
     }
+    pthread_mutex_unlock(&g_onlinemsg_lock);
     return OK;
 }
 /*****************************************************************************
@@ -4888,7 +4909,7 @@ int cfd_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
     cJSON_AddItemToObject(ret_params, "Routerid", cJSON_CreateString(router_id));
     cJSON_AddItemToObject(ret_params, "RouterName", cJSON_CreateString(g_dev_nickname));
     cJSON_AddItemToObject(ret_params, "UserSn", cJSON_CreateString(user_sn));
-    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(user_toxid));
+    cJSON_AddItemToObject(ret_params, "UserId", cJSON_CreateString(uid_str));
     cJSON_AddItemToObject(ret_params, "NeedAsysn", cJSON_CreateNumber(need_asysn));
     if(ret_code == PNR_USER_LOGIN_OK)
     {
@@ -7011,10 +7032,8 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    struct cfd_node_online_msgstruct msg;
     int rid = 0,modify_flag = FALSE,i = 0;
     char usrinfo_cache[ID_CODE_STRING_MAXLEN+1] = {0};
-    char users_data[DATAFILE_BUFF_MAXLEN+1] = {0};
     cJSON* users_root = NULL;
     cJSON* uinfo = NULL;
     if(params == NULL)
@@ -7022,32 +7041,35 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
         return ERROR;
     }
     //解析参数
-    memset(&msg,0,sizeof(msg));
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Mac",msg.head.mac,MACSTR_MAX_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",msg.head.type,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Weight",msg.head.weight,0);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NodeId",msg.head.nodeid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",msg.head.routeid,TOX_ID_STR_LEN);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rname",msg.head.rname,PNR_FILENAME_MAXLEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserNum",msg.head.innode_usernum,0);
+    pthread_mutex_lock(&g_onlinemsg_lock);
+    memset(&g_onlinemsg,0,sizeof(g_onlinemsg));
+    memset(g_cacheonline_data,0,IM_MSG_PAYLOAD_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Mac",g_onlinemsg.head.mac,MACSTR_MAX_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",g_onlinemsg.head.type,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Weight",g_onlinemsg.head.weight,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"NodeId",g_onlinemsg.head.nodeid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"RouteId",g_onlinemsg.head.routeid,TOX_ID_STR_LEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Rname",g_onlinemsg.head.rname,PNR_FILENAME_MAXLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserNum",g_onlinemsg.head.innode_usernum,0);
 
     //参数检查
-    if(strlen(msg.head.nodeid) != TOX_ID_STR_LEN)
+    if(strlen(g_onlinemsg.head.nodeid) != TOX_ID_STR_LEN)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_nodeonline_notice_deal:bad nodeid(%s)",msg.head.nodeid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_nodeonline_notice_deal:bad nodeid(%s)",g_onlinemsg.head.nodeid);
+        pthread_mutex_unlock(&g_onlinemsg_lock);
         return ERROR;
     }
-    rid = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,msg.head.nodeid);
+    rid = cfd_rnodelist_getid_bydevid(CFD_NODE_TOXID_NID,g_onlinemsg.head.nodeid);
     if(rid <= 0)
     {
         //这里要排除设备重置导致nodeid变更的情况
-        if(strlen(msg.head.mac) > MAC_LEN)
+        if(strlen(g_onlinemsg.head.mac) > MAC_LEN)
         {
             int old_rid = 0;
-            old_rid = cfd_rnodedbid_dbget_bymac(msg.head.mac);
+            old_rid = cfd_rnodedbid_dbget_bymac(g_onlinemsg.head.mac);
             if(old_rid > CFD_RNODE_DEFAULT_RID)
             {
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"DEV mac(%s) renew",msg.head.mac);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"DEV mac(%s) renew",g_onlinemsg.head.mac);
                 cfd_rnode_dbdelte_byid(old_rid);
             }
         }
@@ -7056,16 +7078,17 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(rid <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_nodeonline_notice_deal:get idle nodeid failed");
+            pthread_mutex_unlock(&g_onlinemsg_lock);
             return ERROR;
         }
         memset(&g_rlist_node[rid],0,sizeof(struct cfd_nodeinfo_struct));
         g_rlist_node[rid].id = rid;
-        g_rlist_node[rid].type = msg.head.type;
-        g_rlist_node[rid].weight = msg.head.weight;
-        strcpy(g_rlist_node[rid].mac,msg.head.mac);
-        strcpy(g_rlist_node[rid].nodeid,msg.head.nodeid);
-        strcpy(g_rlist_node[rid].routeid,msg.head.routeid);
-        strcpy(g_rlist_node[rid].rname,msg.head.rname);
+        g_rlist_node[rid].type = g_onlinemsg.head.type;
+        g_rlist_node[rid].weight = g_onlinemsg.head.weight;
+        strcpy(g_rlist_node[rid].mac,g_onlinemsg.head.mac);
+        strcpy(g_rlist_node[rid].nodeid,g_onlinemsg.head.nodeid);
+        strcpy(g_rlist_node[rid].routeid,g_onlinemsg.head.routeid);
+        strcpy(g_rlist_node[rid].rname,g_onlinemsg.head.rname);
         cfd_rnodelist_dbinsert(&g_rlist_node[rid]);
          if(rid > CFD_RNODE_DEFAULT_RID)
         {
@@ -7084,71 +7107,73 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        if(strcmp(g_rlist_node[rid].mac,msg.head.mac) != OK)
+        if(strcmp(g_rlist_node[rid].mac,g_onlinemsg.head.mac) != OK)
         {
             modify_flag = TRUE;
             memset(g_rlist_node[rid].mac,0,MACSTR_MAX_LEN);
-            strcpy(g_rlist_node[rid].mac,msg.head.mac);
+            strcpy(g_rlist_node[rid].mac,g_onlinemsg.head.mac);
         }
-        if(strcmp(g_rlist_node[rid].routeid,msg.head.routeid) != OK)
+        if(strcmp(g_rlist_node[rid].routeid,g_onlinemsg.head.routeid) != OK)
         {
             modify_flag = TRUE;
             memset(g_rlist_node[rid].routeid,0,TOX_ID_STR_LEN);
-            strcpy(g_rlist_node[rid].routeid,msg.head.routeid);
+            strcpy(g_rlist_node[rid].routeid,g_onlinemsg.head.routeid);
         }
-        if(strcmp(g_rlist_node[rid].rname,msg.head.rname) != OK)
+        if(strcmp(g_rlist_node[rid].rname,g_onlinemsg.head.rname) != OK)
         {
             modify_flag = TRUE;
             memset(g_rlist_node[rid].rname,0,PNR_USERNAME_MAXLEN);
-            strcpy(g_rlist_node[rid].rname,msg.head.rname);
+            strcpy(g_rlist_node[rid].rname,g_onlinemsg.head.rname);
         }
-        if(g_rlist_node[rid].type != msg.head.type)
+        if(g_rlist_node[rid].type != g_onlinemsg.head.type)
         {
             modify_flag = TRUE;
-            g_rlist_node[rid].type = msg.head.type;
+            g_rlist_node[rid].type = g_onlinemsg.head.type;
         }
-        if(g_rlist_node[rid].weight != msg.head.weight)
+        if(g_rlist_node[rid].weight != g_onlinemsg.head.weight)
         {
             modify_flag = TRUE;
-            g_rlist_node[rid].weight = msg.head.weight;
+            g_rlist_node[rid].weight = g_onlinemsg.head.weight;
         }
         if(modify_flag == TRUE)
         {
             cfd_rnode_dbupdate_byid(&g_rlist_node[rid]);
         }
     }
-    if (msg.head.innode_usernum > 0)
+    if (g_onlinemsg.head.innode_usernum > 0)
     {
-        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Users",users_data,DATAFILE_BUFF_MAXLEN);
-        users_root = cJSON_Parse(users_data);
+        CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Users",g_cacheonline_data,IM_MSG_PAYLOAD_MAXLEN);
+        users_root = cJSON_Parse(g_cacheonline_data);
         if(users_root == NULL) 
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get users_root failed");
+            pthread_mutex_unlock(&g_onlinemsg_lock);
             return ERROR;
         }
-        for(i = 0; i< msg.head.innode_usernum ;i++)
+        for(i = 0; i< g_onlinemsg.head.innode_usernum ;i++)
         {
             uinfo = cJSON_GetArrayItem(users_root,i);
             if(uinfo != NULL)
             {
                 memset(usrinfo_cache,0,ID_CODE_STRING_MAXLEN);
                 CJSON_GET_VARSTR_BYKEYWORD(uinfo,tmp_item,tmp_json_buff,"User",usrinfo_cache,ID_CODE_STRING_MAXLEN);
-                sscanf(usrinfo_cache,"%d,%d,%d,%d,%d,%d,%s",&msg.users[i].uid,&msg.users[i].index,&msg.users[i].friend_seq,
-                    &msg.users[i].uinfo_seq,&msg.users[i].last_active,&msg.users[i].active_rid,msg.users[i].idstr);
+                sscanf(usrinfo_cache,"%d,%d,%d,%d,%d,%d,%s",&g_onlinemsg.users[i].uid,&g_onlinemsg.users[i].index,&g_onlinemsg.users[i].friend_seq,
+                    &g_onlinemsg.users[i].uinfo_seq,&g_onlinemsg.users[i].last_active,&g_onlinemsg.users[i].active_rid,g_onlinemsg.users[i].idstr);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"###get user(%d:%d:%s) active_rid(%d) friend_seq(%d) uinfo_seq(%d) last_active(%d)",
-                    i,msg.users[i].uid,msg.users[i].idstr,msg.users[i].active_rid,msg.users[i].friend_seq,msg.users[i].uinfo_seq,msg.users[i].last_active);
-                if(msg.users[i].active_rid == CFD_RNODE_DEFAULT_RID)
+                    i,g_onlinemsg.users[i].uid,g_onlinemsg.users[i].idstr,g_onlinemsg.users[i].active_rid,g_onlinemsg.users[i].friend_seq,g_onlinemsg.users[i].uinfo_seq,g_onlinemsg.users[i].last_active);
+                if(g_onlinemsg.users[i].active_rid == CFD_RNODE_DEFAULT_RID)
                 {
-                    msg.users[i].active_rid = rid;
+                    g_onlinemsg.users[i].active_rid = rid;
                 }
                 else
                 {
-                    msg.users[i].active_rid = 0;
+                    g_onlinemsg.users[i].active_rid = 0;
                 }
-                cfd_uactive_update_byidstr(&msg.users[i]);
+                cfd_uactive_update_byidstr(&g_onlinemsg.users[i]);
             }
         }
     }
+    pthread_mutex_unlock(&g_onlinemsg_lock);
     return OK;
 }
 
