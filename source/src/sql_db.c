@@ -7391,6 +7391,149 @@ int pnr_filelist_dbupdate_fileinfo_byid(int id,int uindex,int size,char* md5,cha
     return OK;
 }
 /***********************************************************************************
+  Function:      pnr_filelist_dbupdate_fileinfoall_byfid
+  Description:  更新pnr file 信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int pnr_filelist_dbupdate_fileinfoall_byfid(int id,int uindex,int size,int timestamp,char* md5,char* fileinfo,char* fname,char* fpath,char* skey,char* dkey)
+{
+	int8* errMsg = NULL;
+    int attach_flag = FALSE;
+    char sql_tmpstr[CMD_MAXLEN] = {0};
+	char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad");
+        return ERROR;
+    }
+    //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+    snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_filelist_tbl set ");
+    if(size > 0)
+    {
+        attach_flag = TRUE;
+        snprintf(sql_tmpstr,CMD_MAXLEN,"size=%d",size);
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(timestamp > 0)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",timestamp=%d",timestamp);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"timestamp=%d",timestamp);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(fname)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",fname='%s'",md5);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"fname='%s'",md5);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(fpath)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",fpath='%s'",fpath);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"fpath='%s'",fpath);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(md5)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",md5='%s'",md5);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"md5='%s'",md5);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(fileinfo)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",fileinfo='%s'",fileinfo);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"fileinfo='%s'",fileinfo);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(skey)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",skey='%s'",skey);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"skey='%s'",skey);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(dkey)
+    {
+        if(attach_flag == TRUE)
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,",dkey='%s'",dkey);
+        }
+        else
+        {
+            snprintf(sql_tmpstr,CMD_MAXLEN,"dkey='%s'",dkey);
+            attach_flag = TRUE;
+        }
+        strcat(sql_cmd,sql_tmpstr);
+    }
+    if(attach_flag == FALSE)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"pnr_filelist_dbupdate_fileinfo_bymsgid:bad sql_cmd(%s)",sql_cmd);
+        return ERROR;
+    }
+    snprintf(sql_tmpstr,CMD_MAXLEN," where id=%d",id);
+    strcat(sql_cmd,sql_tmpstr);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_filelist_dbupdate_fileinfo_bymsgid:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+
+/***********************************************************************************
   Function:      pnr_filelist_dbupdate_filename_bymsgid
   Description:  更新pnr file 文件名
   Calls:

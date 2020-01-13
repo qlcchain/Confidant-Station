@@ -276,8 +276,8 @@ int firend_toxmsg_segcache(int f_num,cJSON *pJson,int* cacheover_flag,int* p_uid
         uid = cfd_getindexbyidstr(u_toxid);
         if(uid  <= 0)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad uid(%d:%s)",uid,u_toxid);
-            return ERROR;
+            //这里只做缓存拼接处理，所以对找不到uid的情况，先默认走
+            uid = PNR_IMUSER_MAXNUM;
         }
     }
     else
@@ -373,7 +373,7 @@ int friend_Message_process(Tox *m, int friendnum, char *message)
         else
         {
             if(cache_id < 0 || cache_id >= PERUSER_TOXMSG_CACHENUM
-                || uid < 0 || uid >= PNR_IMUSER_MAXNUM)
+                || uid < 0 || uid > PNR_IMUSER_MAXNUM)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad cache_id(%d) uid(%d)",cache_id,uid);
                 cJSON_Delete(pJson);
@@ -468,9 +468,9 @@ static void auto_accept_request(Tox *m, const uint8_t *public_key,
         if(err != TOX_ERR_FRIEND_ADD_ALREADY_SENT)
 		    DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox add friend(%s) failed(%d)", fraddr_str, err);
 	} else {
-		DEBUG_PRINT(DEBUG_LEVEL_INFO, "friend(%s) request accepted as friendnum (%d)", fraddr_str, num);
         save_data_new(m);
 	}
+    DEBUG_PRINT(DEBUG_LEVEL_INFO, "rnode friend(%s) request accepted as friendnum (%d) err(%d)", fraddr_str, num,err);
 }
 
 /*****************************************************************************
@@ -665,7 +665,7 @@ static void print_status_change(Tox *m, uint32_t friendnumber,
     char name[TOX_MAX_NAME_LENGTH + 1];
 
     getfriendname_terminated(m, friendnumber, name);
-    DEBUG_PRINT(DEBUG_LEVEL_INFO, "router friend(%d)(%s) status changed to %s.", friendnumber, name, string);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO, "router friend(%d)(%s) status changed to %s.", friendnumber, name, string);
 }
 
 /*****************************************************************************
@@ -911,8 +911,8 @@ static void file_print_control(Tox *tox, uint32_t friend_number, uint32_t file_n
 				&& sender[i].filenumber == file_number) {
                 fclose(sender[i].file);
                 sender[i].msg->filestatus = 0;
-                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) cancelled!", 
-                    sender[i].msg->filename);
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) cancelled!",sender[i].msg->filename);
+                //pnr_msgcache_dbdelete(sender[i].msg->msgid, sender[i].msg->userid);
 				memset(&sender[i], 0, sizeof(File_Sender));
 				break;
             }
@@ -1033,7 +1033,7 @@ int cfd_rnodeid_by_toxfriendnum(Tox *tox, uint32_t friendnumber)
             }
         }
     }
-    return ERROR;
+    return -1;
 }
 
 int get_uindex_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int* uindex)
@@ -1300,10 +1300,14 @@ int CreatedP2PNetwork(int node_flag)
 		writep2pidtofile(node_flag,idstring);
 
 	/*20180124,wenchao,use Tox Bootstrap,Begin*/
-	int nodeslist_ret = load_DHT_nodeslist();
-	if (nodeslist_ret != 0) {
-		DEBUG_PRINT(DEBUG_LEVEL_INFO,"DHT nodeslist failed to load");
-	}
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        int nodeslist_ret = load_DHT_nodeslist();
+    	if (nodeslist_ret != 0) {
+    		DEBUG_PRINT(DEBUG_LEVEL_INFO,"DHT nodeslist failed to load,ret(%d)",nodeslist_ret);
+    	}
+    }
+	
 	/*20180124,wenchao,use Tox Bootstrap,End*/
     tox_self_set_name(m, (uint8_t *)server_name, strlen(server_name), NULL);
 
@@ -1381,7 +1385,7 @@ int imtox_send_file(Tox *tox, struct lws_cache_msg_struct *msg, int push)
         cfd_toxidformatidstr(msg->toid,touidstr);
 	    snprintf(pushfilename, 255, "%s,%s",touidstr,fname);
     }
-    DEBUG_PRINT(DEBUG_LEVEL_INFO,"imtox_send_file: send file(%s) size(%d) to friend(%d)",pathreal,filesize,msg->friendnum);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"imtox_send_file: send file(%s)(%s) size(%d) to friend(%d)",pathreal,pushfilename,filesize,msg->friendnum);
     filenum = tox_file_send(tox,msg->friendnum,TOX_FILE_KIND_DATA,filesize,0,(uint8_t *)pushfilename,strlen(pushfilename),0);
 	if (filenum == -1) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) err", msg->filename);

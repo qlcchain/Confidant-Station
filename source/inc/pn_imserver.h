@@ -124,6 +124,7 @@ enum PNR_IM_CMDTYPE_ENUM
     PNR_IM_CMDTYPE_FILESLISTPULL,
     PNR_IM_CMDTYPE_BAKFILE,
     PNR_IM_CMDTYPE_FILEACTION,
+    PNR_IM_CMDTYPE_GETBAKADDRBOOKINFO,
     //节点间的消息，不用用户在线
     //用户状态同步消息
     PNR_IM_CMDTYPE_UINFOKEY_SYSCH,
@@ -247,6 +248,7 @@ enum PNR_FILE_SRCFROM_ENUM
     PNR_FILE_SRCFROM_ALBUM = 8, //来自于相册文件夹
     PNR_FILE_SRCFROM_FOLDER = 9, //来自于加密文件夹
     PNR_FILE_SRCFROM_WXPATH = 10, //来自于微信加密文件夹
+    PNR_FILE_SRCFROM_BAKADDRBOOK = 11,//来自备份通信录
     PNR_FILE_SRCFROM_BUTT,
 };
 enum CFD_FILE_PROPERTY_ENUM
@@ -257,6 +259,7 @@ enum CFD_FILE_PROPERTY_ENUM
     CFD_FILE_PROPERTY_BAKALBUM = 3,
     CFD_FILE_PROPERTY_BAKFPATH = 4,
     CFD_FILE_PROPERTY_WXPATH = 5,
+    CFD_FILE_PROPERTY_ADDRBOOK = 6,
     CFD_FILE_PROPERTY_BUTT
 };
 enum CFD_DEPNEDS_ENUM
@@ -264,6 +267,7 @@ enum CFD_DEPNEDS_ENUM
     CFD_DEPNEDS_ALBUM = 1,
     CFD_DEPNEDS_FOLDER = 2,
     CFD_DEPNEDS_WXPATH = 3,
+    CFD_DEPENDS_ADDRBOOK = 4,
     CFD_DEPNEDS_BUTT,
 };
 enum CFD_FILEACTION_TYPE_ENUM
@@ -320,6 +324,9 @@ struct cfd_fileinfo_struct
 };
 #define CFD_PATHS_MAXNUM   20
 #define CFD_FILES_MAXNUM   500
+#define CFD_BAKADDRBOOK_MAXNUM  1 //单个节点单个用户最多备份的数量
+#define CFD_BADADDRBOOK_DEFAULTPATHID 0xF0
+#define CFD_BADADDRBOOK_DEFAULTPATHNAME "AddrBook"
 enum CFD_FILELIST_SORT_ENUM
 {
     CFD_FILELIST_SORT_BYTIMEDESC = 1,
@@ -327,15 +334,32 @@ enum CFD_FILELIST_SORT_ENUM
     CFD_FILELIST_SORT_BYSIZEDESC = 3,
     CFD_FILELIST_SORT_BYSIZEASCE = 4,
 };
+struct cfd_bakaddrbook_struct
+{
+    int id;
+    int uindex;
+    int info_ver;
+    int timestamp;
+    int addrnum;
+    int fsize;
+    char md5[PNR_MD5_VALUE_MAXLEN+1];
+    char finfo[PNR_FILEINFO_MAXLEN+1];
+    char fname[PNR_FILENAME_MAXLEN+1];
+    char fkey[PNR_RSA_KEY_MAXLEN+1];
+    char fpath[PNR_FILEPATH_MAXLEN+1];
+};
 struct cfd_userfilelist_struct
 {
     int exsit;
     int version;
     int paths_num;
     int files_num;
+    int addrbook_num;
+    int addrbook_oldest;
     int total_size;
     struct cfd_filepath_struct paths[CFD_PATHS_MAXNUM+1];
     struct cfd_fileinfo_struct files[CFD_FILES_MAXNUM+1];
+    struct cfd_bakaddrbook_struct addrbook[CFD_BAKADDRBOOK_MAXNUM+1];
 };
 enum PNR_APPACTIVE_STATUS_ENUM
 {
@@ -438,11 +462,11 @@ enum PNR_APPACTIVE_STATUS_ENUM
 #define PNR_IMCMD_GETCAPACITY "GetCapactiy"
 #define PNR_IMCMD_SETCAPACITY "SetCapactiy"
 //文件夹操作
-#define PNR_IMCMD_FILEPATHSPULL "FilePathsPull"
-#define PNR_IMCMD_FILESLISTPULL "FilesListPull" 
-#define PNR_IMCMD_BAKFILE       "BakFile"
-#define PNR_IMCMD_FILEACTION    "FileAction"
-
+#define PNR_IMCMD_FILEPATHSPULL   "FilePathsPull"
+#define PNR_IMCMD_FILESLISTPULL   "FilesListPull" 
+#define PNR_IMCMD_BAKFILE         "BakFile"
+#define PNR_IMCMD_FILEACTION      "FileAction"
+#define PNR_IMCMD_GETBAKADDRINFO  "BakAddrBookInfo"
 //用户状态同步消息
 #define PNR_IMCMD_UINFOKEYSYSCH "UinfoKeySysch"
 #define PNR_IMCMD_UINFOKEYREPLY "UinfoKeyReply"
@@ -930,6 +954,7 @@ enum IM_MSGTYPE_ENUM
 	PNR_IM_MSGTYPE_AVATAR = 6,
 	PNR_IM_MSGTYPE_EMAILFILE = 7,
     PNR_IM_MSGTYPE_EMAILATTACH = 8,
+    PNR_IM_MSGTYPE_BAKADDRBOOK = 9,
     PNR_IM_MSGTYPE_SYSPATH = 0xA0,
     PNR_IM_MSGTYPE_USRPATH = 0xA1,
 };
@@ -1402,6 +1427,9 @@ struct im_user_msg_sendfile {
         case PNR_FILE_SRCFROM_WXPATH:\
             snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/files/W%03dS%02dF%u",uid,uid,srcfrom,fid);\
             break;\
+        case PNR_FILE_SRCFROM_BAKADDRBOOK:\
+            snprintf(filepath,PNR_FILEPATH_MAXLEN,"/user%d/files/B%03dS%02dF%u",uid,uid,srcfrom,fid);\
+            break;\
         default:\
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"bad srcfrom(%d)",srcfrom);\
             break;\
@@ -1426,6 +1454,7 @@ enum PNR_GLOBAL_SHOWINFO_TYPE
     PNR_GLOBAL_SHOWINFO_STATUS,
     PNR_SHOWINFO_CHECKUSER_BYTOXID,
     PNR_SHOWINFO_CHECKUSER_USERINDEX,
+    PNR_SHOWINFO_CHECK_RNODEFRIENDS_STATUS,
 };
 
 enum {

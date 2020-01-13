@@ -56,6 +56,7 @@
 #include "version.h"
 #include "tox_seg_msg.h"
 #include "pn_ini.h"
+#include "cfd_route.h"
 
 static struct option long_opts[] = {
     {"help", no_argument, 0, 'h'},
@@ -855,6 +856,7 @@ int32 main(int argc,char *argv[])
     pthread_t routetox_tid;
     pthread_t imuser_heartbeat_tid;
 	pthread_t tid;
+	pthread_t rnode_tid;
 	int i = 0;
 
 	/*调试开关*/
@@ -967,6 +969,12 @@ int32 main(int argc,char *argv[])
     if (pthread_create(&tid, NULL,self_monitor_thread, NULL) != 0) 
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create self_monitor_thread failed");
+        goto out;
+    }
+    //节点好友发现任务
+    if (pthread_create(&rnode_tid, NULL,rnode_monitor_friends_thread, NULL) != 0) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create rnode_monitor_friends_thread failed");
         goto out;
     }
     fifo_msg_handle();

@@ -3,8 +3,8 @@
  */
 
 /*
- * Copyright © 2016-2018 The TokTok team.
- * Copyright © 2013 Tox project.
+ * Copyright ? 2016-2018 The TokTok team.
+ * Copyright ? 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -198,7 +198,7 @@ static int32_t init_new_friend(Messenger *m, const uint8_t *real_pk, uint8_t sta
     for (i = 0; i <= m->numfriends; ++i) {
         if (m->friendlist[i].status == NOFRIEND) {
             m->friendlist[i].status = status;
-			m->friendlist[i].create_time = temp_time;
+			//m->friendlist[i].create_time = temp_time;
             m->friendlist[i].friendcon_id = friendcon_id;
             m->friendlist[i].friendrequest_lastsent = 0;
             id_copy(m->friendlist[i].real_pk, real_pk);
@@ -356,26 +356,28 @@ int32_t m_addfriend_with_create_time(Messenger *m, const uint8_t *address, const
     memcpy(m->friendlist[ret].info, data, length);
     m->friendlist[ret].info_size = length;
     memcpy(&m->friendlist[ret].friendrequest_nospam, address + CRYPTO_PUBLIC_KEY_SIZE, sizeof(uint32_t));
-	m->friendlist[ret].create_time = create_time;
+	//m->friendlist[ret].create_time = create_time;
 
     return ret;
 }
 
 int32_t m_addfriend_norequest(Messenger *m, const uint8_t *real_pk)
 {
-    int f_id = -1;
+    if (getfriend_id(m, real_pk) != -1) {
+        return FAERR_ALREADYSENT;
+    }
+
     if (!public_key_valid(real_pk)) {
         return FAERR_BADCHECKSUM;
     }
+
     if (id_equal(real_pk, nc_get_self_public_key(m->net_crypto))) {
         return FAERR_OWNKEY;
     }
-    f_id = getfriend_id(m, real_pk);
-    if (f_id >= 0) {        
-        m_delfriend(m, f_id);
-    }
+
     return init_new_friend(m, real_pk, FRIEND_CONFIRMED);
 }
+
 
 static int clear_receipts(Messenger *m, int32_t friendnumber)
 {
@@ -2541,11 +2543,13 @@ static void do_friends(Messenger *m, void *userdata)
     uint64_t temp_time = mono_time_get(m->mono_time);
 
     for (i = 0; i < m->numfriends; ++i) {
-		if (m->friendlist[i].status < FRIEND_CONFIRMED && 
+#if 0 //del by willcao
+        if (m->friendlist[i].status < FRIEND_CONFIRMED && 
 			temp_time - m->friendlist[i].create_time >= 9 * 24 * 3600) {
 			m_delfriend(m, i);
 			continue;
 		}
+#endif
 			
         if (m->friendlist[i].status == FRIEND_ADDED) {
             int fr = send_friend_request_packet(m->fr_c, m->friendlist[i].friendcon_id, m->friendlist[i].friendrequest_nospam,
@@ -2827,7 +2831,8 @@ struct Saved_Friend {
     uint8_t userstatus;
     uint32_t friendrequest_nospam;
     uint64_t last_seen_time;
-	uint64_t create_time;
+    //del by willcao
+    //uint64_t create_time;
 };
 
 static uint32_t friend_size(void)
@@ -2853,8 +2858,9 @@ static uint32_t friend_size(void)
     data += 3; // padding
     VALUE_MEMBER(friendrequest_nospam);
     VALUE_MEMBER(last_seen_time);
+#if 0//del by willcao
 	VALUE_MEMBER(create_time);
-
+#endif
 #undef VALUE_MEMBER
 #undef ARRAY_MEMBER
 
@@ -2888,8 +2894,9 @@ static uint8_t *friend_save(const struct Saved_Friend *temp, uint8_t *data)
     data += 3; // padding
     VALUE_MEMBER(friendrequest_nospam);
     VALUE_MEMBER(last_seen_time);
-	VALUE_MEMBER(create_time);
-
+#if 0 //del by willcao
+    VALUE_MEMBER(create_time);
+#endif
 #undef VALUE_MEMBER
 #undef ARRAY_MEMBER
 
@@ -2924,8 +2931,9 @@ static const uint8_t *friend_load(struct Saved_Friend *temp, const uint8_t *data
     data += 3; // padding
     VALUE_MEMBER(friendrequest_nospam);
     VALUE_MEMBER(last_seen_time);
+#if 0 //del by willcao
 	VALUE_MEMBER(create_time);
-
+#endif
 #undef VALUE_MEMBER
 #undef ARRAY_MEMBER
 
@@ -3177,7 +3185,7 @@ static State_Load_Status friends_list_load(Messenger *m, const uint8_t *data, ui
             memcpy(address + CRYPTO_PUBLIC_KEY_SIZE, &temp.friendrequest_nospam, sizeof(uint32_t));
             uint16_t checksum = address_checksum(address, FRIEND_ADDRESS_SIZE - sizeof(checksum));
             memcpy(address + CRYPTO_PUBLIC_KEY_SIZE + sizeof(uint32_t), &checksum, sizeof(checksum));
-
+#if 0//del by willcao
 			uint64_t create_time_int;
 			uint8_t create_time[sizeof(uint64_t)];
 			memcpy(create_time, &temp.create_time, sizeof(uint64_t));
@@ -3185,6 +3193,9 @@ static State_Load_Status friends_list_load(Messenger *m, const uint8_t *data, ui
             memcpy(&create_time_int, create_time, sizeof(uint64_t));
 
 			m_addfriend_with_create_time(m, address, temp.info, net_ntohs(temp.info_size), create_time_int);
+#else
+            m_addfriend(m, address, temp.info, net_ntohs(temp.info_size));
+#endif
         }
     }
 

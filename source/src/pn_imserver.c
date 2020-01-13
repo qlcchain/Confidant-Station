@@ -7447,6 +7447,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_BAKFILE;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GETBAKADDRINFO) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETBAKADDRBOOKINFO;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -20725,6 +20729,7 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_FILESLISTPULL,PNR_API_VERSION_V6,TRUE,cfd_pullfileslist_deal},
     {PNR_IM_CMDTYPE_BAKFILE,PNR_API_VERSION_V6,TRUE,cfd_bakfile_deal},
     {PNR_IM_CMDTYPE_FILEACTION,PNR_API_VERSION_V6,TRUE,cfd_fileaction_deal},
+    {PNR_IM_CMDTYPE_GETBAKADDRBOOKINFO,PNR_API_VERSION_V6,TRUE,cfd_bakaddrbookinfo_get_deal},
     //用户状态同步消息
     {PNR_IM_CMDTYPE_UINFOKEY_SYSCH,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_sysch_deal},
     {PNR_IM_CMDTYPE_UINFOKEY_REPLY,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_reply_deal},
@@ -21230,7 +21235,7 @@ int pnr_cmdbytox_handle(Tox *m, char *pmsg, int len, int friendnum,int nodemsg)
                         msgid, NULL, NULL, NULL);
 #else
             rid = cfd_rnodeid_by_toxfriendnum(m,friendnum);
-            if(rid > 0)
+            if(rid >= 0)
             {
                 pnr_msgcache_getid(CFD_NODEID_USERINDEX,&msgid);
                 if(m == g_daemon_tox.ptox_handle)
@@ -21484,6 +21489,10 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 {
                     srcfrom = PNR_FILE_SRCFROM_MAILBAKUP;
                 }
+                else if(action == PNR_IM_MSGTYPE_BAKADDRBOOK)
+                {
+                    srcfrom = PNR_FILE_SRCFROM_BAKADDRBOOK;
+                }
                 else if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//字符的0
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_rcv_file_deal_bin:get porperty_flag(%d)",pfile->porperty_flag);
@@ -21494,6 +21503,10 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                     else if(pfile->porperty_flag == CFD_FILE_PROPERTY_WXPATH)
                     {
                         srcfrom = PNR_FILE_SRCFROM_WXPATH;
+                    }
+                    else if(pfile->porperty_flag == CFD_FILE_PROPERTY_ADDRBOOK)
+                    {
+                        srcfrom = PNR_FILE_SRCFROM_BAKADDRBOOK;
                     }
                     else
                     {
@@ -21670,6 +21683,7 @@ int im_rcvmsg_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
         case PNR_IM_MSGTYPE_AVATAR:
         case PNR_IM_MSGTYPE_EMAILFILE:
         case PNR_IM_MSGTYPE_EMAILATTACH:
+        case PNR_IM_MSGTYPE_BAKADDRBOOK:
 			pss->sfile = 1;
 			pss->type = ntohl(*action);
 			memcpy(pss->buf, pmsg, msg_len);
@@ -22481,7 +22495,7 @@ int imuser_frienduinfo_sysch(int index)
        if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETTED)
        {
            user.local = i;
-           DEBUG_PRINT(DEBUG_LEVEL_INFO,"imuser_frienduinfo_sysch:user(%d:%s)",index,user.uidstr);
+           DEBUG_PRINT(DEBUG_LEVEL_INFO,"imuser_frienduinfo_sysch:user(%d:%s) to rid(%d:%s)",index,user.uidstr,i,g_rlist_node[i].nodeid);
            im_pushmsg_callback(index,PNR_IM_CMDTYPE_UINFOKEY_SYSCH,FALSE,PNR_API_VERSION_V6,(void *)&user);
        }
     }
@@ -22711,6 +22725,9 @@ int im_global_info_show(char* pcmd)
             }
             fprintf(fp,"###################################################\n");
             fclose(fp);
+            break;
+        case PNR_SHOWINFO_CHECK_RNODEFRIENDS_STATUS:
+            rnode_friends_status_show(CFD_NODE_TOXID_NID);
             break;
         default:
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_global_info_show:bad cmd(%d)",show_type);

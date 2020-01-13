@@ -205,6 +205,7 @@ int cfd_dbdelete_uinfo_byuid(int uid,int fid,int local);
 //filelist操作
 int pnr_filelist_dbinsert(int uindex,int msgid,int ftype,int depens,int srcfrom,int size,int pathid,int fileid,char* from,char* to,char* fname,char* fpath,char* md5,char* finfo,char* skey,char* dkey);
 int pnr_filelist_dbupdate_filename_byid(int uindex,int id,char* filename);
+int pnr_filelist_dbupdate_fileinfoall_byfid(int id,int uindex,int size,int timestamp,char* md5,char* fileinfo,char* fname,char* fpath,char* skey,char* dkey);
 int pnr_filelist_dbdelete_byid(int uindex,int id);
 #endif
 

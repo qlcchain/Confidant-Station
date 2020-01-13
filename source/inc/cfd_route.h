@@ -101,6 +101,14 @@ enum CFD_FILEACTION_RETURN_ENUM
     CFD_FILEACTION_RETURN_PATHNOTNULL =5,
     CFD_FILEACTION_RETURN_ERROTHERS,
 };
+enum CFD_BAKADDRUSERNUM_GET_RETCODE
+{
+    CFD_BAKADDRUSERNUM_GET_RET_OK = 0,
+    CFD_BAKADDRUSERNUM_GET_RET_BADPARAMS,
+    CFD_BAKADDRUSERNUM_GET_RET_NOFOUND,
+    CFD_BAKADDRUSERNUM_GET_RET_NOPRIM,
+    CFD_BAKADDRUSERNUM_GET_RET_BUTT
+};
 
 enum CFD_CHANGELOG_TYPE_ENUM
 {
@@ -267,6 +275,7 @@ struct cfd_node_online_msgstruct
     struct cfd_node_online_msghead head;
     struct cfd_innode_users_info users[PNR_IMUSER_ALLDEV_MAXNUM+1];
 };
+
 int get_uindexbyuid(char* p_uid);
 int cfd_uinfolist_getidleid(void);
 int cfd_rnodelist_getidleid(void);
@@ -324,5 +333,8 @@ int cfd_pullfilepaths_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws
 int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_fileaction_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index,struct imcmd_msghead_struct *head);
 int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+void *rnode_monitor_friends_thread(void *para);
+int rnode_friends_status_show(int node_flag);
 #endif

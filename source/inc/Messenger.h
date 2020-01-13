@@ -4,8 +4,8 @@
  */
 
 /*
- * Copyright © 2016-2018 The TokTok team.
- * Copyright © 2013 Tox project.
+ * Copyright ? 2016-2018 The TokTok team.
+ * Copyright ? 2013 Tox project.
  *
  * This file is part of Tox, the free peer to peer instant messenger.
  *
@@ -234,7 +234,8 @@ typedef struct Friend {
     int friendcon_id;
 
     uint64_t friendrequest_lastsent; // Time at which the last friend request was sent.
-	uint64_t create_time;	//create time
+// del by willcao	
+//uint64_t create_time;	//create time
 	uint32_t friendrequest_timeout; // The timeout between successful friendrequest sending attempts.
     uint8_t status; // 0 if no friend, 1 if added, 2 if friend request sent, 3 if confirmed friend, 4 if online.
     uint8_t info[MAX_FRIEND_REQUEST_DATA_SIZE]; // the data that is sent during the friend requests we do.

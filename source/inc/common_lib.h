@@ -282,11 +282,11 @@ struct arg_opts_struct {
             {\
                 if(tmp_json_buff[0] == '\"')\
                 {\
-                    var = atol(tmp_json_buff+1);\
+                    var = atoll(tmp_json_buff+1);\
                 }\
                 else\
                 {\
-                    var = atol(tmp_json_buff);\
+                    var = atoll(tmp_json_buff);\
                 }\
                 free(tmp_json_buff);\
             }\

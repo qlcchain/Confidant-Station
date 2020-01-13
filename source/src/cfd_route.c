@@ -3536,7 +3536,7 @@ int cfd_filelist_init(void)
             //再拉取该用户的所有文件
             //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
             snprintf(sql_cmd,SQL_CMD_LEN,"select id,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey"
-                " from cfd_filelist_tbl where type!=%d and type!=%d;",PNR_IM_MSGTYPE_SYSPATH,PNR_IM_MSGTYPE_USRPATH);
+                " from cfd_filelist_tbl where type!=%d and type!=%d and srcfrom != %d;",PNR_IM_MSGTYPE_SYSPATH,PNR_IM_MSGTYPE_USRPATH,PNR_FILE_SRCFROM_BAKADDRBOOK);
             if(sqlite3_get_table(g_msglogdb_handle[index], sql_cmd, &dbResult, &nRow,&nColumn, &errmsg) == SQLITE_OK)
             {
                 offset = nColumn; //字段值从offset开始呀
@@ -3610,6 +3610,74 @@ int cfd_filelist_init(void)
                     {
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_filelist_init:user(%d) file(%d:%d:%s)",index,puser->files[i].fileid,puser->files[i].id,puser->files[i].name);
                     }
+                }
+            }
+            //再拉取该用户的备份通信录
+            //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
+            snprintf(sql_cmd,SQL_CMD_LEN,"select id,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey"
+                " from cfd_filelist_tbl where srcfrom == %d;",PNR_FILE_SRCFROM_BAKADDRBOOK);
+            if(sqlite3_get_table(g_msglogdb_handle[index], sql_cmd, &dbResult, &nRow,&nColumn, &errmsg) == SQLITE_OK)
+            {
+                offset = nColumn; //字段值从offset开始呀
+                for( i = 0; i < nRow && i < CFD_FILES_MAXNUM; i++ )
+                {   
+                    id = atoi(dbResult[offset+9]);
+                    if(id >= 0 && id <= CFD_FILES_MAXNUM)
+                    {
+                        puser->addrbook[id].id = atoi(dbResult[offset]);
+                        puser->addrbook[id].timestamp = atoi(dbResult[offset+1]);
+                        //puser->addrbook[id].version = atoi(dbResult[offset+2]);
+                        //puser->addrbook[id].depens = atoi(dbResult[offset+3]);
+                        //puser->addrbook[id].msgid = atoi(dbResult[offset+4]);
+                        //puser->addrbook[id].type = atoi(dbResult[offset+5]);
+                        //puser->addrbook[id].srcfrom = atoi(dbResult[offset+6]);
+                        //puser->addrbook[id].fsize = atoi(dbResult[offset+7]);
+                        //puser->addrbook[id].pathid = atoi(dbResult[offset+8]);
+                        //puser->addrbook[id].fileid = id;
+                        puser->addrbook[id].uindex = index;
+#if 0
+                        if(dbResult[offset+10])
+                        {
+                            strcpy(puser->files[id].from,dbResult[offset+10]);
+                        }
+                        if(dbResult[offset+11])
+                        {
+                            strcpy(puser->files[id].to,dbResult[offset+11]);
+                        }
+#endif
+                        if(dbResult[offset+12])
+                        {
+                            strcpy(puser->addrbook[id].fname,dbResult[offset+12]);
+                        }
+                        if(dbResult[offset+13])
+                        {
+                            strcpy(puser->addrbook[id].fpath,dbResult[offset+13]);
+                        }
+                        if(dbResult[offset+14])
+                        {
+                            strcpy(puser->addrbook[id].md5,dbResult[offset+14]);
+                        }
+                        if(dbResult[offset+15])
+                        {
+                            strcpy(puser->addrbook[id].finfo,dbResult[offset+15]);
+                            puser->addrbook[id].addrnum = atoi(puser->addrbook[id].finfo);
+                        }
+                        if(dbResult[offset+16])
+                        {
+                            strcpy(puser->addrbook[id].fkey,dbResult[offset+16]);
+                        }
+                        puser->addrbook_num++;
+                    }
+                    offset += nColumn;
+                }
+                sqlite3_free_table(dbResult);
+            }
+            puser->addrbook_oldest = 0;
+            for(i=0;i<puser->addrbook_num;i++)
+            {
+                if(puser->addrbook[i].timestamp < puser->addrbook[puser->addrbook_oldest].timestamp)
+                {
+                    puser->addrbook_oldest = i;
                 }
             }
         }
@@ -4081,21 +4149,24 @@ int cfd_rnode_self_detch(void)
 int cfd_rnode_friend_connect(int node_flag)
 {
     int i = 0;
+    char node_onlinemsg[CFD_USERONE_INFOMAXLEN+1] = {0};
+    
     if(node_flag == CFD_NODE_TOXID_NID)
     {
+        snprintf(node_onlinemsg,CFD_USERONE_INFOMAXLEN,"Rnode(%s) Online",g_rlist_node[CFD_RNODE_DEFAULT_RID].nodeid);
         for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
         {
-            if(g_rlist_node[i].nodeid[0] != 0)
+            if(g_rlist_node[i].nodeid[0] != 0 && g_rlist_node[i].node_cstatus != CFD_RID_NODE_CSTATUS_CONNETTED)
             {
-                g_rlist_node[i].node_fid = cfd_add_friends_force(node_flag,g_rlist_node[i].nodeid,"HI Node Online");
+                g_rlist_node[i].node_fid = cfd_add_friends_force(node_flag,g_rlist_node[i].nodeid,node_onlinemsg);
                 if(g_rlist_node[i].node_fid < 0)
                 {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) failed",g_rlist_node[i].nodeid);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add rnode(%s) failed",g_rlist_node[i].nodeid);
                     g_rlist_node[i].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETERR;
                 }
                 else
                 {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add friend(%s) OK",g_rlist_node[i].nodeid);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO, "check add rnode(%s) OK",g_rlist_node[i].nodeid);
                     g_rlist_node[i].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETTING;
                 }
             }
@@ -4105,7 +4176,7 @@ int cfd_rnode_friend_connect(int node_flag)
     {
         for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
         {
-            if(g_rlist_node[i].routeid[0] != 0)
+            if(g_rlist_node[i].routeid[0] != 0 && g_rlist_node[i].route_cstatus != CFD_RID_NODE_CSTATUS_CONNETTED)
             {
                 g_rlist_node[i].route_fid = cfd_add_friends_force(node_flag,g_rlist_node[i].routeid,"HI Route Online");
                 if(g_rlist_node[i].route_fid< 0)
@@ -6535,14 +6606,14 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullfileslist_deal:bad uid(%s)",userid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
-    else if(pathid <=0 || pathid > CFD_PATHS_MAXNUM || depens <=0)
+    else if(pathid <=0 || (pathid > CFD_PATHS_MAXNUM && pathid != CFD_BADADDRBOOK_DEFAULTPATHID) || depens <=0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullfileslist_deal:bad pathid(%d)",pathid);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
     else
     {
-        if(strcmp(g_filelists[uindex].paths[pathid].name,pname) != OK)
+        if(pathid <= CFD_PATHS_MAXNUM && strcmp(g_filelists[uindex].paths[pathid].name,pname) != OK)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullfileslist_deal:bad pathid(%d) pname(%s:%s)",pathid,pname,g_filelists[uindex].paths[pathid].name);
             ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
@@ -6712,7 +6783,8 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    int ret_code = PNR_SAVEMAIL_RET_OK,uindex = 0,srcfrom = 0,i = 0,fileid= 0,src_fileid= 0;
+    int ret_code = PNR_SAVEMAIL_RET_OK,uindex = 0,srcfrom = 0,i = 0,fileid= 0,newrecord = FALSE;
+    long long src_fileid = 0;
     char* ret_buff = NULL;
     char userid[TOX_ID_STR_LEN+1] = {0};
     char fullpath[PNR_FILEPATH_MAXLEN+1] = {0};
@@ -6727,7 +6799,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Depens",newfile.depens,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",newfile.type,0);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",src_fileid,0);
+    CJSON_GET_VARLONG_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",src_fileid,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Size",newfile.size,0);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathId",newfile.pathid,0);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Md5",newfile.md5,PNR_MD5_VALUE_MAXLEN);
@@ -6751,33 +6823,36 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        if(g_filelists[uindex].paths[newfile.pathid].depens != newfile.depens
-            || strlen(g_filelists[uindex].paths[newfile.pathid].name) <= 0)
+        if((newfile.depens != CFD_DEPENDS_ADDRBOOK)&&(g_filelists[uindex].paths[newfile.pathid].depens != newfile.depens
+            || strlen(g_filelists[uindex].paths[newfile.pathid].name) <= 0 || g_filelists[uindex].files_num >= CFD_FILES_MAXNUM))
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:bad input pathid(%d)",newfile.pathid);
-            ret_code = CFD_BAKFILE_RETURN_NOPATH;
-        }
-        else if(g_filelists[uindex].files_num >= CFD_FILES_MAXNUM)
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:uindex(%d) file over(%d)",uindex,g_filelists[uindex].files_num);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:uindex(%d) pathid(%d) file(%d)",uindex,newfile.pathid,g_filelists[uindex].files_num);
             ret_code = CFD_BAKFILE_RETURN_NOPATH;
         }
         else
         {
             memset(newfile.path,0,PNR_FILEPATH_MAXLEN);
-            if(newfile.depens == CFD_DEPNEDS_ALBUM)
+            switch(newfile.depens)
             {
-                srcfrom = PNR_FILE_SRCFROM_ALBUM;
+                case CFD_DEPNEDS_ALBUM:
+                    srcfrom = PNR_FILE_SRCFROM_ALBUM;
+                    break;
+                case CFD_DEPNEDS_FOLDER:
+                    srcfrom = PNR_FILE_SRCFROM_FOLDER;
+                    break;
+                case CFD_DEPNEDS_WXPATH:
+                    srcfrom = PNR_FILE_SRCFROM_WXPATH;
+                    break;
+                case CFD_DEPENDS_ADDRBOOK:
+                    srcfrom = PNR_FILE_SRCFROM_BAKADDRBOOK;
+                    newfile.pathid = CFD_BADADDRBOOK_DEFAULTPATHID;
+                    break;
+                default:
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad depends(%d)",newfile.depens);
+                    return ERROR;
             }
-            else if(newfile.depens == CFD_DEPNEDS_FOLDER)
-            {
-                srcfrom = PNR_FILE_SRCFROM_FOLDER;
-            }
-            else
-            {
-                srcfrom = PNR_FILE_SRCFROM_WXPATH;
-            }
-            PNR_REAL_FILEPATH_GET(newfile.path,uindex,srcfrom,src_fileid,newfile.pathid,(char*)"");
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"bakfile get uindex(%d) srcfrom(%d) src_fileid(%ld:%u)",uindex,srcfrom,src_fileid,(unsigned int)src_fileid);
+            PNR_REAL_FILEPATH_GET(newfile.path,uindex,srcfrom,(unsigned int)src_fileid,newfile.pathid,(char*)"");
             snprintf(fullpath, PNR_FILEPATH_MAXLEN, WS_SERVER_INDEX_FILEPATH"%s",newfile.path);
             if (access(fullpath, F_OK) != OK) 
             {
@@ -6801,19 +6876,58 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         newfile.uindex = uindex;
         newfile.info_ver = DEFAULT_UINFO_VERSION;
         newfile.timestamp = (int)time(NULL);
-        for(i=0;i<CFD_FILES_MAXNUM;i++)
+        //备份地址簿的处理
+        if(newfile.depens == CFD_DEPENDS_ADDRBOOK)
         {
-            if(g_filelists[uindex].files[i].uindex == 0)
+            i = g_filelists[uindex].addrbook_oldest;
+            g_filelists[uindex].addrbook_oldest++;
+            if(g_filelists[uindex].addrbook_oldest >= CFD_BAKADDRBOOK_MAXNUM)
             {
-                break;
+                g_filelists[uindex].addrbook_oldest = 0;
+            }
+            if(g_filelists[uindex].addrbook_num < CFD_BAKADDRBOOK_MAXNUM)
+            {
+                newrecord = TRUE;
+                g_filelists[uindex].addrbook_num++;
+            }
+            g_filelists[uindex].addrbook[i].uindex = uindex;
+            g_filelists[uindex].addrbook[i].timestamp = newfile.timestamp;
+            g_filelists[uindex].addrbook[i].info_ver = newfile.info_ver;
+            g_filelists[uindex].addrbook[i].fsize = newfile.size;
+            strcpy(g_filelists[uindex].addrbook[i].md5,newfile.md5);
+            strcpy(g_filelists[uindex].addrbook[i].finfo,newfile.finfo);
+            strcpy(g_filelists[uindex].addrbook[i].fname,newfile.name);
+            strcpy(g_filelists[uindex].addrbook[i].fpath,newfile.path);
+            strcpy(g_filelists[uindex].addrbook[i].fkey,newfile.skey);
+            g_filelists[uindex].addrbook[i].addrnum = atoi(g_filelists[uindex].addrbook[i].finfo);
+            if(newrecord == TRUE)
+            {
+                pnr_filelist_dbinsert(uindex,0,newfile.type,newfile.depens,srcfrom,newfile.size,newfile.pathid,newfile.fileid,"","",newfile.name,newfile.path,newfile.md5,newfile.finfo,newfile.skey,"");
+                cfd_filelist_dbgetdbid_byfileid(uindex,newfile.depens,newfile.pathid,newfile.fileid,&fileid);
+                g_filelists[uindex].addrbook[i].id = fileid;
+            }
+            else
+            {
+                pnr_filelist_dbupdate_fileinfoall_byfid(g_filelists[uindex].addrbook[i].id,uindex,g_filelists[uindex].addrbook[i].fsize,g_filelists[uindex].addrbook[i].timestamp,
+                    g_filelists[uindex].addrbook[i].md5,g_filelists[uindex].addrbook[i].finfo,g_filelists[uindex].addrbook[i].fname,g_filelists[uindex].addrbook[i].fpath,g_filelists[uindex].addrbook[i].fkey,NULL);
             }
         }
-        newfile.fileid = i;
-        memcpy(&g_filelists[uindex].files[i],&newfile,sizeof(struct cfd_fileinfo_struct));
-        pnr_filelist_dbinsert(uindex,0,newfile.type,newfile.depens,srcfrom,newfile.size,newfile.pathid,newfile.fileid,"","",newfile.name,newfile.path,newfile.md5,newfile.finfo,newfile.skey,"");
-        cfd_filelist_count(uindex,newfile.pathid,TRUE,newfile.size,newfile.timestamp);
-        cfd_filelist_dbgetdbid_byfileid(uindex,newfile.depens,newfile.pathid,newfile.fileid,&fileid);
-        g_filelists[uindex].files[i].id = fileid;
+        else//其他类型文件的处理
+        {
+            for(i=0;i<CFD_FILES_MAXNUM;i++)
+            {
+                if(g_filelists[uindex].files[i].uindex == 0)
+                {
+                    break;
+                }
+            }
+            newfile.fileid = i;
+            memcpy(&g_filelists[uindex].files[i],&newfile,sizeof(struct cfd_fileinfo_struct));
+            pnr_filelist_dbinsert(uindex,0,newfile.type,newfile.depens,srcfrom,newfile.size,newfile.pathid,newfile.fileid,"","",newfile.name,newfile.path,newfile.md5,newfile.finfo,newfile.skey,"");
+            cfd_filelist_count(uindex,newfile.pathid,TRUE,newfile.size,newfile.timestamp);
+            cfd_filelist_dbgetdbid_byfileid(uindex,newfile.depens,newfile.pathid,newfile.fileid,&fileid);
+            g_filelists[uindex].files[i].id = fileid;
+        }
     }
     //构建响应消息
     cJSON * ret_root = cJSON_CreateObject();
@@ -6837,7 +6951,14 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         cJSON_AddItemToObject(ret_params, "FileId", cJSON_CreateNumber(fileid));
         cJSON_AddItemToObject(ret_params, "PathId", cJSON_CreateNumber(newfile.pathid));
         cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(newfile.path));
-        cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(g_filelists[uindex].paths[newfile.pathid].name));
+        if(newfile.depens == CFD_DEPENDS_ADDRBOOK)
+        {
+            cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(CFD_BADADDRBOOK_DEFAULTPATHNAME));
+        }
+        else
+        {
+            cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(g_filelists[uindex].paths[newfile.pathid].name));
+        }
         cJSON_AddItemToObject(ret_params, "Fname", cJSON_CreateString(newfile.name));
     }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
@@ -7013,6 +7134,113 @@ int cfd_fileaction_deal(cJSON * params,char* retmsg,int* retmsg_len,
     return OK;
 }
 /**********************************************************************************
+  Function:      cfd_bakaddrbookinfo_get_deal
+  Description: 获取当前账户备份的通信录信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0;
+    int fileid = 0,i = 0;
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    char* ret_buff = NULL;
+    int uindex= 0,fid = -1;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"User",userid,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"FileId",fileid,0);
+    //参数检查
+    uindex = cfd_getindexbyidstr(userid);
+    if(uindex <= 0)
+    {
+        ret_code = CFD_BAKADDRUSERNUM_GET_RET_BADPARAMS;
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%s)",userid);
+    }
+    else
+    {
+        if(fileid > 0)
+        {
+            for(i = 0;i<CFD_BAKADDRBOOK_MAXNUM;i++)
+            {
+                if(g_filelists[uindex].addrbook[i].id == fileid)
+                {
+                    fid = i;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            //默认
+            fid = 0;
+        }
+        if(g_filelists[uindex].addrbook[fid].fsize <= 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"User(%d) addrbook(%d) is null",uindex,fid);
+            ret_code = CFD_BAKADDRUSERNUM_GET_RET_NOFOUND;
+        }
+    }
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETBAKADDRINFO));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "FileId", cJSON_CreateNumber(fileid));
+    if(ret_code == CFD_BAKADDRUSERNUM_GET_RET_OK)
+    {
+        cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(g_filelists[uindex].addrbook[fid].addrnum));
+        cJSON_AddItemToObject(ret_params, "Fpath", cJSON_CreateString(g_filelists[uindex].addrbook[fid].fpath));
+        cJSON_AddItemToObject(ret_params, "Fkey", cJSON_CreateString(g_filelists[uindex].addrbook[fid].fkey));
+    }
+    else
+    {
+        cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(0));
+        cJSON_AddItemToObject(ret_params, "Fpath", cJSON_CreateString(""));
+        cJSON_AddItemToObject(ret_params, "Fkey", cJSON_CreateString(""));
+    }
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
   Function:      cfd_nodeonline_notice_deal
   Description: 节点上线消息
   Calls:
@@ -7090,7 +7318,7 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
         strcpy(g_rlist_node[rid].routeid,g_onlinemsg.head.routeid);
         strcpy(g_rlist_node[rid].rname,g_onlinemsg.head.rname);
         cfd_rnodelist_dbinsert(&g_rlist_node[rid]);
-         if(rid > CFD_RNODE_DEFAULT_RID)
+        if(rid > CFD_RNODE_DEFAULT_RID)
         {
             g_rlist_node[rid].node_fid = check_and_add_friends(g_daemon_tox.ptox_handle,g_rlist_node[rid].nodeid,g_daemon_tox.userinfo_fullurl);
             if(g_rlist_node[rid].node_fid < 0)
@@ -7175,5 +7403,88 @@ int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     pthread_mutex_unlock(&g_onlinemsg_lock);
     return OK;
+}
+/*****************************************************************************
+ 函 数 名  : rnode_monitor_friends_thread
+ 功能描述  : 自我监测节点好友任务
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+void *rnode_monitor_friends_thread(void *para)
+{	
+    int i = 0,f_status = 0;
+    TOX_ERR_FRIEND_QUERY err;
+    while(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
+    {
+        sleep(1);
+    }
+	while (TRUE) 
+    {
+        for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
+        {
+            if(g_rlist_node[i].nodeid[0] != 0 && g_rlist_node[i].node_fid > 0)
+            {
+                if(g_rlist_node[i].node_cstatus != CFD_RID_NODE_CSTATUS_CONNETTED)
+                {
+                    f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) status(%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status);
+                }
+                else
+                {
+                    f_status =tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) conectstatus(%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status);
+                }
+            }
+        }
+        sleep(PNR_SELF_MONITOR_CYCLE);
+    }
+	return NULL;  
+}
+/*****************************************************************************
+ 函 数 名  : rnode_friends_status_show
+ 功能描述  : 显示当前节点好友状态
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int rnode_friends_status_show(int node_flag)
+{	
+    int i = 0,f_status = 0,con_status = 0;
+    TOX_ERR_FRIEND_QUERY err;
+    if(g_p2pnet_init_flag != CFD_NODE_TOXID_ALL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"rnode_friends_status_show:bad g_p2pnet_init_flag(%d) ERR",g_p2pnet_init_flag);
+        return ERROR;
+    }
+    if(node_flag == CFD_NODE_TOXID_NID)
+    {
+        for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
+        {
+            if(g_rlist_node[i].nodeid[0] != 0 && g_rlist_node[i].node_fid > 0)
+            {
+                f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+            }
+        }
+    }
+	return OK;  
 }
 
