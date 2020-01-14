@@ -732,7 +732,7 @@ static int fifo_msg_handle(void)
 	while(1)
     {	
     	line_len = read(fpipe, line, BUF_LINE_MAX_LEN);
-        DEBUG_PRINT(DEBUG_LEVEL_INFO,"fifo_msg_handle read ret(%d)",line_len);  
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"fifo_msg_handle read ret(%d)",line_len);  
         //消息结构体是类似 "3 XXXX"
 		if(line_len >= 3)
 		{

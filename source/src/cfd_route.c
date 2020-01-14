@@ -3626,12 +3626,12 @@ int cfd_filelist_init(void)
                     {
                         puser->addrbook[id].id = atoi(dbResult[offset]);
                         puser->addrbook[id].timestamp = atoi(dbResult[offset+1]);
-                        //puser->addrbook[id].version = atoi(dbResult[offset+2]);
+                        puser->addrbook[id].info_ver = atoi(dbResult[offset+2]);
                         //puser->addrbook[id].depens = atoi(dbResult[offset+3]);
                         //puser->addrbook[id].msgid = atoi(dbResult[offset+4]);
                         //puser->addrbook[id].type = atoi(dbResult[offset+5]);
                         //puser->addrbook[id].srcfrom = atoi(dbResult[offset+6]);
-                        //puser->addrbook[id].fsize = atoi(dbResult[offset+7]);
+                        puser->addrbook[id].fsize = atoi(dbResult[offset+7]);
                         //puser->addrbook[id].pathid = atoi(dbResult[offset+8]);
                         //puser->addrbook[id].fileid = id;
                         puser->addrbook[id].uindex = index;
@@ -7477,11 +7477,18 @@ int rnode_friends_status_show(int node_flag)
     {
         for(i=CFD_RNODE_DEFAULT_RID+1;i<=CFD_RNODE_MAXNUM;i++)
         {
-            if(g_rlist_node[i].nodeid[0] != 0 && g_rlist_node[i].node_fid > 0)
+            if(g_rlist_node[i].id > 0)
             {
-                f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
-                con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
-                DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+                if(g_rlist_node[i].node_fid >= 0)
+                {
+                    f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                    con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+                }
+                else
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) node_fid(%d)",i,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_fid);
+                }
             }
         }
     }
