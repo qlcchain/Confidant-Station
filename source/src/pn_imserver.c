@@ -21338,6 +21338,10 @@ void im_send_file_by_tox(Tox *tox, struct lws_cache_msg_struct *msg, int push)
     if (ret < 0) {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) failed!", msg->filename);
         msg->filestatus = 0;
+        if(msg->resend >= 5)
+        {
+            pnr_msgcache_dbdelete_nolock(msg);
+        }
     } else {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) start!", msg->filename);
     }
@@ -22434,7 +22438,6 @@ int imuser_friendstatus_push(int index,int online_status)
            memcpy(user.touser_toxid,g_imusr_array.usrnode[index].friends[i].user_toxid,TOX_ID_STR_LEN);
            user.uindex = index;
            user.result = online_status;
-
            //先找到好友
            friend_id=cfd_getindexbyidstr(g_imusr_array.usrnode[index].friends[i].user_toxid);
            //对于目标好友为本地用户
@@ -22452,6 +22455,7 @@ int imuser_friendstatus_push(int index,int online_status)
                 }
                 //im_pushmsg_callback(friend_id,PNR_IM_CMDTYPE_ONLINESTATUSPUSH,TRUE,PNR_API_VERSION_V4,(void *)&user);
            }
+#if 0
            else
            {
            		//避免好友关系丢失导致无法接收消息
@@ -22460,6 +22464,7 @@ int imuser_friendstatus_push(int index,int online_status)
                 //im_pushmsg_callback(index,PNR_IM_CMDTYPE_ONLINESTATUSPUSH,FALSE,PNR_API_VERSION_V4,(void *)&user);
                 //im_pushmsg_callback(index,PNR_IM_CMDTYPE_UINFOKEY_SYSCH,FALSE,PNR_API_VERSION_V6,(void *)&user);
            }
+#endif           
        }
     }
     return OK;
@@ -22728,6 +22733,9 @@ int im_global_info_show(char* pcmd)
             break;
         case PNR_SHOWINFO_CHECK_RNODEFRIENDS_STATUS:
             rnode_friends_status_show(CFD_NODE_TOXID_NID);
+            break;
+        case PNR_SHOWINFO_CHECK_USERONLINE_STATUS:
+            cfd_user_onlinestatus_show();
             break;
         default:
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_global_info_show:bad cmd(%d)",show_type);

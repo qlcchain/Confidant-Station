@@ -4920,6 +4920,8 @@ int cfd_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 index = g_ruser_list[uid].index;
                 if(index <= 0 || index > PNR_IMUSER_MAXNUM)
                 {
+                    ret_code = PNR_LOGIN_RETCODE_BAD_UID;
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userlogin_deal:input usr(%s) index(%d)",uid_str,index);
                 }
                 //检查并更新nickname
                 else if((strlen(nickname) > 0) && (strcmp(nickname,g_ruser_list[uid].uname) != OK))
@@ -6784,7 +6786,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = PNR_SAVEMAIL_RET_OK,uindex = 0,srcfrom = 0,i = 0,fileid= 0,newrecord = FALSE;
-    long long src_fileid = 0;
+    unsigned long long src_fileid = 0;
     char* ret_buff = NULL;
     char userid[TOX_ID_STR_LEN+1] = {0};
     char fullpath[PNR_FILEPATH_MAXLEN+1] = {0};
@@ -6818,7 +6820,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else if (src_fileid <=0 || newfile.pathid <=0 )
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:bad input fileid(%d) pathid(%d)",src_fileid,newfile.pathid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakfile_deal:bad input fileid(%ld) pathid(%d)",src_fileid,newfile.pathid);
         ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
     }
     else
@@ -6884,6 +6886,17 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if(g_filelists[uindex].addrbook_oldest >= CFD_BAKADDRBOOK_MAXNUM)
             {
                 g_filelists[uindex].addrbook_oldest = 0;
+            }
+            if(g_filelists[uindex].addrbook[i].timestamp > 0)
+            {
+                //覆盖清除旧记录
+                newrecord = g_filelists[uindex].addrbook[i].id;
+                memset(fullpath,0,PNR_FILEPATH_MAXLEN);
+                snprintf(fullpath, PNR_FILEPATH_MAXLEN, WS_SERVER_INDEX_FILEPATH"%s",g_filelists[uindex].addrbook[i].fpath);
+                unlink(fullpath);
+                memset(&g_filelists[uindex].addrbook[i],0,sizeof(struct cfd_bakaddrbook_struct));
+                g_filelists[uindex].addrbook[i].id = newrecord; 
+                newrecord = FALSE;
             }
             if(g_filelists[uindex].addrbook_num < CFD_BAKADDRBOOK_MAXNUM)
             {
@@ -6951,6 +6964,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
         cJSON_AddItemToObject(ret_params, "FileId", cJSON_CreateNumber(fileid));
         cJSON_AddItemToObject(ret_params, "PathId", cJSON_CreateNumber(newfile.pathid));
         cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(newfile.path));
+        cJSON_AddItemToObject(ret_params, "Depens", cJSON_CreateNumber(newfile.depens));
         if(newfile.depens == CFD_DEPENDS_ADDRBOOK)
         {
             cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(CFD_BADADDRBOOK_DEFAULTPATHNAME));
@@ -6960,6 +6974,8 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
             cJSON_AddItemToObject(ret_params, "PathName", cJSON_CreateString(g_filelists[uindex].paths[newfile.pathid].name));
         }
         cJSON_AddItemToObject(ret_params, "Fname", cJSON_CreateString(newfile.name));
+        cJSON_AddItemToObject(ret_params, "FKey", cJSON_CreateString(newfile.skey));
+        cJSON_AddItemToObject(ret_params, "FInfo", cJSON_CreateString(newfile.finfo));
     }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
@@ -7442,6 +7458,10 @@ void *rnode_monitor_friends_thread(void *para)
                 {
                     f_status =tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) conectstatus(%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status);
+                    if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETCLOSE)
+                    {
+                        cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,PACKET_ID_ONLINE);
+                    }
                 }
             }
         }
@@ -7484,6 +7504,10 @@ int rnode_friends_status_show(int node_flag)
                     f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+                    if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETCLOSE)
+                    {
+                        cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,PACKET_ID_ONLINE);
+                    }
                 }
                 else
                 {
@@ -7493,5 +7517,72 @@ int rnode_friends_status_show(int node_flag)
         }
     }
 	return OK;  
+}
+/*****************************************************************************
+ 函 数 名  : rnode_friends_online_send
+ 功能描述  : 发送好友在线状态
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int rnode_friends_online_send(int node_fid)
+{	
+    int i = 0,f_status = 0,con_status = 0;
+    TOX_ERR_FRIEND_QUERY err;   
+    if(node_fid >=0 && node_fid)
+    {
+        if(g_rlist_node[node_fid].node_fid >= 0)
+        {
+            f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[node_fid].node_fid,&err);
+            con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[node_fid].node_fid,&err);
+            DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d) send online",g_rlist_node[node_fid].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+            cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[node_fid].node_fid,PACKET_ID_ONLINE);
+        }
+    }
+	return OK;  
+}
+/*****************************************************************************
+ 函 数 名  : cfd_user_onlinestatus_show
+ 功能描述  : 显示当前节点用户在线状态
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int cfd_user_onlinestatus_show(void)
+{
+    int uid = 0;
+    for(uid =1;uid <=CFD_URECORD_MAXNUM;uid ++)
+    {
+        if(g_activeuser_list[uid].uindex > 0)
+        {
+            if(g_activeuser_list[uid].active_rid == CFD_RNODE_DEFAULT_RID)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d:%s) in localnode, timestamp(%d)",
+                    g_activeuser_list[uid].uindex,g_activeuser_list[uid].uidstr,g_activeuser_list[uid].active_time);
+            }
+            else
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d:%s) in node(%d:%s), timestamp(%d)",
+                    g_activeuser_list[uid].uindex,g_activeuser_list[uid].uidstr,g_activeuser_list[uid].active_rid,
+                    g_rlist_node[g_activeuser_list[uid].active_rid].routeid,g_activeuser_list[uid].active_time);
+            }
+        }
+    }
 }
 

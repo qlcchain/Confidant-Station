@@ -995,8 +995,8 @@ int get_ppm_usernum_by_toxfriendnum(Tox *tox, uint32_t friendnumber,int user_id,
 }
 int cfd_rnodeid_by_toxfriendnum(Tox *tox, uint32_t friendnumber)
 {
-	uint8_t fr_bin[TOX_ADDRESS_SIZE];
-    char fr_str[FRADDR_TOSTR_BUFSIZE];
+	uint8_t fr_bin[TOX_ADDRESS_SIZE] = {0};
+    char fr_str[FRADDR_TOSTR_BUFSIZE] = {0};
     int i = 0;
 
     if(tox == NULL)

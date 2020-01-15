@@ -178,7 +178,7 @@ static int m_handle_lossy_packet(void *object, int friend_num, const uint8_t *pa
 
 static int32_t init_new_friend(Messenger *m, const uint8_t *real_pk, uint8_t status)
 {
-	uint64_t temp_time = mono_time_get(m->mono_time);
+	//uint64_t temp_time = mono_time_get(m->mono_time);
 	
     /* Resize the friend list if necessary. */
     if (realloc_friendlist(m, m->numfriends + 1) != 0) {
@@ -363,7 +363,10 @@ int32_t m_addfriend_with_create_time(Messenger *m, const uint8_t *address, const
 
 int32_t m_addfriend_norequest(Messenger *m, const uint8_t *real_pk)
 {
-    if (getfriend_id(m, real_pk) != -1) {
+    int f_id = 0;
+    f_id = getfriend_id(m, real_pk);
+    if (f_id != -1) {
+        send_online_packet(m,f_id);
         return FAERR_ALREADYSENT;
     }
 

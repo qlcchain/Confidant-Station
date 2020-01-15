@@ -337,4 +337,5 @@ int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,int
 int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 void *rnode_monitor_friends_thread(void *para);
 int rnode_friends_status_show(int node_flag);
+int cfd_user_onlinestatus_show(void);
 #endif

@@ -1965,3 +1965,20 @@ uint16_t tox_self_get_tcp_port(const Tox *tox, Tox_Err_Get_Port *error)
     SET_ERROR_PARAMETER(error, TOX_ERR_GET_PORT_NOT_BOUND);
     return 0;
 }
+
+int cfd_send_toxpacket(Tox* tox,int friendnumber,int pid)
+{
+    if(tox == NULL)
+    {
+        return -1;
+    }
+    Messenger *m = tox->m;
+    /*if (friend_not_valid(m, friendnumber)) {
+        return 0;
+    }*/
+    uint8_t packet = (uint8_t)pid;
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"send friend(%d) packet(%d)",friendnumber,packet);
+    return write_cryptpacket(m->net_crypto, friend_connection_crypt_connection_id(m->fr_c,
+                             m->friendlist[friendnumber].friendcon_id), &packet, sizeof(packet), 0) != -1;
+}
+

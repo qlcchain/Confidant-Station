@@ -35,6 +35,7 @@
 
 #include "mono_time.h"
 #include "util.h"
+#include "common_lib.h"
 
 typedef struct Packet_Data {
     uint64_t sent_time;
@@ -2738,20 +2739,24 @@ int64_t write_cryptpacket(Net_Crypto *c, int crypt_connection_id, const uint8_t 
     Crypto_Connection *conn = get_crypto_connection(c, crypt_connection_id);
 
     if (conn == nullptr) {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"conn null");
         return -1;
     }
 
     if (conn->status != CRYPTO_CONN_ESTABLISHED) {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"conn status(%d)",conn->status);
         return -1;
     }
 
     if (congestion_control && conn->packets_left == 0) {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"conn congestion_control(%d)",congestion_control);
         return -1;
     }
 
     int64_t ret = send_lossless_packet(c, crypt_connection_id, data, length, congestion_control);
 
     if (ret == -1) {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"send_lossless_packet failed");
         return -1;
     }
 

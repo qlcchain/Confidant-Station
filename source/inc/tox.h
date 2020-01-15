@@ -3167,4 +3167,5 @@ typedef TOX_CONNECTION Tox_Connection;
 typedef TOX_FILE_CONTROL Tox_File_Control;
 typedef TOX_CONFERENCE_TYPE Tox_Conference_Type;
 
+int cfd_send_toxpacket(Tox* tox,int friendnumber,int pid);
 #endif // C_TOXCORE_TOXCORE_TOX_H
