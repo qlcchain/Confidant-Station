@@ -912,7 +912,7 @@ static void file_print_control(Tox *tox, uint32_t friend_number, uint32_t file_n
                 fclose(sender[i].file);
                 sender[i].msg->filestatus = 0;
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "tox send file(%s) cancelled!",sender[i].msg->filename);
-                //pnr_msgcache_dbdelete(sender[i].msg->msgid, sender[i].msg->userid);
+                pnr_msgcache_dbdelete(sender[i].msg->msgid, sender[i].msg->userid);
 				memset(&sender[i], 0, sizeof(File_Sender));
 				break;
             }
@@ -2693,3 +2693,4 @@ int tox_datafile_backup(int user_index,char* datafile)
     }
     return OK;
 }
+

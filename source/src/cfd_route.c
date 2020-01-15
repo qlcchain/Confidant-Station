@@ -4957,7 +4957,7 @@ int cfd_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_relogin_push(index,head->iftox,head->friendnum,head->pss);    
         }
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
-        imuser_frienduinfo_sysch(uid);
+        imuser_frienduinfo_sysch(index);
         cfd_uactive_lastactive_update_byid(uid,(int)time(NULL),CFD_RNODE_DEFAULT_RID);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
         g_imusr_array.usrnode[index].appactive_flag = PNR_APPACTIVE_STATUS_FRONT;
@@ -5951,6 +5951,7 @@ int cfd_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
     if(ret_code == PNR_USER_LOGIN_OK)
     {
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
+        imuser_frienduinfo_sysch(index);
         pnr_account_dbupdate_lastactive_bytoxid(g_imusr_array.usrnode[index].user_toxid);
         //自动添加admin用户为好友
         if(strcmp(account.user_sn,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].user_sn) != OK)
@@ -6903,6 +6904,7 @@ int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 newrecord = TRUE;
                 g_filelists[uindex].addrbook_num++;
             }
+            
             g_filelists[uindex].addrbook[i].uindex = uindex;
             g_filelists[uindex].addrbook[i].timestamp = newfile.timestamp;
             g_filelists[uindex].addrbook[i].info_ver = newfile.info_ver;
