@@ -17975,6 +17975,7 @@ int im_cmd_uinfokey_sysch_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     memset(g_ruser_list[uid].uname,0,PNR_USERNAME_MAXLEN);
                     strcpy(g_ruser_list[uid].uname,uname);
+                    //这里本来需要同步好友列表里面的用户名称，现在在拉取好友列表中，直接采用g_ruser_list的值了
                 }
                 cfd_uinfo_dbupdate_byuid(&g_ruser_list[uid]);
             }

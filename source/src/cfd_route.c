@@ -5712,15 +5712,15 @@ int cfd_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 #if 0//暂时不用
         		cJSON_AddStringToObject(pJsonsub,"Index", g_imusr_array.usrnode[index].friends[i].u_hashstr);
 #endif
-                cJSON_AddStringToObject(pJsonsub,"Name", g_imusr_array.usrnode[index].friends[i].user_nickname);
+                fid = g_imusr_array.usrnode[index].friends[i].friend_uid;
         		cJSON_AddStringToObject(pJsonsub,"Remarks", g_imusr_array.usrnode[index].friends[i].user_remarks);
         		cJSON_AddStringToObject(pJsonsub,"Id", g_imusr_array.usrnode[index].friends[i].user_toxid);
         		cJSON_AddStringToObject(pJsonsub,"UserKey", g_imusr_array.usrnode[index].friends[i].user_pubkey);
         		cJSON_AddNumberToObject(pJsonsub,"Status",g_imusr_array.usrnode[index].friends[i].online_status); 
         		//cJSON_AddStringToObject(pJsonsub,"RouteName", g_imusr_array.usrnode[index].friends[i].user_devname);
-                fid = g_imusr_array.usrnode[index].friends[i].friend_uid;
                 if(fid > 0 && fid <= CFD_RNODE_MAXNUM)
                 {
+                    cJSON_AddStringToObject(pJsonsub,"Name", g_ruser_list[fid].uname);
                     rid = g_activeuser_list[fid].active_rid;
                     if(rid > 0)
                     {
@@ -5729,6 +5729,10 @@ int cfd_pullfriend_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     }
                     cJSON_AddStringToObject(pJsonsub,"Mails", g_ruser_list[fid].mailinfo);
                     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get friend(%d:%s) rid(%d:%s)",fid,g_ruser_list[fid].uidstr,rid,g_rlist_node[rid].rname);
+                }
+                else
+                {
+                    cJSON_AddStringToObject(pJsonsub,"Name", g_imusr_array.usrnode[index].friends[i].user_nickname);
                 }
                 /*DEBUG_PRINT(DEBUG_LEVEL_INFO,"get friend(%d:%s:%s:%s:%s)",
                         i,g_imusr_array.usrnode[index].friends[i].user_nickname,
