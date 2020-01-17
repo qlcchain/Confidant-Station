@@ -3980,11 +3980,11 @@ int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
                     case PNR_IM_CMDTYPE_PUSHFILE:
                     case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                        post_newmsg_notice(g_daemon_tox.user_toxid,g_imusr_array.usrnode[pmsg->userid].user_toxid,
+                        post_newmsg_notice(g_daemon_tox.user_toxid,to_idstring,
                             PNR_POSTMSG_PAYLOAD,TRUE,pmsg->msgid);                                    
                         break;
                     case PNR_IM_CMDTYPE_GROUPMSGPUSH:
-                        pnr_postmsgs_cache_save(pmsg->msgid,g_imusr_array.usrnode[pmsg->userid].user_toxid,&g_group_pushmsgs_cache);
+                        pnr_postmsgs_cache_save(pmsg->msgid,to_idstring,&g_group_pushmsgs_cache);
                         break;
                     default:
                         break;
