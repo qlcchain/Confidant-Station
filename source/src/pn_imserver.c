@@ -2221,6 +2221,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 cJSON_AddItemToObject(ret_params, "PubKey",cJSON_CreateString(psendmsg->touser)); 
                 cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->fromuser));
                 cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->touser));
+                cJSON_AddItemToObject(ret_params, "NodeName",cJSON_CreateString(g_dev_nickname));
                 if(psendmsg->ext2 != 0)
                 {
                     cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(psendmsg->ext2));  
@@ -22737,6 +22738,20 @@ int im_global_info_show(char* pcmd)
             break;
         case PNR_SHOWINFO_CHECK_USERONLINE_STATUS:
             cfd_user_onlinestatus_show();
+            break;
+        case PNR_GLOBAL_RNODE_RECONNECT:
+            pbuf = strchr(pcmd,' ');
+            if(pbuf == NULL)
+            {
+                return ERROR;
+            }
+            pbuf++;
+            while(pbuf[0] == ' ' || pbuf[0] == '\t')
+            {
+                pbuf++;
+            }
+            i = atoi(pbuf);
+            rnode_friends_reconnect(i);
             break;
         default:
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_global_info_show:bad cmd(%d)",show_type);

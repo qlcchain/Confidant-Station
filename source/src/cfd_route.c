@@ -6276,6 +6276,7 @@ OUT:
     cJSON_AddItemToObject(ret_params, "Msg", cJSON_CreateString(msg->msg_buff));
     cJSON_AddItemToObject(ret_params, "Nonce", cJSON_CreateString(msg->nonce));
     cJSON_AddItemToObject(ret_params, "PriKey", cJSON_CreateString(msg->prikey));
+    cJSON_AddItemToObject(ret_params, "NodeName",cJSON_CreateString(g_dev_nickname));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     if(head->repeat_flag == TRUE)
     {
@@ -6667,7 +6668,7 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
             if(startid > 0)
             {
                 memset(pname,0,PNR_FILENAME_MAXLEN);
-                snprintf(pname,PNR_FILENAME_MAXLEN,"id<%d ",startid);
+                snprintf(pname,PNR_FILENAME_MAXLEN,"and id<%d ",startid);
                 strcat(sql_cmd,pname);
             }
             switch(sort)
@@ -6693,7 +6694,8 @@ int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 snprintf(pname,PNR_FILENAME_MAXLEN,"limit %d",num);
                 strcat(sql_cmd,pname);
             }
-            strcat(sql_cmd,")temp order by id;");
+            strcat(sql_cmd,")temp;");
+            //strcat(sql_cmd,")temp order by id;");
             DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
             if(sqlite3_get_table(g_msglogdb_handle[uindex], sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
             {
@@ -7215,7 +7217,7 @@ int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
         if(g_filelists[uindex].addrbook[fid].fsize <= 0)
         {
             DEBUG_PRINT(DEBUG_LEVEL_ERROR,"User(%d) addrbook(%d) is null",uindex,fid);
-            ret_code = CFD_BAKADDRUSERNUM_GET_RET_NOFOUND;
+            ret_code = CFD_BAKADDRUSERNUM_GET_RET_OK;
         }
     }
     //构建响应消息
@@ -7459,15 +7461,16 @@ void *rnode_monitor_friends_thread(void *para)
                 {
                     f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) status(%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status);
+                    if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETCLOSE)
+                    {
+                        cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,PACKET_ID_ONLINE);
+                    }
                 }
                 else
                 {
                     f_status =tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) conectstatus(%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status);
-                    if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETCLOSE)
-                    {
-                        cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,PACKET_ID_ONLINE);
-                    }
+
                 }
             }
         }
@@ -7509,7 +7512,7 @@ int rnode_friends_status_show(int node_flag)
                 {
                     f_status = tox_friend_get_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
                     con_status = tox_friend_get_connection_status(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,&err);
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fstatus(%d) conectstatus(%d,%d)",g_rlist_node[i].node_fid,g_rlist_node[i].nodeid,f_status,g_rlist_node[i].node_cstatus,con_status);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode(%d:%s) fid(%d) fstatus(%d) conectstatus(%d,%d)",i,g_rlist_node[i].nodeid,g_rlist_node[i].node_fid,f_status,g_rlist_node[i].node_cstatus,con_status);
                     if(g_rlist_node[i].node_cstatus == CFD_RID_NODE_CSTATUS_CONNETCLOSE)
                     {
                         cfd_send_toxpacket(g_daemon_tox.ptox_handle,g_rlist_node[i].node_fid,PACKET_ID_ONLINE);
@@ -7590,5 +7593,49 @@ int cfd_user_onlinestatus_show(void)
             }
         }
     }
+}
+/*****************************************************************************
+ 函 数 名  : rnode_friends_reconnect
+ 功能描述  : 发送好友在线状态
+ 输入参数  : void arg  
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+int rnode_friends_reconnect(int node_fid)
+{	
+    char node_onlinemsg[CFD_USERONE_INFOMAXLEN+1] = {0};
+    if(node_fid <0 || node_fid > CFD_RNODE_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO,"rnode_friends_reconnect nid(%d) failed",node_fid);
+        return ERROR;
+    }
+    if(g_rlist_node[node_fid].node_cstatus != CFD_RID_NODE_CSTATUS_CONNETTED)
+    {
+        snprintf(node_onlinemsg,CFD_USERONE_INFOMAXLEN,"Rnode(%s) Reconnect",g_rlist_node[CFD_RNODE_DEFAULT_RID].nodeid);
+        g_rlist_node[node_fid].node_fid = cfd_add_friends_force(CFD_NODE_TOXID_NID,g_rlist_node[node_fid].nodeid,node_onlinemsg);
+        if(g_rlist_node[node_fid].node_fid < 0)
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "reconnect rnode(%d:%s) failed",node_fid,g_rlist_node[node_fid].nodeid);
+            g_rlist_node[node_fid].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETERR;
+        }
+        else
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_INFO, "reconnect rnode(%d:%s) OK",node_fid,g_rlist_node[node_fid].nodeid);
+            g_rlist_node[node_fid].node_cstatus = CFD_RID_NODE_CSTATUS_CONNETTING;
+        }
+    }
+    else
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_INFO, "rnode(%d:%s) connected noneed reconn",node_fid,g_rlist_node[node_fid].nodeid);
+    }
+	return OK;  
 }
 

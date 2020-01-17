@@ -363,10 +363,7 @@ int32_t m_addfriend_with_create_time(Messenger *m, const uint8_t *address, const
 
 int32_t m_addfriend_norequest(Messenger *m, const uint8_t *real_pk)
 {
-    int f_id = 0;
-    f_id = getfriend_id(m, real_pk);
-    if (f_id != -1) {
-        send_online_packet(m,f_id);
+    if (getfriend_id(m, real_pk) != -1) {
         return FAERR_ALREADYSENT;
     }
 
