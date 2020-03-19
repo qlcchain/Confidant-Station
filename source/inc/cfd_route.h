@@ -39,6 +39,10 @@
 #define CFD_ACTIVERID_MAXNUM    10    //默认一个用户最多在十个节点上激活
 #define CFD_IDLIST_MAXLEN  368 //最多一百个好友的id序列号
 #define CFD_USERONE_INFOMAXLEN     256  
+#define CFD_KEYWORD_MAXLEN 256
+#define CFD_ATTACHINFO_MAXLEN 1024
+#define CFD_CONTENT_MAXLEN 4096
+#define CFD_IDARRAY_MAXNUM 50
 #define immsgForward        "immsgForward"
 #define immsgForwardRes     "immsgForwardRes"
 #define immsgNodeMsg        "NodeMsg"
@@ -117,6 +121,33 @@ enum CFD_CHANGELOG_TYPE_ENUM
     CFD_CHANGELOG_TYPE_USERFRIENDS = 2,
     CFD_CHANGELOG_TYPE_GROUPINFO = 3,
 };
+enum CFD_BAKCONTENT_RETCODE
+{
+    CFD_BAKCONTENT_RET_OK = 0,
+    CFD_BAKCONTENT_RET_BADPARAMS,    
+    CFD_BAKCONTENT_RET_NOSPACE,
+    CFD_BAKCONTENT_RET_OTHERSERR,
+    CFD_BAKCONTENT_RET_BUTT
+};
+enum CFD_PULLBAKCONTENT_RETCODE
+{
+    CFD_PULLBAKCONTENT_RET_OK = 0,
+    CFD_PULLBAKCONTENT_RET_BADPARAMS,    
+    CFD_PULLBAKCONTENT_RET_NOUSER,
+    CFD_PULLBAKCONTENT_RET_NOPRIME,
+    CFD_PULLBAKCONTENT_RET_OTHERSERR,
+    CFD_PULLBAKCONTENT_RET_BUTT
+};
+enum CFD_DELBAKCONTENT_RETCODE
+{
+    CFD_DELBAKCONTENT_RET_OK = 0,
+    CFD_DELBAKCONTENT_RET_BADPARAMS,    
+    CFD_DELBAKCONTENT_RET_NOUSER,
+    CFD_DELBAKCONTENT_RET_NOPRIME,
+    CFD_DELBAKCONTENT_RET_OTHERSERR,
+    CFD_DELBAKCONTENT_RET_BUTT
+};
+
 //用户好友记录，所以一组好友关系，实际上有两条记录
 struct cfd_friends_record
 {
@@ -275,7 +306,41 @@ struct cfd_node_online_msgstruct
     struct cfd_node_online_msghead head;
     struct cfd_innode_users_info users[PNR_IMUSER_ALLDEV_MAXNUM+1];
 };
-
+//用户备份信息通用结构体
+enum CFD_BAKCONTENT_TYPE_ENUM
+{
+    CFD_BAKCONTENT_TYPE_SMS = 1,
+    CFD_BAKCONTENT_TYPE_BUTT,
+};
+enum CFD_PULLBAKCONTENT_TYPE_ENUM
+{
+    CFD_PULLBAKCONTENT_TYPE_PULLLIST = 1,
+    CFD_PULLBAKCONTENT_TYPE_PULLBYUSR = 2,
+    CFD_PULLBAKCONTENT_TYPE_PULLSTATS = 3,
+    CFD_PULLBAKCONTENT_TYPE_BUTT,
+};
+struct cfd_bakcont_common_struct
+{
+    int uindex;
+    int did; //数据库记录id，唯一标识
+    int type;
+    int version;
+    uint64 timestamp;
+    char ukey[CFD_KEYWORD_MAXLEN+1];//用户索引
+    char tkey[CFD_KEYWORD_MAXLEN+1];//主题索引
+    char key[CFD_KEYWORD_MAXLEN+1];//加密字符串
+    char attach[CFD_ATTACHINFO_MAXLEN+1];//附加信息
+    char content[CFD_CONTENT_MAXLEN+1];//备份正文
+};
+//用户备份短信附加信息结构
+struct cfd_baksms_attach_struct
+{
+    int id;//app记录的短信id
+    int uid;// user id
+    int read;// 0 未读，1 已读
+    int send;// 1 收到的 2 发出的
+    char user[CFD_KEYWORD_MAXLEN+1];
+};
 int get_uindexbyuid(char* p_uid);
 int cfd_uinfolist_getidleid(void);
 int cfd_rnodelist_getidleid(void);
@@ -332,11 +397,21 @@ int cfd_readmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_i
 int cfd_pullfilepaths_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_pullfileslist_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_bakfile_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_filelist_memaddpath(int index,int pathid,int did,int type,int depens,char* pathname);
 int cfd_fileaction_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index,struct imcmd_msghead_struct *head);
 int cfd_nodeonline_notice_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_bakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_pullbakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_delbakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_bakcontent_getstas_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 void *rnode_monitor_friends_thread(void *para);
 int rnode_friends_status_show(int node_flag);
 int cfd_user_onlinestatus_show(void);
 int rnode_friends_reconnect(int node_fid);
+int cfd_newuser_welcome(int uindex);
+int cfd_uactive_delbyuid(int id);
+int cfd_uactive_deluser_dbbyuid(int id);
+int cfd_uinfonode_deletebyuid(int id);
+int cfd_rnode_userinfo_dbdelete_byuid(int id);
 #endif

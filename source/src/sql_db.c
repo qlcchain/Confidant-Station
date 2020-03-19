@@ -1566,6 +1566,66 @@ int sql_msglogdb_init(int index)
     g_imusr_array.usrnode[index].msglog_dbid++;
     return OK;
 }
+/***********************************************************************************
+  Function:      cfdsql_dbdefaultpath_init
+  Description:  模块的数据库默认文件夹初始化
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfdsql_dbdefaultpath_init(int index)
+{
+    int8* errMsg = NULL;
+    int8 sql_cmd[SQL_CMD_LEN] = {0};
+
+    //插入默认目录
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+        "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+        index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
+        PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+    if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    cfd_filelist_memaddpath(index,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHID,
+        PNR_IM_MSGTYPE_SYSPATH,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+        "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+        index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
+        PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
+    if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    cfd_filelist_memaddpath(index,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHID,
+        PNR_IM_MSGTYPE_SYSPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
+        "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
+        index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
+        PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
+
+    if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    cfd_filelist_memaddpath(index,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHID,
+        PNR_IM_MSGTYPE_SYSPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
+    return OK;
+}
 
 /***********************************************************************************
   Function:      cfdsql_msglogdb_init
@@ -1628,36 +1688,7 @@ int cfdsql_msglogdb_init(int index)
             return ERROR;
         }
         //插入默认目录
-		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
+		cfdsql_dbdefaultpath_init(index);
 	} 
     else 
 	{
@@ -1707,67 +1738,26 @@ int cfdsql_msglogdb_init(int index)
             return ERROR;
         }
         //插入默认目录
-		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
+        cfdsql_dbdefaultpath_init(index);
     }
     else if(db_id == 0)
     {
-         //插入默认目录
-		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_ALBUM,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_ALBUM,CFDFPATH_ALBUM_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
+        //插入默认目录
+        cfdsql_dbdefaultpath_init(index);
+    }
+    //获取当前db的id最大值,来判断是否有bakupcontent_tbl表
+    memset(sql_cmd,0,SQL_CMD_LEN);
+    snprintf(sql_cmd,SQL_CMD_LEN,"SELECT max(id) sqlite_sequence from bakupcontent_tbl;");
+    if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,dbget_int_result,&db_id,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        memset(sql_cmd,0,SQL_CMD_LEN);
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table bakupcontent_tbl("
+		    "id integer primary key autoincrement,userindex,timestamp,version,type,ukey,tkey,content,key,attach);");
+        if(sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_FOLDER,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_FOLDER,CFDFPATH_FOLDER_DEFAULTPATHID,CFDFPATH_ALBUM_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
-            sqlite3_free(errMsg);
-            return ERROR;
-        }
-        snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_filelist_tbl values("
-		    "NULL,%d,%d,%d,%d,0,%d,%d,0,%d,0,'','','%s','','','','','');",
-		    index,(int)time(NULL),DEFAULT_UINFO_VERSION,CFD_DEPNEDS_WXPATH,PNR_IM_MSGTYPE_SYSPATH,
-		    PNR_FILE_SRCFROM_WXPATH,CFDFPATH_WXPATH_DEFAULTPATHID,CFDFPATH_WXPATH_DEFAULTPATHNAME);
-        if (sqlite3_exec(g_msglogdb_handle[index],sql_cmd,0,0,&errMsg))
-        {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) sqlite cmd(%s) err(%s)",index,sql_cmd,errMsg);
             sqlite3_free(errMsg);
             return ERROR;
         }
@@ -8385,6 +8375,155 @@ int pnr_user_capacity_dbupdate(int index,unsigned int capacity)
     }
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_user_capacity_dbupdate(%s)",sql_cmd);
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_bakcontent_dbinsert
+  Description:  插入备份信息信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakcontent_dbinsert(int uindex,struct cfd_bakcont_common_struct* pmsg,int* p_repeat)
+{
+    int8* errMsg = NULL;
+    int count = 0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(pmsg == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_dbinsert:input err");
+        return ERROR;
+    }
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_dbinsert:bad");
+        return ERROR;
+    }
+    //bakupcontent_tbl("id integer primary key autoincrement,userindex,timestamp,version,type,ukey,tkey,content,key,attach);
+    //先检查是否有重复的
+    snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from bakupcontent_tbl where type=%d and ukey='%s' and timestamp=%lld;",pmsg->type,pmsg->ukey,pmsg->timestamp);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,dbget_int_result,&count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get count failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    if(count > 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get user(%s) time(%lld) count(%d)",pmsg->ukey,pmsg->timestamp,count);
+        *p_repeat = TRUE;
+        return OK;
+    }
+    *p_repeat = FALSE;
+    //id,userindex,timestamp,version,type,ukey,tkey,content,key,attach
+    snprintf(sql_cmd,SQL_CMD_LEN,"insert into bakupcontent_tbl values(null,%d,%lld,%d,%d,'%s','%s','%s','%s','%s');",
+             uindex,pmsg->timestamp,pmsg->version,pmsg->type,pmsg->ukey,pmsg->tkey,pmsg->content,pmsg->key,pmsg->attach);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_bakcontent_dbinsert:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_bakcontent_getcount_byukey
+  Description:  根据联系人统计备份信息条数
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakcontent_getcount_byukey(int uindex,char* p_ukey,int* p_count)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(p_count == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_getcount_byukey:input err");
+        return ERROR;
+    }
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_getcount_byukey:bad");
+        return ERROR;
+    }
+    //bakupcontent_tbl("id integer primary key autoincrement,userindex,timestamp,version,type,ukey,tkey,content,key,attach);
+    if(p_ukey == NULL)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from bakupcontent_tbl;");
+    }
+    else
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from bakupcontent_tbl where ukey='%s';",p_ukey);
+    }
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,dbget_int_result,p_count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get count failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_bakcontent_dbdelete_byids
+  Description:  根据id删除备份信息
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakcontent_dbdelete_byids(int uindex,char* pids)
+{
+    int8* errMsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(pids == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_dbdelete_byids:input err");
+        return ERROR;
+    }
+    if(uindex <= 0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_dbdelete_byids:bad");
+        return ERROR;
+    }
+    //bakupcontent_tbl("id integer primary key autoincrement,userindex,timestamp,version,type,ukey,tkey,content,key,attach);
+    
+    //id,userindex,timestamp,version,type,ukey,tkey,content,key,attach
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from bakupcontent_tbl where id in(%s);",pids);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_bakcontent_dbinsert:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);

@@ -10,7 +10,7 @@
 #include <sqlite3.h>
 #include <common_lib.h>
 #include "pn_imserver.h"
-
+#include "cfd_route.h"
 #define SQL_CMD_LEN 2048
 #define MSGSQL_CMD_LEN 4096
 #define MSGSQL_ALLOC_MAXLEN  60000
@@ -207,5 +207,8 @@ int pnr_filelist_dbinsert(int uindex,int msgid,int ftype,int depens,int srcfrom,
 int pnr_filelist_dbupdate_filename_byid(int uindex,int id,char* filename);
 int pnr_filelist_dbupdate_fileinfoall_byfid(int id,int uindex,int size,int timestamp,char* md5,char* fileinfo,char* fname,char* fpath,char* skey,char* dkey);
 int pnr_filelist_dbdelete_byid(int uindex,int id);
+int cfd_bakcontent_dbinsert(int uindex,struct cfd_bakcont_common_struct* pmsg,int* p_repeat);
+int cfd_bakcontent_dbdelete_byids(int uindex,char* pids);
+int cfd_bakcontent_getcount_byukey(int uindex,char* p_ukey,int* p_count);
 #endif
 

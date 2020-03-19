@@ -1020,7 +1020,7 @@ int cfd_uinfolistgetindex_byuidstr(char* p_uidstr)
         if(strcmp(gp_ruser_cachelist[hashid]->uidstr,p_uidstr) == OK)
         {
             g_rusers_cachematchnum++;
-            DEBUG_PRINT(DEBUG_LEVEL_INFO,"get uid(%d) index(%d) addr(%p)",gp_ruser_cachelist[hashid]->id,gp_ruser_cachelist[hashid]->index,gp_ruser_cachelist[hashid]);
+            //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get uid(%d) index(%d) addr(%p)",gp_ruser_cachelist[hashid]->id,gp_ruser_cachelist[hashid]->index,gp_ruser_cachelist[hashid]);
             return gp_ruser_cachelist[hashid]->index;
         }
     }
@@ -1396,6 +1396,49 @@ int cfd_uinfonode_addnew(int id,int index,int local,int type,int capacity,
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      cfd_uinfonode_deletebyuid
+  Description:  删除的用户信息节点
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        OK / ERROR
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_uinfonode_deletebyuid(int id)
+{
+    uint16 hashid = 0;
+    int uindex = 0;
+    if(id <= 0 || id > CFD_URECORD_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_uinfonode_deletebyuid:bad input");
+        return ERROR;
+    }
+    if(g_ruser_list[id].id != id)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_uinfonode_deletebyuid:uid(%d) is not null",id);
+        return ERROR;
+    }
+    cfd_rnode_userinfo_dbdelete_byuid(id);
+    memcpy(&hashid,g_ruser_list[id].uidstr,sizeof(uint16));
+    hashid = (hashid & CFD_URECORD_MAXNUM);
+    if(gp_ruser_cachelist[hashid] != NULL)
+    {
+        gp_ruser_cachelist[hashid] = NULL;
+    }
+    uindex = g_ruser_list[id].index;
+    if(uindex > 0 && gp_localuser[uindex] != NULL)
+    {
+        gp_localuser[uindex] = NULL;
+    }
+    memset(&g_ruser_list[id],0,sizeof(struct cfd_uinfo_struct));
+    return OK;
+}
 
 /**********************************************************************************
   Function:      cfd_uinfouidstr_dbget_byuindex
@@ -1494,6 +1537,41 @@ int cfd_rnode_userinfo_dbinsert(struct cfd_uinfo_struct *puser)
     }
     return OK;
 }
+/**********************************************************************************
+  Function:      cfd_rnode_userinfo_dbdelete_byuid
+  Description:  插入新的用户信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        OK / ERROR
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_rnode_userinfo_dbdelete_byuid(int id)
+{
+    char *errmsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    if(id <= 0 || id > CFD_URECORD_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_rnode_userinfo_dbdelete_byuid:bad input");
+        return ERROR;
+    }
+         
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from rnode_uinfo_tab where id=%d;",id); 
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_rnode_userinfo_dbdelete_byuid(%s)",sql_cmd);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errmsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errmsg);
+        sqlite3_free(errmsg);
+        return ERROR;
+    }
+    return OK;
+}
+
 /***********************************************************************************
   Function:      cfd_rnode_userinfo_dbinit
   Description:  新版的uinfo_tbl数据初始化
@@ -1742,6 +1820,40 @@ int cfd_uactive_newuser_dbinsert(struct cfd_useractive_struct *puser)
     snprintf(sql_cmd,SQL_CMD_LEN,"insert into rnode_uactive_tab values(%d,%d,%d,%d,%d,%d,'%s','%s');",
         puser->id,(int)time(NULL),puser->uindex,puser->status,puser->active_rid,puser->rid_num,puser->uidstr,puser->rid_liststr);    
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_uactive_newuser_dbinsert(%s)",sql_cmd);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errmsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errmsg);
+        sqlite3_free(errmsg);
+        return ERROR;
+    }
+    return OK;
+}
+/**********************************************************************************
+  Function:      cfd_uactive_deluser_dbbyuid
+  Description:  插入新的用户活跃信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        OK / ERROR
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_uactive_deluser_dbbyuid(int id)
+{
+    char *errmsg = NULL;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(id <= 0 || id > CFD_URECORD_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_uactive_deluser_dbbyuid:bad input");
+        return ERROR;
+    }
+    snprintf(sql_cmd,SQL_CMD_LEN,"delete from rnode_uactive_tab where id=%d;",id);    
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_uactive_deluser_dbbyuid(%s)",sql_cmd);
     if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errmsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errmsg);
@@ -2259,6 +2371,45 @@ int cfd_uactive_addnew(int id,int index,int active_rid,char* uidstr)
     {
         gp_cacheactive_hashlist[hashid] = &g_activeuser_list[id];
     }
+    pthread_mutex_unlock(&g_activeuser_lock[id]);
+    return OK;
+}
+/**********************************************************************************
+  Function:      cfd_uactive_delbyuid
+  Description:  删除用户活跃信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        OK / ERROR
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_uactive_delbyuid(int id)
+{
+    uint16 hashid = 0;
+    if(id <= 0 || id > CFD_URECORD_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_uactive_delbyuid:bad input");
+        return ERROR;
+    }
+    if(g_activeuser_list[id].id != id)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_uactive_delbyuid:uid(%d) is not null",id);
+        return ERROR;
+    }
+    pthread_mutex_lock(&g_activeuser_lock[id]);
+    cfd_uactive_deluser_dbbyuid(id);
+    memcpy(&hashid,g_activeuser_list[id].uidstr,sizeof(uint16));
+    hashid = (hashid & CFD_URECORD_MAXNUM);
+    if(gp_cacheactive_hashlist[hashid] != NULL)
+    {
+        gp_cacheactive_hashlist[hashid] = NULL;
+    }
+    memset(&g_activeuser_list[id],0,sizeof(struct cfd_useractive_struct));
     pthread_mutex_unlock(&g_activeuser_lock[id]);
     return OK;
 }
@@ -3319,6 +3470,36 @@ int cfd_filelist_addpath(int index,int pathid,int depens,char* pathname)
     return OK;
 }
 /**********************************************************************************
+  Function:      cfd_filelist_memaddpath
+  Description:   数据
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        OK / ERROR
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_filelist_memaddpath(int index,int pathid,int did,int type,int depens,char* pathname)
+{
+    if(pathid <= 0 || pathid > CFD_PATHS_MAXNUM || index <= 0 || index > PNR_IMUSER_MAXNUM || pathname == NULL)
+    {
+        return ERROR;
+    }
+    g_filelists[index].paths[pathid].depens = depens;
+    g_filelists[index].paths[pathid].type = type;
+    g_filelists[index].paths[pathid].pathid = pathid;
+    g_filelists[index].paths[pathid].id = did;
+    g_filelists[index].paths[pathid].lasttime = (int)time(NULL);
+    strcpy(g_filelists[index].paths[pathid].name,pathname);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) create filepath(%d:%s)",index,pathid,g_filelists[index].paths[pathid].name);
+    return OK;
+}
+
+/**********************************************************************************
   Function:      cfd_filelist_rename
   Description:   数据
   Calls:
@@ -3945,13 +4126,15 @@ int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
     if(to_uid <= 0)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get user(%d) to_id(%s) msg(%s)failed",mlist_id,pmsg->toid,pmsg->msg);
+        pnr_msgcache_dbdelete(pmsg->msgid, mlist_id);
         return ERROR;
     }
     rid = g_activeuser_list[to_uid].active_rid;
-    to_index = g_activeuser_list[to_uid].uindex;
+    to_index = g_ruser_list[to_uid].index;
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_usersend_textmessage:send(%d:%s) cmd(%d) rid(%d)",to_uid,to_idstring,pmsg->type,rid);
     if(rid == CFD_RNODE_DEFAULT_RID)
     {
+        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###to_uid(%d)to_index(%d):online_type(%d)appactive_flag(%d)",to_uid,to_index,g_imusr_array.usrnode[to_index].user_online_type,g_imusr_array.usrnode[to_index].appactive_flag);
         //走本地
         if (g_imusr_array.usrnode[to_index].user_online_type == USER_ONLINE_TYPE_LWS
             && g_imusr_array.usrnode[to_index].appactive_flag == PNR_APPACTIVE_STATUS_FRONT) 
@@ -5916,6 +6099,7 @@ int cfd_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         g_ruser_list[uid].version = DEFAULT_UINFO_VERSION;
                         g_ruser_list[uid].uinfo_seq = DEFAULT_UINFO_VERSION;
                         g_ruser_list[uid].friend_seq = DEFAULT_UINFO_VERSION;
+                        gp_localuser[index] = &g_ruser_list[uid];
                         cfd_uinfo_dbupdate_byuid(&g_ruser_list[uid]);
                         cfd_uactive_lastactive_update_byid(uid,(int)time(NULL),CFD_RNODE_DEFAULT_RID);
                     }
@@ -5952,7 +6136,7 @@ int cfd_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }        
     }
     //成功注册
-    if(ret_code == PNR_USER_LOGIN_OK)
+    if(ret_code == PNR_REGISTER_RETCODE_OK)
     {
         imuser_friendstatus_push(index,USER_ONLINE_STATUS_ONLINE);
         imuser_frienduinfo_sysch(index);
@@ -5970,15 +6154,17 @@ int cfd_user_register_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     g_account_array.admin_user_index = src_account.index;
                 }
             }
+            //非管理员用户的新用户，自动添加管理员为好友，向管理员推送通知，向新用户模拟发出欢迎信息
             if(g_account_array.admin_user_index > 0)
             {
                 pnr_autoadd_localfriend(index,g_account_array.admin_user_index,&account);
+                pnr_sysmsg_push_newuser(account.user_pubkey,account.nickname,account.user_pubkey);
+                cfd_newuser_welcome(index);
             }
         }
-        //pnr_sysmsg_push_newuser(account.toxid,account.nickname,account.user_pubkey);
+        g_activeuser_list[uid].active_rid = CFD_RNODE_DEFAULT_RID;
         g_imusr_array.usrnode[index].appactive_flag = PNR_APPACTIVE_STATUS_FRONT;
-        DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) register online", index, 
-            g_imusr_array.usrnode[index].user_toxid);
+        DEBUG_PRINT(DEBUG_LEVEL_INFO, "user(%d-%s) register online,uid(%d)", index,g_imusr_array.usrnode[index].user_toxid,uid);
     }
 
     //构建响应消息
@@ -6155,6 +6341,7 @@ int cfd_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
         DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
         return ERROR;
     }
+    memset(msg,0,sizeof(struct im_sendmsg_msgstruct));
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"From",msg->fromuser_toxid,TOX_ID_STR_LEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"To",msg->touser_toxid,TOX_ID_STR_LEN);
@@ -7263,6 +7450,567 @@ int cfd_bakaddrbookinfo_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
     free(ret_buff);
     return OK;
 }
+/**********************************************************************************
+  Function:      cfd_bakcontent_deal
+  Description: IM模块用户加密内容备份处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = PNR_SAVEMAIL_RET_OK;
+    int uindex = 0,num = 0,i = 0,record = 0,repeat_flag = FALSE;
+    struct cfd_bakcont_common_struct* p_commsg = NULL;
+    struct cfd_baksms_attach_struct sms_msg;
+    char userid[CFD_USER_PUBKEYLEN+1] = {0};
+    char * p_cache = NULL;
+    char* ret_buff = NULL;
+    cJSON* payload_root = NULL;
+    cJSON* payinfo = NULL;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    p_commsg = (struct cfd_bakcont_common_struct*)malloc(sizeof(struct cfd_bakcont_common_struct));
+    if(p_commsg == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"malloc failed");
+        return ERROR;
+    }
+    p_cache = (char*)malloc(IM_MSG_PAYLOAD_MAXLEN);
+    if(p_cache == NULL)
+    {
+        free(p_commsg);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"malloc failed");
+        return ERROR;
+    } 
+    memset(p_cache,0,IM_MSG_PAYLOAD_MAXLEN);
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",p_commsg->type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,CFD_USER_PUBKEYLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"num",num,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Payload",p_cache,IM_MSG_PAYLOAD_MAXLEN);
+    //CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",newfile.path,PNR_FILEPATH_MAXLEN);
+
+    //参数检查
+    uindex = cfd_getindexbyidstr(userid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get userid(%s) uindex(%d)",userid,uindex);
+    if (uindex<= 0 || p_commsg->type != CFD_BAKCONTENT_TYPE_SMS)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_deal:bad input userid(%s) type(%d)",userid,p_commsg->type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+    else
+    {
+        if (num > 0)
+        {
+            payload_root = cJSON_Parse(p_cache);
+            if(payload_root == NULL) 
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get payload_root failed");
+                ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+            }
+            for(i = 0; i< num ;i++)
+            {
+                payinfo = cJSON_GetArrayItem(payload_root,i);
+                if(payinfo != NULL)
+                {
+                    memset(p_commsg,0,sizeof(struct cfd_bakcont_common_struct));
+                    memset(&sms_msg,0,sizeof(struct cfd_baksms_attach_struct));
+                    p_commsg->type = CFD_BAKCONTENT_TYPE_SMS;
+                    p_commsg->version = 1;
+                    CJSON_GET_VARINT_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Id",sms_msg.id,0);
+                    CJSON_GET_VARSTR_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Tel",p_commsg->ukey,CFD_KEYWORD_MAXLEN);
+                    CJSON_GET_VARINT_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Uid",sms_msg.uid,0);
+                    CJSON_GET_VARLONG_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Time",p_commsg->timestamp,0);
+                    CJSON_GET_VARINT_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Read",sms_msg.read,0);
+                    CJSON_GET_VARINT_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Send",sms_msg.send,0);
+                    CJSON_GET_VARSTR_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"User",sms_msg.user,CFD_KEYWORD_MAXLEN);
+                    CJSON_GET_VARSTR_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Title",p_commsg->tkey,CFD_KEYWORD_MAXLEN);
+                    CJSON_GET_VARSTR_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Cont",p_commsg->content,CFD_CONTENT_MAXLEN);
+                    CJSON_GET_VARSTR_BYKEYWORD(payinfo,tmp_item,tmp_json_buff,"Key",p_commsg->key,CFD_KEYWORD_MAXLEN);
+                    snprintf(p_commsg->attach,CFD_ATTACHINFO_MAXLEN,"%d,%d,%d,%d,%s",sms_msg.id,sms_msg.uid,sms_msg.read,sms_msg.send,sms_msg.user);
+                    if(cfd_bakcontent_dbinsert(uindex,p_commsg,&repeat_flag) == OK && repeat_flag == FALSE)
+                    {
+                        record++;
+                    }
+                }
+            }
+        }
+    }
+    free(p_commsg);
+    free(p_cache);
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_BAKCONTENT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(record));    
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      cfd_bakcontent_getstas_deal
+  Description: IM模块用户加密内容统计信息处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_bakcontent_getstas_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = PNR_SAVEMAIL_RET_OK;
+    int uindex = 0,num = 0,type = 0;
+    char userid[CFD_USER_PUBKEYLEN+1] = {0};
+    char* ret_buff = NULL;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,CFD_USER_PUBKEYLEN);
+    //参数检查
+    uindex = cfd_getindexbyidstr(userid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get userid(%s) uindex(%d)",userid,uindex);
+    if (uindex<= 0 || type != CFD_BAKCONTENT_TYPE_SMS)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_bakcontent_getstas_deal:bad input userid(%s) type(%d)",userid,type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+    else
+    {
+        cfd_bakcontent_getcount_byukey(uindex,NULL,&num);
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETBAKCONTENTSTAT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "Type", cJSON_CreateNumber(type));    
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));    
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
+  Function:      cfd_pullbakcontent_deal
+  Description: IM模块用户加密内容拉取处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_pullbakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = PNR_SAVEMAIL_RET_OK;
+    int uindex = 0,num = 0,i = 0,type = 0,startid = 0,count = 0;
+    struct cfd_baksms_attach_struct smsmsg;
+    struct cfd_bakcont_common_struct* p_commsg = NULL;
+    char userid[CFD_USER_PUBKEYLEN+1] = {0};
+    char ukey[CFD_USER_PUBKEYLEN+1] = {0};
+    char cache_sql[CFD_USER_PUBKEYLEN+1] = {0};
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    char* ret_buff = NULL;
+    char **dbResult; 
+    char *errmsg;
+    int nRow, nColumn,offset=0;
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    p_commsg = (struct cfd_bakcont_common_struct*)malloc(sizeof(struct cfd_bakcont_common_struct));
+    if(p_commsg == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"malloc failed");
+        return ERROR;
+    }
+       
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,CFD_USER_PUBKEYLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"num",num,0);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"StartId",startid,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Tel",ukey,CFD_USER_PUBKEYLEN);
+    //CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",newfile.path,PNR_FILEPATH_MAXLEN);
+
+    //参数检查
+    uindex = cfd_getindexbyidstr(userid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get userid(%s) uindex(%d)",userid,uindex);
+    if (uindex<= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullbakcontent_deal:bad input userid(%s) type(%d)",userid,type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+    else if(type == CFD_PULLBAKCONTENT_TYPE_PULLBYUSR && strlen(ukey) <= 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullbakcontent_deal:bad input ukey(%s) type(%d)",ukey,type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+    else if(type < CFD_PULLBAKCONTENT_TYPE_PULLLIST || type >= CFD_PULLBAKCONTENT_TYPE_BUTT)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_pullbakcontent_deal:bad input type(%d)",type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    cJSON *pJsonArry = cJSON_CreateArray();
+    cJSON *pJsonsub = NULL;
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        free(p_commsg);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_PULLBAKCONTENT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Type", cJSON_CreateNumber(type));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    if(ret_code == OK)
+    {
+        switch(type)
+        {
+            case CFD_PULLBAKCONTENT_TYPE_PULLLIST:
+                snprintf(sql_cmd,SQL_CMD_LEN,"select * from bakupcontent_tbl where (ukey,timestamp) in (select ukey,max(timestamp) from bakupcontent_tbl group by ukey) ");
+                if(startid > 0)
+                {
+                    memset(cache_sql,0,CFD_USER_PUBKEYLEN);
+                    snprintf(cache_sql,CFD_USER_PUBKEYLEN,"and id<%d ",startid);
+                    strcat(sql_cmd,cache_sql);
+                }
+                strcat(sql_cmd,"order by timestamp desc ");
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
+                //bakupcontent_tbl(id,userindex,timestamp,version,type,ukey,tkey,content,key,attach)
+                if(sqlite3_get_table(g_msglogdb_handle[uindex], sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
+                {
+                    offset = nColumn; //字段值从offset开始呀
+                    for( i = 0; i < nRow ; i++ )
+                    {   
+                        //id,timestamp,version,tkey,content,key,attach 
+                        memset(p_commsg,0,sizeof(struct cfd_bakcont_common_struct));
+                        p_commsg->did = atoi(dbResult[offset]);
+                        p_commsg->timestamp = atoll(dbResult[offset+2]);
+                        p_commsg->version = atoi(dbResult[offset+3]);
+                        p_commsg->type = atoi(dbResult[offset+4]);
+                        snprintf(p_commsg->ukey,CFD_KEYWORD_MAXLEN,"%s",dbResult[offset+5]);
+                        snprintf(p_commsg->tkey,CFD_KEYWORD_MAXLEN,"%s",dbResult[offset+6]);
+                        snprintf(p_commsg->content,CFD_CONTENT_MAXLEN,"%s",dbResult[offset+7]);
+                        snprintf(p_commsg->key,CFD_KEYWORD_MAXLEN,"%s",dbResult[offset+8]);
+                        snprintf(p_commsg->attach,CFD_ATTACHINFO_MAXLEN,"%s",dbResult[offset+9]);
+                        offset += nColumn;
+                        pJsonsub = cJSON_CreateObject();
+                        if(pJsonsub == NULL)
+                        {
+                            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                            cJSON_Delete(ret_root);
+                            cJSON_Delete(ret_params);
+                            cJSON_Delete(pJsonArry);
+                            free(p_commsg);
+                            return ERROR;
+                        }
+                        //sms_msg.id,sms_msg.uid,sms_msg.read,sms_msg.send,sms_msg.user
+                        memset(&smsmsg,0,sizeof(smsmsg));
+                        sscanf(p_commsg->attach,"%d,%d,%d,%d,%s",&smsmsg.id,&smsmsg.uid,&smsmsg.read,&smsmsg.send,smsmsg.user);
+                        DEBUG_PRINT(DEBUG_LEVEL_INFO,"get attach(%s),read(%d) send(%d)",p_commsg->attach,smsmsg.read,smsmsg.send);
+                        cJSON_AddItemToArray(pJsonArry,pJsonsub); 
+                        cJSON_AddNumberToObject(pJsonsub,"Index",p_commsg->did); 
+                        cJSON_AddStringToObject(pJsonsub,"Tel",p_commsg->ukey);
+                        cfd_bakcontent_getcount_byukey(uindex,p_commsg->ukey,&count);
+                        cJSON_AddNumberToObject(pJsonsub,"Num",count); 
+                        cJSON_AddNumberToObject(pJsonsub,"Uid",smsmsg.uid); 
+                        cJSON_AddNumberToObject(pJsonsub,"Time",p_commsg->timestamp); 
+                        cJSON_AddNumberToObject(pJsonsub,"Read",smsmsg.read); 
+                        cJSON_AddNumberToObject(pJsonsub,"Send",smsmsg.send); 
+                        cJSON_AddStringToObject(pJsonsub,"User",smsmsg.user); 
+                        cJSON_AddStringToObject(pJsonsub,"Title",p_commsg->tkey); 
+                        cJSON_AddStringToObject(pJsonsub,"Cont",p_commsg->content); 
+                        cJSON_AddStringToObject(pJsonsub,"Key",p_commsg->key); 
+                    }
+                    num = i;
+                    sqlite3_free_table(dbResult);
+                }
+                cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));
+                break;
+            case CFD_PULLBAKCONTENT_TYPE_PULLBYUSR:
+                snprintf(sql_cmd,SQL_CMD_LEN,"select id,timestamp,version,tkey,content,key,attach from bakupcontent_tbl where type=%d and ukey='%s' ",CFD_BAKCONTENT_TYPE_SMS,ukey);
+                if(startid > 0)
+                {
+                    memset(cache_sql,0,CFD_USER_PUBKEYLEN);
+                    snprintf(cache_sql,CFD_USER_PUBKEYLEN,"and timestamp < (select timestamp from bakupcontent_tbl where id=%d) ",startid);
+                    strcat(sql_cmd,cache_sql);
+                }
+                strcat(sql_cmd,"order by timestamp desc ");
+                if(num > 0)
+                {
+                    memset(cache_sql,0,CFD_USER_PUBKEYLEN);
+                    snprintf(cache_sql,CFD_USER_PUBKEYLEN,"limit %d",num);
+                    strcat(sql_cmd,cache_sql);
+                }
+                //strcat(sql_cmd,")temp order by id;");
+                DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
+                if(sqlite3_get_table(g_msglogdb_handle[uindex], sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
+                {
+                    offset = nColumn; //字段值从offset开始呀
+                    for( i = 0; i < nRow ; i++ )
+                    {	
+                        //id,timestamp,version,tkey,content,key,attach 
+                        memset(p_commsg,0,sizeof(struct cfd_bakcont_common_struct));
+                        p_commsg->did = atoi(dbResult[offset]);
+                        p_commsg->timestamp = atoll(dbResult[offset+1]);
+                        p_commsg->version = atoi(dbResult[offset+2]);
+                        snprintf(p_commsg->tkey,CFD_KEYWORD_MAXLEN,"%s",dbResult[offset+3]);
+                        snprintf(p_commsg->content,CFD_CONTENT_MAXLEN,"%s",dbResult[offset+4]);
+                        snprintf(p_commsg->key,CFD_KEYWORD_MAXLEN,"%s",dbResult[offset+5]);
+                        snprintf(p_commsg->attach,CFD_ATTACHINFO_MAXLEN,"%s",dbResult[offset+6]);
+                        offset += nColumn;
+                        pJsonsub = cJSON_CreateObject();
+                        if(pJsonsub == NULL)
+                        {
+                            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                            cJSON_Delete(ret_root);
+                            cJSON_Delete(ret_params);
+                            cJSON_Delete(pJsonArry);
+                            free(p_commsg);
+                            return ERROR;
+                        }
+                        //sms_msg.id,sms_msg.uid,sms_msg.read,sms_msg.send,sms_msg.user
+                        memset(&smsmsg,0,sizeof(smsmsg));
+                        sscanf(p_commsg->attach,"%d,%d,%d,%d,%s",&smsmsg.id,&smsmsg.uid,&smsmsg.read,&smsmsg.send,smsmsg.user);
+                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get attach(%s),read(%d) send(%d)",p_commsg->attach,smsmsg.read,smsmsg.send);
+                        cJSON_AddItemToArray(pJsonArry,pJsonsub); 
+                        cJSON_AddNumberToObject(pJsonsub,"Index",p_commsg->did); 
+                        cJSON_AddStringToObject(pJsonsub,"Tel",ukey); 
+                        cJSON_AddNumberToObject(pJsonsub,"Num",1); 
+                        cJSON_AddNumberToObject(pJsonsub,"Uid",smsmsg.uid); 
+                        cJSON_AddNumberToObject(pJsonsub,"Time",p_commsg->timestamp); 
+                        cJSON_AddNumberToObject(pJsonsub,"Read",smsmsg.read); 
+                        cJSON_AddNumberToObject(pJsonsub,"Send",smsmsg.send); 
+                        cJSON_AddStringToObject(pJsonsub,"User",smsmsg.user); 
+                        cJSON_AddStringToObject(pJsonsub,"Title",p_commsg->tkey); 
+                        cJSON_AddStringToObject(pJsonsub,"Cont",p_commsg->content); 
+                        cJSON_AddStringToObject(pJsonsub,"Key",p_commsg->key); 
+                    }
+                    num = i;
+                    sqlite3_free_table(dbResult);
+                }
+                cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));
+                cJSON_AddItemToObject(ret_params, "Tel", cJSON_CreateString(ukey));
+                break;
+            case CFD_PULLBAKCONTENT_TYPE_PULLSTATS:
+                snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from bakupcontent_tbl;");
+                if(sqlite3_exec(g_msglogdb_handle[uindex],sql_cmd,dbget_int_result,&num,&errmsg))
+                {
+                    DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get count failed");
+                    sqlite3_free(errmsg);
+                    return ERROR;
+                }
+                cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));
+                break;
+            default:
+                break;
+        }
+    }
+    if(type == CFD_PULLBAKCONTENT_TYPE_PULLLIST || type == CFD_PULLBAKCONTENT_TYPE_PULLBYUSR)
+    {
+        cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
+    }
+    else
+    {
+        cJSON_AddItemToObject(ret_params,"Payload", cJSON_CreateString(""));
+    }
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    free(p_commsg);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
+/**********************************************************************************
+  Function:      cfd_delbakcontent_deal
+  Description: IM模块用户加密内容删除处理函数
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_delbakcontent_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = PNR_SAVEMAIL_RET_OK;
+    int uindex = 0,num = 0,type = 0;
+    char userid[CFD_USER_PUBKEYLEN+1] = {0};
+    char ids_cache[CFD_ATTACHINFO_MAXLEN+1] = {0};
+    char* ret_buff = NULL;
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Type",type,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,CFD_USER_PUBKEYLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"Num",num,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Index",ids_cache,CFD_ATTACHINFO_MAXLEN);
+    //CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PathName",newfile.path,PNR_FILEPATH_MAXLEN);
+
+    //参数检查
+    uindex = cfd_getindexbyidstr(userid);
+    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get userid(%s) uindex(%d)",userid,uindex);
+    if (uindex<= 0 || type != CFD_BAKCONTENT_TYPE_SMS)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_delbakcontent_deal:bad input userid(%s) type(%d)",userid,type);
+        ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+    }
+    else if(num<=0 || num > CFD_IDARRAY_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_delbakcontent_deal:bad input num(%d)",num);
+        ret_code = CFD_BAKFILE_RETURN_NOSPACE;
+    }
+    else
+    {
+        if(cfd_bakcontent_dbdelete_byids(uindex,ids_cache) != OK)
+        {
+            ret_code = CFD_BAKFILE_RETURN_BADPARAMS;
+        }
+    }
+    
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    cJSON * ret_params = cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_DELBAKCONTENT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "Type", cJSON_CreateNumber(type));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));    
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
 
 /**********************************************************************************
   Function:      cfd_nodeonline_notice_deal
@@ -7593,6 +8341,7 @@ int cfd_user_onlinestatus_show(void)
             }
         }
     }
+    return OK;
 }
 /*****************************************************************************
  函 数 名  : rnode_friends_reconnect
@@ -7637,5 +8386,92 @@ int rnode_friends_reconnect(int node_fid)
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "rnode(%d:%s) connected noneed reconn",node_fid,g_rlist_node[node_fid].nodeid);
     }
 	return OK;  
+}
+char g_newerwelcome_msgstring[IM_MSG_MAXLEN] = {"aGkgZnJpZW5k77yMd2VsY29tZSB0byBteSBjb25maWRhbnTvvIE="};
+char g_newerwelcome_signstring[IM_MSG_MAXLEN] = "================================";
+char g_newerwelcome_noncestring[IM_MSG_MAXLEN] = "================================";
+int g_welcome_uindex = 0;
+/**********************************************************************************
+  Function:      cfd_newuser_welcome_task
+  Description: 新用户的欢迎信息任务
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+void* cfd_newuser_welcome_task(void *para)
+{
+    struct im_sendmsg_msgstruct *msg = NULL;
+    int admin_uid = 0;
+    int uindex = g_welcome_uindex;
+    if(uindex <=0 || uindex > PNR_IMUSER_MAXNUM)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "uindex(%d) err",uindex);
+        return NULL;
+    }
+    if(gp_localuser[uindex] == NULL || gp_localuser[PNR_ADMINUSER_PSN_INDEX] == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "gp_localuser(%d) (%p,%p)",uindex,gp_localuser[uindex],gp_localuser[PNR_ADMINUSER_PSN_INDEX]);
+        return NULL;
+    }
+    msg = (struct im_sendmsg_msgstruct *)calloc(1, sizeof(*msg));
+    if (!msg) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "calloc err");
+        return NULL;
+    }
+    sleep(1);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"#### user(%d),cfd_newuser_welcome",uindex);
+    //模拟管理员发给该用户一条欢迎消息
+    memset(msg,0,sizeof(struct im_sendmsg_msgstruct));
+    admin_uid = gp_localuser[PNR_ADMINUSER_PSN_INDEX]->id;
+    strcpy(msg->fromuser_toxid,g_ruser_list[admin_uid].uidstr);
+    strcpy(msg->touser_toxid,gp_localuser[uindex]->uidstr);
+    strcpy(msg->fromuser,msg->fromuser_toxid);
+    strcpy(msg->touser,msg->touser_toxid);
+    strcpy(msg->msg_buff,g_newerwelcome_msgstring);
+    strcpy(msg->sign,g_newerwelcome_signstring);
+    strcpy(msg->nonce,g_newerwelcome_noncestring);
+    msg->msgtype = PNR_IM_MSGTYPE_TEXT;
+    pnr_msglog_getid(PNR_ADMINUSER_PSN_INDEX, &msg->log_id);
+    pnr_msglog_dbupdate_v3(PNR_ADMINUSER_PSN_INDEX,msg->msgtype,msg->log_id,MSG_STATUS_SENDOK,msg->fromuser,
+                msg->touser,msg->msg_buff,msg->sign,msg->nonce,msg->prikey,NULL,msg->ext2);
+    im_pushmsg_callback(uindex,PNR_IM_CMDTYPE_PUSHMSG,TRUE,PNR_API_VERSION_V6,(void *)msg);
+    free(msg); 
+    return NULL;
+}
+/**********************************************************************************
+  Function:      cfd_newuser_welcome
+  Description: 新用户的欢迎信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_newuser_welcome(int uindex)
+{
+	pthread_t tid;
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_newuser_welcome: newuser(%d)",uindex);
+    g_welcome_uindex = uindex;
+    if (pthread_create(&tid, NULL,cfd_newuser_welcome_task,NULL) != 0) 
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create cfd_newuser_welcome failed");
+        return ERROR;
+    }
+    return OK;
 }
 

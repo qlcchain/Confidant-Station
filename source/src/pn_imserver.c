@@ -6102,7 +6102,7 @@ OUT:
 
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_UPLOADFILEREQ));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
-
+    cJSON_AddItemToObject(ret_params, "FileName", cJSON_CreateString(filename));
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);
     *retmsg_len = strlen(ret_buff);
@@ -7452,6 +7452,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_GETBAKADDRBOOKINFO;
             }
+            else if(strcasecmp(action_buff,PNR_IMCMD_BAKCONTENT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_BAKCONTENT;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -7517,6 +7521,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_EMCMD_DELEMAIL) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_DELEMAIL;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_DELBAKCONTENT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_DELBAKCONTENT;
             }
             else
             {
@@ -7638,6 +7646,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_IMCMD_GETCAPACITY) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_GETCAPACITY;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_GETBAKCONTENTSTAT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETBAKCONTENTSTAT;
             }
             else
             {
@@ -7768,6 +7780,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_EMCMD_PULL_EMAILLIST) == OK)
             {
                 phead->im_cmdtype = PNR_EM_CMDTYPE_PULL_EMAILLIST;
+            }
+            else if(strcasecmp(action_buff,PNR_IMCMD_PULLBAKCONTENT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_PULLBAKCONTENT;
             }
             else
             {
@@ -8508,7 +8524,8 @@ int im_create_normaluser_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     else
     {
-        pnr_account_dbget_byuserid(&admin_account);
+        cfd_toxidformatidstr(admin_account.toxid,admin_account.user_pubkey);
+        pnr_account_dbget_byuserkey(&admin_account);
         if(admin_account.active != TRUE || admin_account.type != PNR_USER_TYPE_ADMIN)
         {
             DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_create_normaluser_cmd_deal:admin_user(%s) active(%d) failed",admin_account.toxid,admin_account.active);
@@ -9075,7 +9092,7 @@ int im_routerlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
         }
         ret_code = PNR_ROUTERLOGIN_RETCODE_BADMAC;
     }
-    else if(strcmp(loginkey,g_devadmin_loginkey) != OK)
+    else if(strncasecmp(loginkey,g_devadmin_loginkey,PNR_LOGINKEY_MAXLEN) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_routerlogin_deal bad loginkey:input(%s) but real(%s)",
             loginkey,g_devadmin_loginkey);
@@ -15355,8 +15372,10 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
             *plws_index = uindex;
         }
     }
-    pnr_account_dbget_byuserid(&from_account);
-    if(from_account.type != PNR_USER_TYPE_ADMIN)
+    cfd_toxidformatidstr(from_account.toxid,from_account.user_pubkey);
+    pnr_account_dbget_byuserkey(&from_account);
+    if(from_account.active != TRUE || from_account.type != PNR_USER_TYPE_ADMIN)
+    //if(from_account.type != PNR_USER_TYPE_ADMIN)
     //if(strcmp(fromid,g_account_array.account[PNR_ADMINUSER_PSN_INDEX].toxid) != OK)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad fromid(%s) type(%d)",from_account.toxid,from_account.type);
@@ -15505,6 +15524,12 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 else
                 {
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"user(%d) tox_status(%d) not exit",uindex,g_imusr_array.usrnode[uindex].tox_status);
+                }
+                if(gp_localuser[uindex] != NULL)
+                {
+                    int uid = gp_localuser[uindex]->id;
+                    cfd_uactive_delbyuid(uid);
+                    cfd_uinfonode_deletebyuid(uid);
                 }
                 g_imusr_array.cur_user_num --;
                 pthread_mutex_unlock(&g_pnruser_lock[uindex]);
@@ -20732,6 +20757,11 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_BAKFILE,PNR_API_VERSION_V6,TRUE,cfd_bakfile_deal},
     {PNR_IM_CMDTYPE_FILEACTION,PNR_API_VERSION_V6,TRUE,cfd_fileaction_deal},
     {PNR_IM_CMDTYPE_GETBAKADDRBOOKINFO,PNR_API_VERSION_V6,TRUE,cfd_bakaddrbookinfo_get_deal},
+    //用户备份信息操作
+    {PNR_IM_CMDTYPE_BAKCONTENT,PNR_API_VERSION_V6,TRUE,cfd_bakcontent_deal},
+    {PNR_IM_CMDTYPE_PULLBAKCONTENT,PNR_API_VERSION_V6,TRUE,cfd_pullbakcontent_deal},
+    {PNR_IM_CMDTYPE_DELBAKCONTENT,PNR_API_VERSION_V6,TRUE,cfd_delbakcontent_deal},
+    {PNR_IM_CMDTYPE_GETBAKCONTENTSTAT,PNR_API_VERSION_V6,TRUE,cfd_bakcontent_getstas_deal},
     //用户状态同步消息
     {PNR_IM_CMDTYPE_UINFOKEY_SYSCH,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_sysch_deal},
     {PNR_IM_CMDTYPE_UINFOKEY_REPLY,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_reply_deal},
@@ -20912,7 +20942,7 @@ int pnr_cmdbylws_handle(struct per_session_data__minimal *pss,char* pmsg,
     root = cJSON_Parse(pmsg);
     if(root == NULL) 
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get root failed");
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get root failed,pmsg(%s)",pmsg);
         return ERROR;
     }
 	pmsg[msg_len] = 0;	/* 避免打印乱码 */
@@ -21489,7 +21519,7 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
             }
 			if (!pss->fd) 
             {
-                //DEBUG_PRINT(DEBUG_LEVEL_INFO,"get porperty_flag(%d) ver_str(%d)",(int)pfile->porperty_flag,(int)pfile->ver_str);
+                DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_rcv_file_deal_bin:get porperty_flag(%d) action(%d)",pfile->porperty_flag,action);
                 //添加邮箱备份处理
                 if(action == PNR_IM_MSGTYPE_EMAILFILE || action == PNR_IM_MSGTYPE_EMAILATTACH)
                 {
@@ -21501,7 +21531,6 @@ void im_rcv_file_deal_bin(struct per_session_data__minimal_bin *pss, char *pmsg,
                 }
                 else if(pfile->porperty_flag != 0 && pfile->porperty_flag != 0x30)//字符的0
                 {
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_rcv_file_deal_bin:get porperty_flag(%d)",pfile->porperty_flag);
                     if(pfile->porperty_flag == CFD_FILE_PROPERTY_BAKALBUM || pfile->porperty_flag == CFD_FILE_PROPERTY_BAKFPATH)
                     {
                         srcfrom = PNR_FILE_SRCFROM_ALBUM;
