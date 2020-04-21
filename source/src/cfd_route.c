@@ -5106,6 +5106,12 @@ int cfd_userlogin_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     ret_code = PNR_LOGIN_RETCODE_BAD_UID;
                     DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userlogin_deal:input usr(%s) index(%d)",uid_str,index);
                 }
+				//检查同步usersn
+				if(strlen(user_sn) <= 0)
+				{
+					strcpy(user_sn,g_account_array.account[index].user_sn);
+					DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userlogin_deal:attach usr(%d) user_sn(%d)",index,user_sn);
+				}
                 //检查并更新nickname
                 else if((strlen(nickname) > 0) && (strcmp(nickname,g_ruser_list[uid].uname) != OK))
                 {
