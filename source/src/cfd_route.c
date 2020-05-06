@@ -4162,9 +4162,15 @@ int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
                     case PNR_IM_CMDTYPE_PUSHMSG:
                     case PNR_IM_CMDTYPE_PUSHFILE:
                     case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
-                        //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                        post_newmsg_notice(g_daemon_tox.user_toxid,to_idstring,
-                            PNR_POSTMSG_PAYLOAD,TRUE,pmsg->msgid);                                    
+                        DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) cmd(%d) post_newmsg_notice: from(%s) to(%d:%s)###",
+							mlist_id,pmsg->type,pmsg->fromid,to_index,pmsg->toid);
+						if(mlist_id != to_index)
+						{
+							memset(to_idstring,0,CFD_USER_PUBKEYLEN);
+							cfd_toxidformatidstr(pmsg->fromid,to_idstring);
+							DEBUG_PRINT(DEBUG_LEVEL_INFO,"post_newmsg_notice reset targetid");
+						}
+						post_newmsg_notice(g_daemon_tox.user_toxid,to_idstring,PNR_POSTMSG_PAYLOAD,TRUE,pmsg->msgid);  
                         break;
                     case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                         pnr_postmsgs_cache_save(pmsg->msgid,to_idstring,&g_group_pushmsgs_cache);
@@ -4225,9 +4231,10 @@ int cfd_usersend_textmessage(int mlist_id,struct lws_cache_msg_struct * pmsg)
                     case PNR_IM_CMDTYPE_PUSHMSG:
                     case PNR_IM_CMDTYPE_PUSHFILE:
                     case PNR_IM_CMDTYPE_PUSHFILE_TOX: 
+						DEBUG_PRINT(DEBUG_LEVEL_INFO,"###userid(%d) cmd(%d) post_newmsg_notice: from(%s) to(%d:%s)###",
+							pmsg->userid,pmsg->type,pmsg->fromid,to_index,pmsg->toid);
                         //DEBUG_PRINT(DEBUG_LEVEL_INFO,"###user(%d) msg(%d) post_newmsg_notice###",msg->userid,msg->msgid);
-                        post_newmsg_notice(g_daemon_tox.user_toxid,g_imusr_array.usrnode[pmsg->userid].user_toxid,
-                            PNR_POSTMSG_PAYLOAD,TRUE,pmsg->msgid);                                    
+                        post_newmsg_notice(g_daemon_tox.user_toxid,pmsg->toid,PNR_POSTMSG_PAYLOAD,TRUE,pmsg->msgid);                                    
                         break;
                     case PNR_IM_CMDTYPE_GROUPMSGPUSH:
                         pnr_postmsgs_cache_save(pmsg->msgid,g_imusr_array.usrnode[pmsg->userid].user_toxid,&g_group_pushmsgs_cache);
@@ -4564,6 +4571,10 @@ int cfd_usertox_textmsgcache_dbinsert(int userid,int msgid, char *fromid, char *
 	}
 	list_add_tail(&msg->list, &g_lws_cache_msglist[userid].list);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) list addmsg(%s)",userid,msg->msg);
+	if(type == PNR_IM_CMDTYPE_PUSHMSG)
+	{
+		DEBUG_PRINT(DEBUG_LEVEL_INFO,"PUSHMSG from(%s) to(%s)",msg->fromid,msg->toid);
+	}
 OUT:
     pthread_mutex_unlock(&lws_cache_msglock[userid]);
     if(sql_len == MSGSQL_ALLOC_MAXLEN)
