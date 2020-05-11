@@ -5667,20 +5667,20 @@ int cfd_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
              snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,filepath,filesize,sign,nonce,prikey,id from cfd_msglog_tbl where "
 				"userindex=%d and ((from_user='%s' and to_user='%s') or "
-				"(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
+				"(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d,%d) "
 				"order by id desc limit %d)temp order by id;",
                 index, pfrom, pto,pto, pfrom,
-                PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
+                PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, PNR_IM_MSGTYPE_EMAILRECEIPTSEND,msgnum);
         }
         else
         {
             snprintf(sql_cmd, SQL_CMD_LEN, "select * from(select id,logid,timestamp,status,"
 				"from_user,to_user,msg,msgtype,filepath,filesize,sign,nonce,prikey,id from cfd_msglog_tbl where "
 				"userindex=%d and id<%d and ((from_user='%s' and to_user='%s') or "
-                "(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d) "
+                "(from_user='%s' and to_user='%s')) and msgtype not in (%d,%d,%d) "
                 "order by id desc limit %d)temp order by id;",
                 index,pmsg->log_id, pfrom, pto,pto, pfrom,
-                PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, msgnum);
+                PNR_IM_MSGTYPE_SYSTEM, PNR_IM_MSGTYPE_AVATAR, PNR_IM_MSGTYPE_EMAILRECEIPTSEND,msgnum);
         }
 
         DEBUG_PRINT(DEBUG_LEVEL_INFO, "sql_cmd(%s)",sql_cmd);
@@ -6342,12 +6342,13 @@ int cfd_replaymsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
 int cfd_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
 	int* plws_index, struct imcmd_msghead_struct *head)
 {
-    struct im_sendmsg_msgstruct *msg;
+    struct im_sendmsg_msgstruct *msg = NULL;
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
     int ret_code = 0;
     char* ret_buff = NULL;
     int index = 0,fid = 0,target_associd = 0;
+    int msgtype = -1;
 	cJSON *ret_root = NULL;
     cJSON *ret_params = NULL;
     if (!params) {
@@ -6367,15 +6368,30 @@ int cfd_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",msg->nonce,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",msg->prikey,PNR_RSA_KEY_MAXLEN);
     CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"AssocId",msg->ext2,TOX_ID_STR_LEN);
-    msg->msgtype = PNR_IM_MSGTYPE_TEXT;
+	//新版本添加消息类型支持
+	CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",msgtype,PNR_RSA_KEY_MAXLEN);
+	if(msgtype  == -1)
+	{
+		msg->msgtype = PNR_IM_MSGTYPE_TEXT;
+	}
+	else
+	{
+		if (ntohl(msgtype) == PNR_IM_MSGTYPE_EMAILRECEIPTSEND || msgtype == PNR_IM_MSGTYPE_EMAILRECEIPTSEND)
+		{
+			msg->msgtype = PNR_IM_MSGTYPE_EMAILRECEIPTSEND;
+		}
+		else
+		{
+			msg->msgtype = msgtype;
+		}
+	}
 
     cfd_toxidformatidstr(msg->fromuser_toxid,msg->fromuser);
     cfd_toxidformatidstr(msg->touser_toxid,msg->touser);
    
     if(strcmp(msg->fromuser,msg->touser) == OK)
     {
-       DEBUG_PRINT(DEBUG_LEVEL_ERROR,"userid repeat(%s->%s)",
-            msg->fromuser_toxid,msg->touser_toxid); 
+       DEBUG_PRINT(DEBUG_LEVEL_ERROR,"userid repeat(%s->%s)",msg->fromuser_toxid,msg->touser_toxid); 
        ret_code = PNR_MSGSEND_RETCODE_FAILED;
     }
     else if(strlen(msg->msg_buff) > IM_MSG_PAYLOAD_MAXLEN)
@@ -6411,7 +6427,6 @@ int cfd_sendmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pnr_msglog_getid(index, &msg->log_id);
             pnr_msglog_dbupdate_v3(index,msg->msgtype,msg->log_id,MSG_STATUS_SENDOK,msg->fromuser,
                 msg->touser,msg->msg_buff,msg->sign,msg->nonce,msg->prikey,NULL,msg->ext2);
-
             ret_code = PNR_MSGSEND_RETCODE_OK;
 			head->forward = TRUE;
             //这里需要重新做一个映射转换

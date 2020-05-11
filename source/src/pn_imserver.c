@@ -2189,12 +2189,17 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 pnr_msglog_getid(index, &msgid);
                 if(apiversion == PNR_API_VERSION_V1)
                 {
-                    pnr_msglog_dbinsert_specifyid(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
+                    pnr_msglog_dbinsert_specifyid(index,psendmsg->msgtype,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
                         psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->msg_srckey,psendmsg->msg_dstkey,NULL,psendmsg->ext2);                
                 }
                 else if(apiversion >= PNR_API_VERSION_V3)
                 {
-                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser,
+                	//这里推送到对端的时候转一下，便于拉取
+					if(psendmsg->msgtype == PNR_IM_MSGTYPE_EMAILRECEIPTSEND)
+					{
+						psendmsg->msgtype = PNR_IM_MSGTYPE_EMAILRECEIPTRECV;
+					}
+                    pnr_msglog_dbinsert_specifyid_v3(index,psendmsg->msgtype,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser,
                         psendmsg->touser,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,psendmsg->ext2);
                 }
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",psendmsg->log_id);
@@ -2222,7 +2227,8 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 cJSON_AddItemToObject(ret_params, "From",cJSON_CreateString(psendmsg->fromuser));
                 cJSON_AddItemToObject(ret_params, "To",cJSON_CreateString(psendmsg->touser));
                 cJSON_AddItemToObject(ret_params, "NodeName",cJSON_CreateString(g_dev_nickname));
-                if(psendmsg->ext2 != 0)
+                cJSON_AddItemToObject(ret_params, "MsgType",cJSON_CreateNumber(psendmsg->msgtype));
+				if(psendmsg->ext2 != 0)
                 {
                     cJSON_AddItemToObject(ret_params, "AssocId",cJSON_CreateNumber(psendmsg->ext2));  
                 }
@@ -2741,12 +2747,12 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
             {
                 pnr_msgcache_dbinsert(msgid, psendmsg->fromuser_toxid, 
                     psendmsg->touser_toxid, cmd, pmsg, msg_len, NULL, NULL, psendmsg->log_id, 
-                    pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->msg_srckey,psendmsg->msg_dstkey);
+                    pushmsg_ctype, psendmsg->msgtype,psendmsg->msg_srckey,psendmsg->msg_dstkey);
             }
             else if(apiversion >= PNR_API_VERSION_V3)
             {
                 pnr_msgcache_dbinsert_v3(msgid, psendmsg->fromuser,psendmsg->touser, cmd, pmsg, msg_len, NULL, NULL, 
-                    psendmsg->log_id,pushmsg_ctype, PNR_IM_MSGTYPE_TEXT,psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
+                    psendmsg->log_id,pushmsg_ctype, psendmsg->msgtype,psendmsg->sign,psendmsg->nonce,psendmsg->prikey);
             }
             break;
         case PNR_IM_CMDTYPE_DELMSGPUSH:
@@ -21973,6 +21979,7 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Sign",psendmsg->sign,PNR_RSA_KEY_MAXLEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Nonce",psendmsg->nonce,PNR_RSA_KEY_MAXLEN);
                 CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"PriKey",psendmsg->prikey,PNR_RSA_KEY_MAXLEN);
+                CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgType",psendmsg->msgtype,PNR_RSA_KEY_MAXLEN);
             }
             CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"MsgId",psendmsg->log_id,TOX_ID_STR_LEN);
             CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Msg",psendmsg->msg_buff,IM_MSG_PAYLOAD_MAXLEN);
@@ -21987,8 +21994,16 @@ int imtox_pushmsg_predeal(int id,char* puser,char* pmsg,int msg_len)
                 }
                 else if(msg_head.api_version >= PNR_API_VERSION_V3)
                 {
-                    pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
-                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
+                	if(psendmsg->msgtype == PNR_IM_MSGTYPE_EMAILRECEIPTSEND)
+                	{
+	                	pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_EMAILRECEIPTRECV,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
+	                        psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
+                	}
+                    else
+					{
+						pnr_msglog_dbinsert_specifyid_v3(index,PNR_IM_MSGTYPE_TEXT,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser_toxid,
+												psendmsg->touser_toxid,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,0);
+					}
 #if 0//暂时不用hashid
                     int f_id = 0;
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"PushMsg:src hasdid(%s->%s)",sendmsg.from_uid,sendmsg.to_uid);

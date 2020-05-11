@@ -14,7 +14,7 @@ LD := $(CROSS_COMPILE)ld
 NM := $(CROSS_COMPILE)nm
 STRIP := $(CROSS_COMPILE)strip
 
-MOUDLE_CFLAGS += -Wall -g $(CPPFLAGS) 
+MOUDLE_CFLAGS += -Wall -g $(CPPFLAGS) -mcmodel=medium 
 
 CP := cp
 
