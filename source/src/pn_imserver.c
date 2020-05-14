@@ -2110,7 +2110,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
     int pushmsg_ctype = 0;
 	char fileinfo[PNR_FILEINFO_ATTACH_FLAG+1] = {0};
     char* ptmp = NULL;
-    int fileinfo_len =0,attend_flag = 0;
+    int fileinfo_len =0,attend_flag = 0,dbmsgtype = 0;
 
 	if(params == NULL)
     {
@@ -2197,9 +2197,13 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 	//这里推送到对端的时候转一下，便于拉取
 					if(psendmsg->msgtype == PNR_IM_MSGTYPE_EMAILRECEIPTSEND)
 					{
-						psendmsg->msgtype = PNR_IM_MSGTYPE_EMAILRECEIPTRECV;
+						dbmsgtype = PNR_IM_MSGTYPE_EMAILRECEIPTRECV;
 					}
-                    pnr_msglog_dbinsert_specifyid_v3(index,psendmsg->msgtype,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser,
+					else
+					{
+						dbmsgtype = psendmsg->msgtype;
+					}
+                    pnr_msglog_dbinsert_specifyid_v3(index,dbmsgtype,msgid,psendmsg->log_id,MSG_STATUS_SENDOK,psendmsg->fromuser,
                         psendmsg->touser,psendmsg->msg_buff,psendmsg->sign,psendmsg->nonce,psendmsg->prikey,NULL,psendmsg->ext2);
                 }
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg: renew msgid(%d)",psendmsg->log_id);

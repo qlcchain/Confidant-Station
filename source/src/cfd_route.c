@@ -5713,6 +5713,11 @@ int cfd_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     cJSON_Delete(ret_root);
                     return ERROR;
                 }
+				//这里需要做个转换，app侧回执类型只识别PNR_IM_MSGTYPE_EMAILRECEIPTSEND
+				if(ptmp_msg->msgtype == PNR_IM_MSGTYPE_EMAILRECEIPTRECV)
+				{
+					ptmp_msg->msgtype = PNR_IM_MSGTYPE_EMAILRECEIPTSEND;
+				}
                 cJSON_AddItemToArray(pJsonArry,pJsonsub); 
                 cJSON_AddNumberToObject(pJsonsub,"MsgId",ptmp_msg->db_id); 
                 //cJSON_AddNumberToObject(pJsonsub,"DbId",ptmp_msg->db_id); 
@@ -5764,7 +5769,6 @@ int cfd_pullmsg_cmd_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         }
                         cJSON_AddNumberToObject(pJsonsub, "FileSize", ptmp_msg->ext2);
     					break;
-
     				default:
     					cJSON_AddStringToObject(pJsonsub, "Msg", ptmp_msg->msg_buff);
                         if(ptmp_msg->ext2)
