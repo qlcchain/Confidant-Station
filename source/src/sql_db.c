@@ -494,6 +494,18 @@ int sql_db_sync(int cur_db_version)
         cfd_rnodedb_init();
         cur_db_version++;
     }
+	if(cur_db_version == DB_VERSION_V13)
+    {
+        //初始化新版cfd_userattribute_tbl表
+        snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_userattribute_tbl(id integer primary key autoincrement,uindex,atype,userid,ainfo);");
+        if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+        {
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+            sqlite3_free(errMsg);
+            return ERROR;
+        } 
+        cur_db_version++;
+    }
     //更新数据库版本
     snprintf(sql_cmd,SQL_CMD_LEN,"update generconf_tbl set value=%d where name='%s';",
         DB_CURRENT_VERSION,DB_VERSION_KEYWORD);
@@ -1928,6 +1940,14 @@ int sql_db_init(void)
     }
     //初始化新版uinfo_tbl表
     snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_uinfo_tbl(id integer primary key autoincrement,userindex,friendid,local,version,friendseq,mailseq,usrid,devid,account,nickname,avatar,md5,mailinfo,others);");
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+	//初始化新版cfd_userattribute_tbl表
+    snprintf(sql_cmd,SQL_CMD_LEN,"create table cfd_userattribute_tbl(id integer primary key autoincrement,uindex,atype,userid,ainfo);");
     if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
@@ -8528,6 +8548,137 @@ int cfd_bakcontent_dbdelete_byids(int uindex,char* pids)
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
         sqlite3_free(errMsg);
         return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_userattribute_dbupdate
+  Description:  数据库更新attribute
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_userattribute_dbupdate(struct cfd_user_attribute_struct* pinfo)
+{
+    int8* errMsg = NULL;
+    int count = 0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+
+    if(pinfo == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbupdate:input err");
+        return ERROR;
+    }
+    //cfd_userattribute_tbl(id integer primary key autoincrement,uindex,atype,userid,ainfo)
+    //先检查是否有重复的
+    snprintf(sql_cmd,SQL_CMD_LEN,"select count(*) from cfd_userattribute_tbl where atype=%d and userid='%s';",pinfo->atype,pinfo->uid);
+    if(sqlite3_exec(g_db_handle,sql_cmd,dbget_int_result,&count,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"get count failed");
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    if(count > 0)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_userattribute_tbl set atype='%s' where atype=%d and userid='%s';",
+			pinfo->ainfo,pinfo->atype,pinfo->uid);
+    }
+	else
+	{
+		snprintf(sql_cmd,SQL_CMD_LEN,"insert into cfd_userattribute_tbl values(null,%d,%d,'%s','%s');",
+			pinfo->uindex,pinfo->atype,pinfo->uid,pinfo->ainfo);
+	}
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userattribute_dbupdate:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_db_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_userattribute_dbget_byuid
+  Description:  根据用户id获取用户个人属性
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd_user_attribute_struct p_ainfo[],int* ret_count)
+{
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    char cache_cmd[CFD_KEYWORD_MAXLEN] = {0};
+	char **dbResult; 
+	char *errmsg= NULL;
+    int nRow, nColumn;
+    int offset=0,num = 0,i=0;
+
+    if(p_uid == NULL || ret_count == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbget_byuid:input err");
+        return ERROR;
+    }
+	if(limit_num <= 0 || limit_num > CFD_AINFOARRYY_DEFAULT_LIMITNUM)
+	{
+		num = CFD_AINFOARRYY_DEFAULT_LIMITNUM;
+	}
+	else
+	{
+		num = limit_num;
+	}
+
+    if(atype == 0)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_userattribute_tbl where userid='%s' ",p_uid);
+    }
+    else if(atype > 0)
+    {
+        snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_userattribute_tbl where userid='%s' and atype=%d ",p_uid,atype);
+    }
+	else
+	{
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbget_byuid:atype err");
+		return ERROR;
+	}
+	snprintf(cache_cmd,CFD_KEYWORD_MAXLEN,"order by id limit %d;",num);
+	strcat(sql_cmd,cache_cmd);
+    if(sqlite3_get_table(g_db_handle, sql_cmd, &dbResult, &nRow, &nColumn, &errmsg) == SQLITE_OK)
+    {
+        offset = nColumn; 
+		*ret_count = nRow;
+        for( i = 0; i < nRow ; i++ )
+        {  
+            memset(&p_ainfo[i],0,sizeof(struct cfd_user_attribute_struct));
+			//cfd_userattribute_tbl(id integer primary key autoincrement,uindex,atype,userid,ainfo)
+            p_ainfo[i].did = atoi(dbResult[offset]);
+            p_ainfo[i].uindex = atoi(dbResult[offset+1]);
+            p_ainfo[i].atype = atoi(dbResult[offset+2]);
+            if(dbResult[offset+3])
+            {
+                strcpy(p_ainfo[i].uid,dbResult[offset+3]);
+            }
+            if(dbResult[offset+4])
+            {
+                strcpy(p_ainfo[i].ainfo,dbResult[offset+4]);
+            }
+            offset += nColumn;
+        }
     }
     return OK;
 }

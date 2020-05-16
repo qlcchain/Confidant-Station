@@ -7661,6 +7661,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_GETBAKCONTENTSTAT;
             }
+			else if(strcasecmp(action_buff,PNR_IMCMD_GETWALLETACCOUNT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_GETWALLETADDRESS;
+            }
             else
             {
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad action(%s)",action_buff);
@@ -7907,6 +7911,10 @@ int im_msghead_parses(cJSON * root,cJSON * params,struct imcmd_msghead_struct* p
             else if(strcasecmp(action_buff,PNR_IMCMD_SYSMSGPUSH) == OK)
             {
                 phead->im_cmdtype = PNR_IM_CMDTYPE_SYSMSGPUSH;
+            }
+			else if(strcasecmp(action_buff,PNR_IMCMD_SETWALLETACCOUNT) == OK)
+            {
+                phead->im_cmdtype = PNR_IM_CMDTYPE_SETWALLETADDRESS;
             }
             else
             {
@@ -20772,7 +20780,10 @@ struct ppr_func_struct g_cmddeal_cb_v6[]=
     {PNR_IM_CMDTYPE_PULLBAKCONTENT,PNR_API_VERSION_V6,TRUE,cfd_pullbakcontent_deal},
     {PNR_IM_CMDTYPE_DELBAKCONTENT,PNR_API_VERSION_V6,TRUE,cfd_delbakcontent_deal},
     {PNR_IM_CMDTYPE_GETBAKCONTENTSTAT,PNR_API_VERSION_V6,TRUE,cfd_bakcontent_getstas_deal},
-    //用户状态同步消息
+	//绑定钱包地址操作
+	{PNR_IM_CMDTYPE_GETWALLETADDRESS,PNR_API_VERSION_V6,TRUE,cfd_user_walletaccount_get_deal},
+	{PNR_IM_CMDTYPE_SETWALLETADDRESS,PNR_API_VERSION_V6,TRUE,cfd_user_walletaccount_update_deal},
+	//用户状态同步消息
     {PNR_IM_CMDTYPE_UINFOKEY_SYSCH,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_sysch_deal},
     {PNR_IM_CMDTYPE_UINFOKEY_REPLY,PNR_API_VERSION_V6,TRUE,im_cmd_uinfokey_reply_deal},
     {PNR_IM_CMDTYPE_UINFO_REQUEST,PNR_API_VERSION_V6,TRUE,im_cmd_uinfo_request_deal},

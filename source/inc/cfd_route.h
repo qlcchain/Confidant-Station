@@ -341,6 +341,23 @@ struct cfd_baksms_attach_struct
     int send;// 1 收到的 2 发出的
     char user[CFD_KEYWORD_MAXLEN+1];
 };
+enum CFD_ATTRIBUTE_TYPE_ENUM
+{
+	CFD_ATTRIBUTE_TYPE_ALL = 0,
+	CFD_ATTRIBUTE_TYPE_WALLET_QLC = 1,
+	CFD_ATTRIBUTE_TYPE_BUTT
+};
+#define CFD_AINFOARRYY_DEFAULT_LIMITNUM  10
+//用户个人属性结构
+struct cfd_user_attribute_struct
+{
+    int uindex;
+    int did; //数据库记录id，唯一标识
+    int atype;//attribute type
+    char uid[CFD_USER_PUBKEYLEN+1];//用户id
+    char ainfo[CFD_KEYWORD_MAXLEN+1];//atrribute info
+};
+
 int get_uindexbyuid(char* p_uid);
 int cfd_uinfolist_getidleid(void);
 int cfd_rnodelist_getidleid(void);
@@ -414,4 +431,6 @@ int cfd_uactive_delbyuid(int id);
 int cfd_uactive_deluser_dbbyuid(int id);
 int cfd_uinfonode_deletebyuid(int id);
 int cfd_rnode_userinfo_dbdelete_byuid(int id);
+int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 #endif

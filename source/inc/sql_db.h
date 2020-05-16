@@ -30,6 +30,7 @@ enum DB_VERSION_ENUM
     DB_VERSION_V11=11,
     DB_VERSION_V12=12,
     DB_VERSION_V13=13,
+    DB_VERSION_V14=14,
 };
 #define DB_VERSION_KEYWORD     "datebase_version"
 #define DB_IMUSER_MAXNUM_KEYWORDK     "imuser_maxnum"
@@ -47,7 +48,7 @@ enum DB_VERSION_ENUM
 #define DB_DEFAULT_DEVLOGINKEY_VALUE "90d5c0dd1b35f8b568d9bc9202253162e1699671367ba87af364754f00e8778e"
 //默认设备名称，base64转码
 #define DB_DEFAULT_DEVNAME_VALUE "VW5pbml0aWFsaXplZA=="
-#define DB_CURRENT_VERSION    DB_VERSION_V13
+#define DB_CURRENT_VERSION    DB_VERSION_V14
 struct db_string_ret
 {
     int buf_len;
@@ -210,5 +211,7 @@ int pnr_filelist_dbdelete_byid(int uindex,int id);
 int cfd_bakcontent_dbinsert(int uindex,struct cfd_bakcont_common_struct* pmsg,int* p_repeat);
 int cfd_bakcontent_dbdelete_byids(int uindex,char* pids);
 int cfd_bakcontent_getcount_byukey(int uindex,char* p_ukey,int* p_count);
+int cfd_userattribute_dbupdate(struct cfd_user_attribute_struct* pinfo);
+int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd_user_attribute_struct p_ainfo[],int* ret_count);
 #endif
 

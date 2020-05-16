@@ -8511,3 +8511,191 @@ int cfd_newuser_welcome(int uindex)
     return OK;
 }
 
+/**********************************************************************************
+  Function:      cfd_user_walletaccount_get_deal
+  Description: IM模块拉取用户绑定钱包信息
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = 0,atype = 0;
+    char* ret_buff = NULL;
+    char userid[TOX_ID_STR_LEN+1] = {0};
+    int i = 0,uindex= 0,num = 0;
+	struct cfd_user_attribute_struct attri_info[CFD_AINFOARRYY_DEFAULT_LIMITNUM+1] = {};
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",atype,0);
+
+    //参数检查
+    if(atype != CFD_ATTRIBUTE_TYPE_WALLET_QLC && atype != CFD_ATTRIBUTE_TYPE_ALL)
+	{
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:bad atype(%d)",atype);
+        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+    }
+    uindex = cfd_getindexbyidstr(userid);
+    if(uindex < 0)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:bad uid(%s)",userid);
+        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+    }
+    else
+    {
+        ret_code = PNR_NORMAL_CMDRETURN_OK;
+    }
+	if(cfd_userattribute_dbget_byuid(userid,atype,CFD_AINFOARRYY_DEFAULT_LIMITNUM,attri_info,&num) != OK)
+	{
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:cfd_userattribute_dbget_byuid failed");
+        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+	}
+
+    //构建响应消息
+    cJSON * ret_root = cJSON_CreateObject();
+    if(ret_root == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON * ret_params = cJSON_CreateObject();
+    cJSON *pJsonArry = cJSON_CreateArray();
+    cJSON *pJsonsub = NULL;
+    if(pJsonArry == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)(head->api_version)));
+	cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+	cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_GETWALLETACCOUNT));
+	cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(userid));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "WalletNum", cJSON_CreateNumber(num));
+    if(num > 0)
+    {
+        cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
+        for(i=0;i<num;i++)
+        {
+            
+    		cJSON_AddNumberToObject(pJsonsub,"WalletType",attri_info[i].atype);
+            cJSON_AddStringToObject(pJsonsub,"Address", attri_info[i].ainfo);
+        }
+    }
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    cJSON_AddItemToObject(ret_params, "Num", cJSON_CreateNumber(num));
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d,%s)",*retmsg_len,ret_buff);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      cfd_user_walletaccount_update_deal
+  Description:  用户更新绑定钱包地址
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_len,
+	int* plws_index, struct imcmd_msghead_struct *head)
+{
+    char* tmp_json_buff = NULL;
+    cJSON* tmp_item = NULL;
+    int ret_code = OK;
+    char* ret_buff = NULL;
+	struct cfd_user_attribute_struct attri_info;
+
+    if(params == NULL)
+    {
+        return ERROR;
+    }
+	memset(&attri_info,0,sizeof(struct cfd_user_attribute_struct));
+    //解析参数
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",attri_info.uid,CFD_USER_PUBKEYLEN);
+    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",attri_info.atype,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Address",attri_info.ainfo,CFD_KEYWORD_MAXLEN);
+
+	//参数检查
+	if(attri_info.atype >= CFD_ATTRIBUTE_TYPE_BUTT || strlen(attri_info.uid) != CFD_USER_PUBKEYLEN || strlen(attri_info.ainfo) <= 0)
+	{
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%d:%s:%s)",attri_info.atype,attri_info.uid,attri_info.ainfo);
+        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+	}
+	else
+	{
+		if(cfd_userattribute_dbupdate(&attri_info) != OK)
+		{
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%s)",attri_info.uid);
+	        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+		}
+	}
+       
+    //构建响应消息
+    cJSON * ret_root =  cJSON_CreateObject();
+    cJSON * ret_params =  cJSON_CreateObject();
+    if(ret_root == NULL || ret_params == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+        cJSON_Delete(ret_root);
+        return ERROR;
+    }
+    cJSON_AddItemToObject(ret_root, "appid", cJSON_CreateString("MIFI"));
+    cJSON_AddItemToObject(ret_root, "timestamp", cJSON_CreateNumber((double)time(NULL)));
+    cJSON_AddItemToObject(ret_root, "apiversion", cJSON_CreateNumber((double)head->api_version));
+    cJSON_AddItemToObject(ret_root, "msgid", cJSON_CreateNumber((double)head->msgid));
+
+    cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SETWALLETACCOUNT));
+    cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
+    cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(attri_info.uid));
+    cJSON_AddItemToObject(ret_params, "WalletType", cJSON_CreateNumber(attri_info.atype));
+    cJSON_AddItemToObject(ret_params, "Address", cJSON_CreateString(attri_info.ainfo));
+    cJSON_AddItemToObject(ret_root, "params", ret_params);
+    ret_buff = cJSON_PrintUnformatted(ret_root);
+    cJSON_Delete(ret_root);
+    *retmsg_len = strlen(ret_buff);
+    if(*retmsg_len < TOX_ID_STR_LEN || *retmsg_len >= IM_JSON_MAXLEN)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad ret(%d)",*retmsg_len);
+        free(ret_buff);
+        return ERROR;
+    }
+    strcpy(retmsg,ret_buff);
+    free(ret_buff);
+    return OK;
+}
+
