@@ -8680,6 +8680,7 @@ int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd
             offset += nColumn;
         }
     }
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userattribute_dbget_byuid: sql(%s) ret(%d)",sql_cmd,*ret_count);
     return OK;
 }
 

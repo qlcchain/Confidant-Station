@@ -8595,10 +8595,18 @@ int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         cJSON_AddItemToObject(ret_params,"Payload", pJsonArry);
         for(i=0;i<num;i++)
-        {
-            
+        {           
+        	pJsonsub = cJSON_CreateObject();
+            if(pJsonsub == NULL)
+            {
+                DEBUG_PRINT(DEBUG_LEVEL_ERROR,"err");
+                cJSON_Delete(ret_root);
+                return ERROR;
+            }
+			cJSON_AddItemToArray(pJsonArry,pJsonsub); 
     		cJSON_AddNumberToObject(pJsonsub,"WalletType",attri_info[i].atype);
             cJSON_AddStringToObject(pJsonsub,"Address", attri_info[i].ainfo);
+			//DEBUG_PRINT(DEBUG_LEVEL_INFO,"get num(%d):address(%s)",i,attri_info[i].ainfo);
         }
     }
     cJSON_AddItemToObject(ret_root, "params", ret_params);
