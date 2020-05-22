@@ -8531,10 +8531,11 @@ int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    int ret_code = 0,atype = 0;
+    int ret_code = 0;
     char* ret_buff = NULL;
     char userid[TOX_ID_STR_LEN+1] = {0};
     int i = 0,uindex= 0,num = 0;
+	char wallet_types_str[CFD_USER_PUBKEYLEN+1] = {0};
 	struct cfd_user_attribute_struct attri_info[CFD_AINFOARRYY_DEFAULT_LIMITNUM+1] = {};
     if(params == NULL)
     {
@@ -8542,12 +8543,12 @@ int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
     }
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",userid,TOX_ID_STR_LEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",atype,0);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",wallet_types_str,CFD_USER_PUBKEYLEN);
 
     //参数检查
-    if(atype != CFD_ATTRIBUTE_TYPE_WALLET_QLC && atype != CFD_ATTRIBUTE_TYPE_ALL)
+    if(strlen(wallet_types_str) <= 0)
 	{
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:bad atype(%d)",atype);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:bad atype");
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
     }
     uindex = cfd_getindexbyidstr(userid);
@@ -8560,7 +8561,7 @@ int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,
     {
         ret_code = PNR_NORMAL_CMDRETURN_OK;
     }
-	if(cfd_userattribute_dbget_byuid(userid,atype,CFD_AINFOARRYY_DEFAULT_LIMITNUM,attri_info,&num) != OK)
+	if(cfd_userattribute_dbget_byuid(userid,wallet_types_str,CFD_AINFOARRYY_DEFAULT_LIMITNUM,attri_info,&num) != OK)
 	{
 		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_get_deal:cfd_userattribute_dbget_byuid failed");
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
@@ -8644,8 +8645,16 @@ int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_l
 {
     char* tmp_json_buff = NULL;
     cJSON* tmp_item = NULL;
-    int ret_code = OK;
+    int ret_code = OK,addr_len = 0;
     char* ret_buff = NULL;
+	char* ptype_head = NULL;
+	char* ptype_tail = NULL;
+	char* ptype_end = NULL;
+	char* paddr_head = NULL;
+	char* paddr_tail = NULL;
+	char* paddr_end = NULL;
+	char wallet_types_str[CFD_USER_PUBKEYLEN+1] = {0};
+	char wallet_addrs_str[CFD_ATTACHINFO_MAXLEN+1] = {0};
 	struct cfd_user_attribute_struct attri_info;
 
     if(params == NULL)
@@ -8655,21 +8664,53 @@ int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_l
 	memset(&attri_info,0,sizeof(struct cfd_user_attribute_struct));
     //解析参数
     CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"UserId",attri_info.uid,CFD_USER_PUBKEYLEN);
-    CJSON_GET_VARINT_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",attri_info.atype,0);
-    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Address",attri_info.ainfo,CFD_KEYWORD_MAXLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"WalletType",wallet_types_str,CFD_USER_PUBKEYLEN);
+    CJSON_GET_VARSTR_BYKEYWORD(params,tmp_item,tmp_json_buff,"Address",wallet_addrs_str,CFD_ATTACHINFO_MAXLEN);
 
+	attri_info.uindex = cfd_getindexbyidstr(attri_info.uid);
 	//参数检查
-	if(attri_info.atype >= CFD_ATTRIBUTE_TYPE_BUTT || strlen(attri_info.uid) != CFD_USER_PUBKEYLEN || strlen(attri_info.ainfo) <= 0)
+	if(strlen(wallet_types_str) <= 0 || strlen(attri_info.uid) != CFD_USER_PUBKEYLEN || strlen(wallet_addrs_str) <= 0 || attri_info.uindex <= 0)
 	{
-		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%d:%s:%s)",attri_info.atype,attri_info.uid,attri_info.ainfo);
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%s:%s:%s)",wallet_types_str,attri_info.uid,wallet_addrs_str);
         ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
 	}
 	else
 	{
-		if(cfd_userattribute_dbupdate(&attri_info) != OK)
+		ptype_head = wallet_types_str;
+		paddr_head = wallet_addrs_str;
+		ptype_end = ptype_head + strlen(wallet_types_str);
+		paddr_end = paddr_head + strlen(wallet_addrs_str);
+		while(ptype_head < ptype_end && paddr_head < paddr_end)
 		{
-			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%s)",attri_info.uid);
-	        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+			ptype_tail = strchr(ptype_head,',');
+			paddr_tail = strchr(paddr_head,',');
+			attri_info.atype = atoi(ptype_head);
+			memset(attri_info.ainfo,0,CFD_KEYWORD_MAXLEN);
+			if(ptype_tail != NULL && paddr_tail != NULL)
+			{
+				addr_len = paddr_tail-paddr_head;
+				addr_len = (addr_len > CFD_KEYWORD_MAXLEN)?CFD_KEYWORD_MAXLEN:addr_len;
+			}
+			else
+			{
+				addr_len = CFD_KEYWORD_MAXLEN;
+			}
+			strncpy(attri_info.ainfo,paddr_head,addr_len);
+			if(cfd_userattribute_dbupdate(&attri_info) != OK)
+			{
+				DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_user_walletaccount_update_deal input uid err(%s)",attri_info.uid);
+		        ret_code = PNR_NORMAL_CMDRETURN_BADPARAMS;
+				break;
+			}
+			if(ptype_tail != NULL && paddr_tail != NULL)
+			{
+				ptype_head = ptype_tail+1;
+				paddr_head = paddr_tail+1;
+			}
+			else
+			{
+				break;
+			}
 		}
 	}
        
@@ -8690,8 +8731,8 @@ int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_l
     cJSON_AddItemToObject(ret_params, "Action", cJSON_CreateString(PNR_IMCMD_SETWALLETACCOUNT));
     cJSON_AddItemToObject(ret_params, "RetCode", cJSON_CreateNumber(ret_code));
     cJSON_AddItemToObject(ret_params, "ToId", cJSON_CreateString(attri_info.uid));
-    cJSON_AddItemToObject(ret_params, "WalletType", cJSON_CreateNumber(attri_info.atype));
-    cJSON_AddItemToObject(ret_params, "Address", cJSON_CreateString(attri_info.ainfo));
+    cJSON_AddItemToObject(ret_params, "WalletType", cJSON_CreateString(wallet_types_str));
+    cJSON_AddItemToObject(ret_params, "Address", cJSON_CreateString(wallet_addrs_str));
     cJSON_AddItemToObject(ret_root, "params", ret_params);
     ret_buff = cJSON_PrintUnformatted(ret_root);
     cJSON_Delete(ret_root);

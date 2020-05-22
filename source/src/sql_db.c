@@ -8620,7 +8620,7 @@ int cfd_userattribute_dbupdate(struct cfd_user_attribute_struct* pinfo)
                   Author:Will.Cao
                   Modification:Initialize
 ***********************************************************************************/
-int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd_user_attribute_struct p_ainfo[],int* ret_count)
+int cfd_userattribute_dbget_byuid(char* p_uid,char* p_atype,int limit_num,struct cfd_user_attribute_struct p_ainfo[],int* ret_count)
 {
     char sql_cmd[SQL_CMD_LEN] = {0};
     char cache_cmd[CFD_KEYWORD_MAXLEN] = {0};
@@ -8629,7 +8629,7 @@ int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd
     int nRow, nColumn;
     int offset=0,num = 0,i=0;
 
-    if(p_uid == NULL || ret_count == NULL)
+    if(p_uid == NULL || ret_count == NULL || p_atype == NULL)
     {
         DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbget_byuid:input err");
         return ERROR;
@@ -8643,17 +8643,17 @@ int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd
 		num = limit_num;
 	}
 
-    if(atype == 0)
+    if(strcmp(p_atype,"0") == 0)
     {
         snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_userattribute_tbl where userid='%s' ",p_uid);
     }
-    else if(atype > 0)
+    else if(strlen(p_atype) > 0)
     {
-        snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_userattribute_tbl where userid='%s' and atype=%d ",p_uid,atype);
+        snprintf(sql_cmd,SQL_CMD_LEN,"select * from cfd_userattribute_tbl where userid='%s' and atype in (%s) ",p_uid,p_atype);
     }
 	else
 	{
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbget_byuid:atype err");
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userattribute_dbget_byuid:atype(%s) err",p_atype);
 		return ERROR;
 	}
 	snprintf(cache_cmd,CFD_KEYWORD_MAXLEN,"order by id limit %d;",num);
@@ -8680,7 +8680,7 @@ int cfd_userattribute_dbget_byuid(char* p_uid,int atype,int limit_num,struct cfd
             offset += nColumn;
         }
     }
-	//DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userattribute_dbget_byuid: sql(%s) ret(%d)",sql_cmd,*ret_count);
+	DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userattribute_dbget_byuid: sql(%s) ret(%d)",sql_cmd,*ret_count);
     return OK;
 }
 
