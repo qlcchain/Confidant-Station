@@ -8588,7 +8588,7 @@ int cfd_userattribute_dbupdate(struct cfd_user_attribute_struct* pinfo)
     }
     if(count > 0)
     {
-        snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_userattribute_tbl set atype='%s' where atype=%d and userid='%s';",
+        snprintf(sql_cmd,SQL_CMD_LEN,"update cfd_userattribute_tbl set ainfo='%s' where atype=%d and userid='%s';",
 			pinfo->ainfo,pinfo->atype,pinfo->uid);
     }
 	else
