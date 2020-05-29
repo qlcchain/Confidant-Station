@@ -308,7 +308,7 @@ int pnr_groupinfo_init(void)
     if(access(group_path,F_OK) != OK)
     {
         snprintf(sql_cmd,SQL_CMD_LEN,"mkdir -p %s",group_path);
-        system(sql_cmd);   
+        cfd_system_cmd(sql_cmd);   
     }
     for(i=0;i<PNR_GROUP_MAXNUM;i++)
     {
@@ -317,7 +317,7 @@ int pnr_groupinfo_init(void)
         if(access(group_path,F_OK) != OK)
         {
             snprintf(sql_cmd,SQL_CMD_LEN,"mkdir -p %s",group_path);
-            system(sql_cmd);   
+            cfd_system_cmd(sql_cmd);   
         }
     }
     //初始化群组列表
@@ -2710,7 +2710,7 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 ptmp[0] = 0;
             }
 			snprintf(cmdbuf, sizeof(cmdbuf), "cp %s %s", fullfilename, filepath);
-			system(cmdbuf);
+			cfd_system_cmd(cmdbuf);
 			snprintf(dpath, sizeof(dpath), "/user%d/r/%s", index, fname);
 			cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(dpath));
 			DEBUG_PRINT(DEBUG_LEVEL_INFO, "file[%s]-filepath[%s]", fullfilename, dpath);
@@ -7149,7 +7149,7 @@ int im_format_disk_deal(cJSON *params, char *retmsg, int *retmsg_len,
 	pthread_mutex_lock(&g_formating_lock);
 	g_formating = 1;
 	pthread_mutex_unlock(&g_formating_lock);
-	system(cmd);
+	cfd_system_cmd(cmd);
     pnr_sysoperation_done(PNR_MONITORINFO_ENUM_DISKFORMAT);
     DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr format cmd(%s)",cmd);
 	g_format_reboot_time = time(NULL) + 5;
@@ -12072,7 +12072,7 @@ int pnr_group_dissolve(int gid)
     if(strlen(g_grouplist[gid].group_filepath) > strlen(DAEMON_PNR_USERDATA_DIR))
     {
         snprintf(cmd,CMD_MAXLEN,"rm -f %s/*",g_grouplist[gid].group_filepath);
-        system(cmd);
+        cfd_system_cmd(cmd);
     }
     //删除内存记录
     memset(&g_grouplist[gid],0,sizeof(struct group_info));    
@@ -13732,7 +13732,7 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     strcpy(filepathcmd,"rm -f ");
                     strcat(filepathcmd,WS_SERVER_INDEX_FILEPATH);
                     strcat(filepathcmd,pmsg->ext1);
-                    system(filepathcmd);
+                    cfd_system_cmd(filepathcmd);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_group_delmsg_deal:del file(%s)",filepathcmd);
                 }               
             }
@@ -14578,7 +14578,7 @@ int im_file_rename_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     snprintf(cmd,CMD_MAXLEN,"mv %s%s %s%s",DAEMON_PNR_USERDATA_DIR,msg->ext,DAEMON_PNR_USERDATA_DIR,newfilepath);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_file_rename_deal:cmd(%s)",cmd);
-                    system(cmd);
+                    cfd_system_cmd(cmd);
                     pnr_msglog_dbupdate_filename_byid(index,msg->db_id,newname,newfilepath);
                     ret_code = PNR_FILERENAME_RETCODE_OK;
                 }
@@ -14779,7 +14779,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         //本地拷贝一份文件备份
                         snprintf(targetpath,PNR_FILEPATH_MAXLEN,"%s%sg%d/%s",DAEMON_PNR_USERDATA_DIR,PNR_GROUP_DATA_PATH,gid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s",srcpath,targetpath);                    
-                        system(cmd);
+                        cfd_system_cmd(cmd);
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
                     }
                     pgmsg = (struct group_user_msg*)malloc(sizeof(struct group_user_msg));
@@ -14879,7 +14879,7 @@ int im_file_forward_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         snprintf(targetpath,PNR_FILEPATH_MAXLEN,"/user%d/r/%s",toid,realfilename);
                         snprintf(cmd,CMD_MAXLEN,"cp -f %s %s%s",srcpath,DAEMON_PNR_USERDATA_DIR,targetpath);                    
                         DEBUG_PRINT(DEBUG_LEVEL_INFO,"forward file: local cmd(%s)",cmd);
-                        system(cmd);
+                        cfd_system_cmd(cmd);
                         memset(msg->ext,0,IM_MSG_MAXLEN);
                         strcpy(msg->ext,targetpath);
                         im_pushmsg_callback(toid, PNR_IM_CMDTYPE_FILEFORWARD_PUSH, TRUE, head->api_version,msg);
@@ -15078,7 +15078,7 @@ int im_upload_avatar_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 snprintf(newavatar,PNR_FILEPATH_MAXLEN,"%s%s",PNR_AVATAR_DIR,filename);
                 snprintf(cmd,CMD_MAXLEN,"mv %s %s%s",fullname,DAEMON_PNR_USERDATA_DIR,newavatar);
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_upload_avatar_deal:cmd(%s)",cmd);
-                system(cmd);
+                cfd_system_cmd(cmd);
                 ret_code = PNR_UPLOAD_AVATAR_RETCODE_OK;
             }
         }
@@ -15508,14 +15508,14 @@ int im_account_delete_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 {
                     snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userdata_pathurl);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system1(%s)",cmd);
-                    system(cmd);
+                    cfd_system_cmd(cmd);
                 }
                 if(strlen(g_imusr_array.usrnode[uindex].userinfo_pathurl) > strlen(DAEMON_PNR_USERINFO_DIR))
                 {
                     memset(cmd,0,CMD_MAXLEN);
                     snprintf(cmd,CMD_MAXLEN,"rm -rf %s/*",g_imusr_array.usrnode[uindex].userinfo_pathurl);
                     DEBUG_PRINT(DEBUG_LEVEL_INFO,"im_account_delete_deal:system2(%s)",cmd);
-                    system(cmd);
+                    cfd_system_cmd(cmd);
                 }
                 i = 0;
                 while(g_imusr_array.usrnode[uindex].tox_status != PNR_TOX_STATUS_EXITED)
@@ -22280,12 +22280,12 @@ int im_server_init(void)
     if(access(PNR_AVATAR_FULLDIR,F_OK) != OK)
     {
         snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",PNR_AVATAR_FULLDIR);
-        system(cmd);   
+        cfd_system_cmd(cmd);   
     }
     if(access(PNR_FILECACHE_FULLDIR,F_OK) != OK)
     {
         snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",PNR_FILECACHE_FULLDIR);
-        system(cmd);   
+        cfd_system_cmd(cmd);   
     }
     //新的数据初始化
     cfd_userdata_init();
@@ -22304,12 +22304,12 @@ int im_server_init(void)
 		if(access(g_imusr_array.usrnode[i].userdata_pathurl,F_OK) != OK)
         {
             snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userdata_pathurl);
-            system(cmd);
+            cfd_system_cmd(cmd);
 		}
 		if(access(g_imusr_array.usrnode[i].userinfo_pathurl,F_OK) != OK)
         {
             snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",g_imusr_array.usrnode[i].userinfo_pathurl);
-            system(cmd);
+            cfd_system_cmd(cmd);
 		}
 		if (i > 0) {
             snprintf(user_spath,PNR_FILEPATH_MAXLEN,"%ss",g_imusr_array.usrnode[i].userdata_pathurl);
@@ -22320,27 +22320,27 @@ int im_server_init(void)
 			if(access(user_spath,F_OK) != OK)
             {
      			snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_spath);
-			    system(cmd);   
+			    cfd_system_cmd(cmd);   
             }
 			if(access(user_rpath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_rpath);
-                system(cmd);   
+                cfd_system_cmd(cmd);   
             }
 			if(access(user_upath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_upath);
-                system(cmd);   
+                cfd_system_cmd(cmd);   
             }
             if(access(user_mailpath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_mailpath);
-                system(cmd);
+                cfd_system_cmd(cmd);
             }
             if(access(user_filespath,F_OK) != OK)
             {
                 snprintf(cmd,CMD_MAXLEN,"mkdir -p %s",user_filespath);
-                system(cmd);
+                cfd_system_cmd(cmd);
             }
 		}
         strcpy(g_imusr_array.usrnode[i].userinfo_fullurl,g_imusr_array.usrnode[i].userinfo_pathurl);
@@ -24905,7 +24905,7 @@ int pnr_frpc_setconfig(struct pnrdev_netconn_info* pnetinfo)
     }
     if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
     {
-        system("mount -o remount,rw /");
+        cfd_system_cmd("mount -o remount,rw /");
     }
     unlink(PNR_FRPC_CONFIG_TMPFILE);
     fp = fopen(PNR_FRPC_CONFIG_TMPFILE, "w+");
@@ -24934,7 +24934,7 @@ int pnr_frpc_setconfig(struct pnrdev_netconn_info* pnetinfo)
     fclose(fp);
     memset(cmd,0,CMD_MAXLEN);
     snprintf(cmd,CMD_MAXLEN,"mv -f %s %s",PNR_FRPC_CONFIG_TMPFILE,PNR_FRPC_CONFIG_FILE);
-    system(cmd);
+    cfd_system_cmd(cmd);
     return OK;
 }
 
@@ -24962,10 +24962,10 @@ int pnr_frpc_enable(int enable)
 #if 0
         if(g_pnrdevtype == PNR_DEV_TYPE_ONESPACE)
         {
-            system("mount -o remount,rw /");
+            cfd_system_cmd("mount -o remount,rw /");
         }
 #endif
-        system("killall frpc");
+        cfd_system_cmd("killall frpc");
         snprintf(cmd,CMD_MAXLEN,"frpc -c %s >> /tmp/frp.log &",PNR_FRPC_CONFIG_FILE);
     }
     else
@@ -24973,7 +24973,7 @@ int pnr_frpc_enable(int enable)
         unlink(PNR_FRPC_CONFIG_FILE);
         snprintf(cmd,CMD_MAXLEN,"killall frpc");
     }
-    system(cmd);
+    cfd_system_cmd(cmd);
     return OK;
 }
 
@@ -25612,7 +25612,7 @@ int pnr_netstat_check(struct pnr_monitor_errinfo* pinfo)
         pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
         if(strlen(pcmd) > 0)
         {
-            system(pcmd);
+            cfd_system_cmd(pcmd);
         }
     }
     return OK;
@@ -25672,8 +25672,8 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
                 DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pthread_create pnr_monitor_warning_task failed");
             }
             pthread_join(task_id,&status);
-            system("/opt/go/onecgi.sh stop &");
-            system("rm -f /tmp/onecgi.log");
+            cfd_system_cmd("/opt/go/onecgi.sh stop &");
+            cfd_system_cmd("rm -f /tmp/onecgi.log");
             pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
             memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
             memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);
@@ -25707,7 +25707,7 @@ int pnr_sysresource_check(struct pnr_monitor_errinfo* pinfo)
             pinfo->err_no = PNR_MONITORINFO_ENUM_OK;
             memset(pinfo->err_info,0,PNR_ATTACH_INFO_MAXLEN);
             memset(pinfo->repair_info,0,PNR_ATTACH_INFO_MAXLEN);
-            system("killall pnr_server frpc > /tmp/null &");
+            cfd_system_cmd("killall pnr_server frpc > /tmp/null &");
         }
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_sysresource_check: tmp_used(%d) cpu_used(%d)",tmp_used,cpu_used);
     }
@@ -25794,7 +25794,7 @@ int pnr_sysoperation_done(int type)
         //本地记录
         snprintf(syscmd,CMD_MAXLEN,"echo 'time(%d) warntype(%d) info(%s) repair(%s)' >> %s",
             (int)time(NULL),warninfo.err_no,warninfo.err_info,warninfo.repair_info,PNR_SYSWARNING_LOG);
-        system(syscmd);
+        cfd_system_cmd(syscmd);
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"syscmd(%s)",syscmd);
         //上报
         if (pthread_create(&task_id, NULL, pnr_monitor_warning_task, &warninfo) != 0) 

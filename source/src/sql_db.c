@@ -4863,7 +4863,7 @@ int pnr_filelog_delete_byid(int msgid,char* user_id,char* friend_id)
         if(strncasecmp(filepath,DAEMON_PNR_USERDATA_DIR,strlen(DAEMON_PNR_USERDATA_DIR)) == OK)
         {
             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
-            system(sys_cmd);
+            cfd_system_cmd(sys_cmd);
             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byid file delete:%s",filepath);
         }
     }
@@ -4920,7 +4920,7 @@ int32 pnr_del_filelog_dbcallback(void* obj, int n_columns, char** column_values,
         if(strncasecmp(p_file,DAEMON_PNR_USERDATA_DIR,strlen(DAEMON_PNR_USERDATA_DIR)) == OK)
         {
             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",p_file);
-            system(sys_cmd);
+            cfd_system_cmd(sys_cmd);
             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_del_filelog_dbcallback file delete:%s",p_file);
         }
     }
@@ -4994,7 +4994,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
-                            system(sys_cmd);
+                            cfd_system_cmd(sys_cmd);
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }
@@ -5035,7 +5035,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
-                            system(sys_cmd);
+                            cfd_system_cmd(sys_cmd);
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }
@@ -5078,7 +5078,7 @@ int pnr_filelog_delete_byfiletype(int filetype,char* user_id,char* friend_id)
                         if(strncasecmp(filepath,PNR_DB_USERFILE_HEAD,strlen(PNR_DB_USERFILE_HEAD)) == OK)
                         {
                             snprintf(sys_cmd,SQL_CMD_LEN,"rm -f %s",filepath);
-                            system(sys_cmd);
+                            cfd_system_cmd(sys_cmd);
                             DEBUG_PRINT(DEBUG_LEVEL_NORMAL,"pnr_filelog_delete_byfiletype file delete:%s",filepath);
                         }
                     }

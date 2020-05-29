@@ -2623,7 +2623,7 @@ int tox_datafile_check(int user_index,char* datafile,int* newdata_flag)
         if(access(g_tox_datafile[user_index].datafile_bakpath,F_OK) == OK)
         {
             snprintf(sys_cmd,CMD_MAXLEN,"cp -f %s %s",g_tox_datafile[user_index].datafile_bakpath,g_tox_datafile[user_index].datafile_curpath);
-            system(sys_cmd);   
+            cfd_system_cmd(sys_cmd);   
             return OK;
         }
         else
@@ -2637,7 +2637,7 @@ int tox_datafile_check(int user_index,char* datafile,int* newdata_flag)
     {
         DEBUG_PRINT(DEBUG_LEVEL_INFO,"user(%d) datafile changed,reload(%s->%s)",user_index,g_tox_datafile[user_index].datafile_bakpath,g_tox_datafile[user_index].datafile_curpath);
         snprintf(sys_cmd,CMD_MAXLEN,"cp -f %s %s",g_tox_datafile[user_index].datafile_bakpath,g_tox_datafile[user_index].datafile_curpath);
-        system(sys_cmd);
+        cfd_system_cmd(sys_cmd);
     }
     return OK;
 }
