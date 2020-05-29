@@ -213,5 +213,7 @@ int cfd_bakcontent_dbdelete_byids(int uindex,char* pids);
 int cfd_bakcontent_getcount_byukey(int uindex,char* p_ukey,int* p_count);
 int cfd_userattribute_dbupdate(struct cfd_user_attribute_struct* pinfo);
 int cfd_userattribute_dbget_byuid(char* p_uid,char* p_atype,int limit_num,struct cfd_user_attribute_struct p_ainfo[],int* ret_count);
+int cfd_userpromate_dbupdate(char* p_user,struct cfd_userpromition_struct* p_uprom);
+int cfd_userpromate_dbget_byuid(char* p_user,struct cfd_userpromition_struct* p_uprom);
 #endif
 

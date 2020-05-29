@@ -147,6 +147,11 @@ enum CFD_DELBAKCONTENT_RETCODE
     CFD_DELBAKCONTENT_RET_OTHERSERR,
     CFD_DELBAKCONTENT_RET_BUTT
 };
+enum CFD_ACTIONLOGIN_CMDENUM
+{
+	CFD_ACTIONLOGIN_USERPROM = 0x01,
+	CFD_ACTIONLOGIN_BUTT,
+};
 
 //用户好友记录，所以一组好友关系，实际上有两条记录
 struct cfd_friends_record
@@ -269,7 +274,6 @@ struct cfd_rnodeonline_userone
     int lasttime;
     char uidstr[CFD_USER_PUBKEYLEN+1];
 };
-
 //旧数据的映射关系
 struct cfd_olddata_mapping
 {
@@ -345,6 +349,7 @@ enum CFD_ATTRIBUTE_TYPE_ENUM
 {
 	CFD_ATTRIBUTE_TYPE_ALL = 0,
 	CFD_ATTRIBUTE_TYPE_WALLET_QLC = 1,
+	CFD_ATTRIBUTE_TYPE_WALLET_QGAS = 2,
 	CFD_ATTRIBUTE_TYPE_BUTT
 };
 #define CFD_AINFOARRYY_DEFAULT_LIMITNUM  10
@@ -357,7 +362,12 @@ struct cfd_user_attribute_struct
     char uid[CFD_USER_PUBKEYLEN+1];//用户id
     char ainfo[CFD_KEYWORD_MAXLEN+1];//atrribute info
 };
-
+//用户推广权益属性
+struct cfd_userpromition_struct
+{
+	int pro_status;//权益状态，初始为零，添加好友成功之后置1
+	int pro_right;//权益数值，初始为零，每次有一个新权益好友添加自己好友成功之后+1,记录为自己成功推广一次
+};
 int get_uindexbyuid(char* p_uid);
 int cfd_uinfolist_getidleid(void);
 int cfd_rnodelist_getidleid(void);
@@ -433,4 +443,5 @@ int cfd_uinfonode_deletebyuid(int id);
 int cfd_rnode_userinfo_dbdelete_byuid(int id);
 int cfd_user_walletaccount_get_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
 int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_len,int* plws_index, struct imcmd_msghead_struct *head);
+int cfd_user_promation_deal(char* p_user1,char* p_user2);
 #endif

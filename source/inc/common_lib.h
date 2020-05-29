@@ -65,7 +65,7 @@ typedef  long long int64;
 #define DAEMON_FIFONAME  "/tmp/pnrouter_msg.fifo"
 #define DAEMON_OPEN_FIFONAME_CMD  "cat /tmp/pnrouter_msg.fifo"
 #define LOG_PATH "/tmp/logdisk/pnrouter_debug.log"
-#define PNR_USER_PUBKEY_MAXLEN      512//这里是256字节然后再base64转码之后的长度
+#define PNR_USER_PUBKEY_MAXLEN      320//这里是256字节然后再base64转码之后的长度
 #define PNR_FRIEND_MSG_MAXLEN      512
 #define PNR_DEBUG_FILENAME  "/tmp/pnr_debug.info"
 #define PNR_STATUS_FILENAME  "/tmp/pnr_status.info"
@@ -103,6 +103,7 @@ typedef  long long int64;
 #define PNR_REPEAT_TIME_1MIN    60// 1min
 #define PNR_REPEAT_TIME_15MIN   900//15min
 #define PNR_FRPC_CONNSTATUS_OKKEY "proxy success"
+#define CFD_UINFO_SEPARATOR  ','
 
 //用户类型
 enum PNR_USER_TYPE_ENUM
@@ -142,20 +143,22 @@ enum {
 #define PNR_IMUSER_MAXNUM 100
 #define PNR_GROUP_MAXNUM 30
 #define PNR_GROUP_USER_MAXNUM 100
+#define PNR_IMUSER_FRIENDS_MAXNUM 200//单个用户最大200个好友
 #elif DEV_ONESPACE
 #define PNR_IMUSER_MAXNUM 100
 #define PNR_GROUP_MAXNUM 30
 #define PNR_GROUP_USER_MAXNUM 100
+#define PNR_IMUSER_FRIENDS_MAXNUM 200//单个用户最大200个好友
 #else//x86
-#define PNR_IMUSER_MAXNUM 500
+#define PNR_IMUSER_MAXNUM 1500
 #define PNR_GROUP_MAXNUM 100
-#define PNR_GROUP_USER_MAXNUM 200
+#define PNR_GROUP_USER_MAXNUM 100
+#define PNR_IMUSER_FRIENDS_MAXNUM 100//单个用户最大100个好友
 #endif
 #define PNR_IMUSER_ALLDEV_MAXNUM 300
-#define PNR_IMUSER_FRIENDS_MAXNUM 200//单个用户最大200个好友
 #define PNR_INDEX_HASHSTR_LEN 3
 #define PNR_BKDR_HASHSTR_LEN 8
-#define PNR_HASHID_MAXNUM   (PNR_IMUSER_FRIENDS_MAXNUM*PNR_IMUSER_MAXNUM)
+//#define PNR_HASHID_MAXNUM   (PNR_IMUSER_FRIENDS_MAXNUM*PNR_IMUSER_MAXNUM)
 #define PNR_DEFAULT_DATAVERSION  1
 #define PNR_ADMINUSER_PSN_INDEX    1 //默认给客户的admin账号只有一个
 #define PNR_ADMINUSER_DEFAULT_IDCODE    "QLCADMIN"
@@ -562,5 +565,6 @@ char* pnr_stristr (const char * str1,const char * str2);
 int pnr_check_timestamp(long timestamp);
 int pnr_get_qlcnode_status(int* status);
 int pnr_set_qlcnode_enable(int enable);
+int cfd_system_cmd(const char *cmd_line);
 #endif
 

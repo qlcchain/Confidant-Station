@@ -3707,7 +3707,7 @@ int cfd_filelist_init(void)
                             strcpy(puser->paths[id].name,dbResult[offset+5]);
                         }
                     }
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"####user(%d:%d) get id(%d) patch(%d:%d:%s)",index,i,id,puser->paths[id].depens,puser->paths[id].type,puser->paths[id].name);
+                    //DEBUG_PRINT(DEBUG_LEVEL_INFO,"####user(%d:%d) get id(%d) patch(%d:%d:%s)",index,i,id,puser->paths[id].depens,puser->paths[id].type,puser->paths[id].name);
                     offset += nColumn;
                 }
                 sqlite3_free_table(dbResult);
@@ -3775,7 +3775,8 @@ int cfd_filelist_init(void)
                 }
                 sqlite3_free_table(dbResult);
             }
-            if(puser->files_num > 0)
+#if 0
+			if(puser->files_num > 0)
             {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_filelist_init:user(%d) total files_num(%d)",index,puser->files_num);
                 for( i = 0; i < CFD_PATHS_MAXNUM; i++ )
@@ -3793,6 +3794,7 @@ int cfd_filelist_init(void)
                     }
                 }
             }
+#endif
             //再拉取该用户的备份通信录
             //cfd_filelist_tbl(id integer primary key autoincrement,userindex,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey)
             snprintf(sql_cmd,SQL_CMD_LEN,"select id,timestamp,version,depens,msgid,type,srcfrom,size,pathid,fileid,fromid,toid,fname,fpath,md5,fileinfo,skey,dkey"
@@ -8745,6 +8747,63 @@ int cfd_user_walletaccount_update_deal(cJSON * params,char* retmsg,int* retmsg_l
     }
     strcpy(retmsg,ret_buff);
     free(ret_buff);
+    return OK;
+}
+/**********************************************************************************
+  Function:      cfd_user_promation_deal
+  Description:  用户推广权益处理
+  Calls:
+  Called By:
+  Input:
+  Output:        none
+  Return:        0:调用成功
+                 1:调用失败
+  Others:
+
+  History: 1. Date:2018-07-30
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_user_promation_deal(char* p_user1,char* p_user2)
+{
+	int change_flag = FALSE;
+	struct cfd_userpromition_struct uprom1;
+	struct cfd_userpromition_struct uprom2;
+    if(p_user1 == NULL || p_user2 == NULL)
+    {
+        return ERROR;
+    }
+	memset(&uprom1,0,sizeof(struct cfd_userpromition_struct));
+	memset(&uprom2,0,sizeof(struct cfd_userpromition_struct));
+	//解析数据库中当前用户推广权益状态
+	if(cfd_userpromate_dbget_byuid(p_user1,&uprom1) != OK || cfd_userpromate_dbget_byuid(p_user2,&uprom2) != OK)
+	{
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userpromate_dbget_byuid return failed");
+        return ERROR;
+	}
+	if(uprom1.pro_status == FALSE)
+	{
+		uprom2.pro_right ++;
+		uprom1.pro_status = TRUE;
+		change_flag = TRUE;
+		pnr_logcache_dbinsert(CFD_ACTIONLOGIN_USERPROM,p_user1,p_user2,"User Promation Increase",PNR_CMDTYPE_EXT_SUCCESS);
+	}
+	if(uprom2.pro_status == FALSE)
+	{
+		uprom1.pro_right ++;
+		uprom2.pro_status = TRUE;
+		change_flag = TRUE;
+		pnr_logcache_dbinsert(CFD_ACTIONLOGIN_USERPROM,p_user2,p_user1,"User Promation Increase",PNR_CMDTYPE_EXT_SUCCESS);
+	}
+	//如果权益有变更，更新数据库
+	if(change_flag == TRUE)
+	{
+		if(cfd_userpromate_dbupdate(p_user1,&uprom1) != OK || cfd_userpromate_dbupdate(p_user2,&uprom2) != OK)
+		{
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userpromate_dbupdate return failed");
+			return ERROR;
+		}
+	}
     return OK;
 }
 

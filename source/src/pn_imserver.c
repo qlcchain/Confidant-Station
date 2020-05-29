@@ -368,43 +368,42 @@ int pnr_groupinfo_init(void)
         {
             //groupuser_tbl(gid,uid,uindex,type,initmsgid,lastmsgid,timestamp,utoxid,uname,uremark,gremark,pubkey)
             snprintf(sql_cmd, SQL_CMD_LEN, "select uid,uindex,type,initmsgid,lastmsgid,utoxid,uname,uremark,gremark,pubkey from groupuser_tbl where gid=%d order by uid;",gid);
-            if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow, 
-                           &nColumn, &errmsg) == SQLITE_OK)
+            if(sqlite3_get_table(g_groupdb_handle, sql_cmd, &dbResult, &nRow,&nColumn, &errmsg) == SQLITE_OK)
             {
                 offset = nColumn; //字段值从offset开始呀
                 for(i = 0; i < nRow ; i++ )
                 {
+					memset(&g_grouplist[gid].user[i],0,sizeof(struct group_user));
                     uid = atoi(dbResult[offset+1]);
                     if(uid >= 0 && uid <= PNR_IMUSER_MAXNUM)
                     {
                         g_grouplist[gid].user_num++;
-                        memset(&g_grouplist[gid].user[uid],0,sizeof(struct group_user));
-                        g_grouplist[gid].user[uid].gindex =  atoi(dbResult[offset]);
-                        g_grouplist[gid].user[uid].userindex = uid;
-                        g_grouplist[gid].user[uid].type = atoi(dbResult[offset+2]);
-                        g_grouplist[gid].user[uid].init_msgid = atoi(dbResult[offset+3]);
-                        g_grouplist[gid].user[uid].last_msgid = atoi(dbResult[offset+4]);
+                        g_grouplist[gid].user[i].gindex =  atoi(dbResult[offset]);
+                        g_grouplist[gid].user[i].userindex = uid;
+                        g_grouplist[gid].user[i].type = atoi(dbResult[offset+2]);
+                        g_grouplist[gid].user[i].init_msgid = atoi(dbResult[offset+3]);
+                        g_grouplist[gid].user[i].last_msgid = atoi(dbResult[offset+4]);
                         if(dbResult[offset+5] != NULL)
                         {
-                            strcpy(g_grouplist[gid].user[uid].toxid,dbResult[offset+5]);
+                            strncpy(g_grouplist[gid].user[i].toxid,dbResult[offset+5],TOX_ID_STR_LEN);
                         }
                         if(dbResult[offset+6] != NULL)
                         {
-                            strcpy(g_grouplist[gid].user[uid].username,dbResult[offset+6]);
+                            strncpy(g_grouplist[gid].user[i].username,dbResult[offset+6],PNR_USERNAME_MAXLEN);
                         }
                         if(dbResult[offset+7] != NULL)
                         {
-                            strcpy(g_grouplist[gid].user[uid].user_remarks,dbResult[offset+7]);
+                            strncpy(g_grouplist[gid].user[i].user_remarks,dbResult[offset+7],PNR_USERNAME_MAXLEN);
                         }
                         if(dbResult[offset+8] != NULL)
                         {
-                            strcpy(g_grouplist[gid].user[uid].group_remarks,dbResult[offset+8]);
+                            strncpy(g_grouplist[gid].user[i].group_remarks,dbResult[offset+8],PNR_USERNAME_MAXLEN);
                         } 
                         if(dbResult[offset+9] != NULL)
                         {
-                            strcpy(g_grouplist[gid].user[uid].userkey,dbResult[offset+9]);
+                            strncpy(g_grouplist[gid].user[i].userkey,dbResult[offset+9],PNR_GROUP_USERKEY_MAXLEN);
                         } 
-                        strcpy(g_grouplist[gid].user[uid].user_pubkey,g_imusr_array.usrnode[uid].user_pubkey);
+                        strncpy(g_grouplist[gid].user[i].user_pubkey,g_imusr_array.usrnode[uid].user_pubkey,PNR_GROUP_USERKEY_MAXLEN);
                     }
                     offset += nColumn;
                 }
@@ -1335,16 +1334,22 @@ int get_indexbytoxid(char* p_toxid)
 int get_gidbygrouphid(char* p_ghashid)
 {
     int i =0;
-    if(p_ghashid == NULL || strlen(p_ghashid) != TOX_ID_STR_LEN)
+    if(p_ghashid == NULL || strlen(p_ghashid) < CFD_USER_PUBKEYLEN)
     {
         return -1;
     }
+	//DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_gidbygrouphid search group(%d:%s)",strlen(p_ghashid),p_ghashid);
     for(i=0;i<=PNR_GROUP_MAXNUM;i++)
     {
-        if(strcmp(p_ghashid,g_grouplist[i].group_hid) == OK)
-        {
-            return i;
-        }
+    	if(g_grouplist[i].init_flag == TRUE)
+		{
+			//DEBUG_PRINT(DEBUG_LEVEL_INFO,"gid(%d) group(%s)",i,g_grouplist[i].group_hid);
+			if(strncasecmp(p_ghashid,g_grouplist[i].group_hid,CFD_USER_PUBKEYLEN) == OK)
+			{
+				//DEBUG_PRINT(DEBUG_LEVEL_INFO,"get_gidbygrouphid:ret gid(%d)",i);
+				return i;
+			}
+		}
     }
     return -1;
 }
@@ -2323,12 +2328,12 @@ int im_pushmsg_callback(int index,int cmd,int local_flag,int apiversion,void* pa
                 {
                     //目的文件
                     PNR_REAL_FILEPATH_GET(dpath,index,PNR_FILE_SRCFROM_MSGRECV,htonl(psendfile->fileid),0,psendfile->filename);
-                    snprintf(cmdbuf, sizeof(cmdbuf), "cp %s%s %s%s", WS_SERVER_INDEX_FILEPATH,filepath,WS_SERVER_INDEX_FILEPATH,dpath);
-                    system(cmdbuf);
+                    snprintf(cmdbuf, sizeof(cmdbuf), "ln -s %s%s %s%s", WS_SERVER_INDEX_FILEPATH,filepath,WS_SERVER_INDEX_FILEPATH,dpath);
+                    findex = cfd_system_cmd(cmdbuf);
                     strcpy(fullfilename,WS_SERVER_INDEX_FILEPATH);
                     strcat(fullfilename,dpath);
                     cJSON_AddItemToObject(ret_params, "FilePath", cJSON_CreateString(dpath));
-                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg_PushFile:(%s->%s)",filepath,dpath);
+                    DEBUG_PRINT(DEBUG_LEVEL_INFO,"pushmsg_PushFile:cmd(%s)ret(%d),target file(%s)",cmdbuf,findex,fullfilename);
                 }
                 else
                 {
@@ -3785,6 +3790,8 @@ int im_addfriend_deal_deal(cJSON * params,char* retmsg,int* retmsg_len,
             im_nodelist_addfriend(index,msg->fromuser_toxid,msg->touser_toxid,msg->friend_nickname,friend_pubkey);
             cfd_addfriend_devinfo_byidstr(index,msg->to_uidstr);
         }
+		//增加用户推广权益计算处理
+		cfd_user_promation_deal(msg->from_uidstr,msg->to_uidstr);
         ret_code = PNR_MSGSEND_RETCODE_OK;
 
         if (head->iftox) {
@@ -12226,7 +12233,7 @@ int im_group_create_deal(cJSON * params,char* retmsg,int* retmsg_len,
                                     pthread_mutex_lock(&g_grouplock[gid]);
                                     for(j=0;j<PNR_GROUP_USER_MAXNUM;j++)
                                     {
-                                        if(g_grouplist[gid].user[j].userindex != 0 && g_grouplist[gid].user[j].userindex != uindex)
+                                        if(g_grouplist[gid].user[j].userindex > 0 && g_grouplist[gid].user[j].userindex != uindex && g_grouplist[gid].user[j].userindex < PNR_IMUSER_MAXNUM)
                                         {
                                             strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[j].toxid);
                                             im_pushmsg_callback(g_grouplist[gid].user[j].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
@@ -12418,7 +12425,7 @@ int im_group_invite_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         pthread_mutex_lock(&g_grouplock[gid]);
                         for(j=0;j<PNR_GROUP_USER_MAXNUM;j++)
                         {
-                            if(g_grouplist[gid].user[j].userindex != 0 && g_grouplist[gid].user[j].userindex != userindex)
+                            if(g_grouplist[gid].user[j].userindex > 0 && g_grouplist[gid].user[j].userindex != userindex && g_grouplist[gid].user[j].userindex < PNR_IMUSER_MAXNUM)
                             {
                                 strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[j].toxid);
                                 im_pushmsg_callback(g_grouplist[gid].user[j].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
@@ -12631,7 +12638,7 @@ int im_group_verify_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 pthread_mutex_lock(&g_grouplock[gid]);
                 for(j=0;j<PNR_GROUP_USER_MAXNUM;j++)
                 {
-                    if(g_grouplist[gid].user[j].userindex != 0 && g_grouplist[gid].user[j].userindex != uindex)
+                    if(g_grouplist[gid].user[j].userindex > 0 && g_grouplist[gid].user[j].userindex != uindex && g_grouplist[gid].user[j].userindex < PNR_IMUSER_MAXNUM)
                     {
                         strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[j].toxid);
                         im_pushmsg_callback(g_grouplist[gid].user[j].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
@@ -12743,7 +12750,7 @@ int im_group_quit_deal(cJSON * params,char* retmsg,int* retmsg_len,
             pthread_mutex_lock(&g_grouplock[gid]);
             for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
             {
-                if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                if(g_grouplist[gid].user[i].userindex > 0 && g_grouplist[gid].user[i].userindex != uindex && g_grouplist[gid].user[i].userindex < PNR_IMUSER_MAXNUM)
                 {
                     group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
                     strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
@@ -13504,9 +13511,9 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //参数检查
     uindex = cfd_getindexbyidstr(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex == 0 || group_hid < 0)
+    if(uindex <= 0 || gid < 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_sendmsg_deal:bad uid(%s) gid(%d)",pmsg->from,group_hid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_sendmsg_deal:bad uid(%d:%s) gid(%d:%s)",uindex,pmsg->from,gid,group_hid);
         ret_code = PNR_GROUPSENDMSG_RETCODE_BADPARAMS;
     }
     else if (pnr_checkrepeat_bymsgid(uindex, head->msgid,&(head->repeat_flag)) == TRUE) 
@@ -13532,7 +13539,7 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
         puser = get_guserbyuindex(gid,uindex);
         if(puser == NULL)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%d)",pmsg->from);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad gid(%d) uindex(%d)",gid,uindex);
             ret_code = PNR_GROUPSENDMSG_RETCODE_BADUSER;
         }
         else
@@ -13550,10 +13557,10 @@ int im_group_sendmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
                 pmsg->from,pmsg->msgpay,pmsg->attend,NULL,NULL,NULL,pmsg->assoc_id);
             for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
             {
-                if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                if(g_grouplist[gid].user[i].userindex > 0 && g_grouplist[gid].user[i].userindex != uindex && g_grouplist[gid].user[i].userindex < PNR_IMUSER_MAXNUM)
                 {
                     pmsg->to_uid = g_grouplist[gid].user[i].userindex;
-                    strcpy(pmsg->to,g_grouplist[gid].user[i].toxid);
+					strcpy(pmsg->to,g_grouplist[gid].user[i].toxid);
                     strcpy(pmsg->to_key,g_grouplist[gid].user[i].userkey);
                     if(strlen(g_grouplist[gid].user[i].group_remarks) > 0)
                     {
@@ -13731,7 +13738,7 @@ int im_group_delmsg_deal(cJSON * params,char* retmsg,int* retmsg_len,
             }
             for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
             {
-                if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                if(g_grouplist[gid].user[i].userindex > 0 && g_grouplist[gid].user[i].userindex != uindex && g_grouplist[gid].user[i].userindex < PNR_IMUSER_MAXNUM)
                 {
                     group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
                     strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
@@ -13991,9 +13998,9 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
     //参数检查
     uindex = cfd_getindexbyidstr(pmsg->from);
     gid = get_gidbygrouphid(group_hid);
-    if(uindex <= 0 || group_hid < 0)
+    if(uindex <= 0 || gid < 0)
     {
-        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_sendfile_done_deal:bad uid(%s) gid(%d)",pmsg->from,group_hid);
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"im_group_sendfile_done_deal:bad uid(%d:%s) gid(%d)",uindex,pmsg->from,gid);
         ret_code = PNR_GROUP_SENDFILE_RETURN_BADPRARMS;
     }
     else if(strlen(filename) == 0 || strlen(filemd5) == 0 || filesize <= 0)
@@ -14014,7 +14021,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
         puser = get_guserbyuindex(gid,uindex);
         if(puser == NULL)
         {
-            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"bad userid(%d)",pmsg->from);
+            DEBUG_PRINT(DEBUG_LEVEL_ERROR,"try to get groupuser(%d:%d) failed",gid,uindex);
             ret_code = PNR_GROUP_SENDFILE_RETURN_BADPRARMS;
         }
         else
@@ -14067,7 +14074,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
                     pmsg->from,pmsg->msgpay,"",pmsg->ext1,pmsg->ext2,NULL,0);
                 for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
                 {
-                    if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                    if(g_grouplist[gid].user[i].userindex > 0 && g_grouplist[gid].user[i].userindex != uindex && g_grouplist[gid].user[i].userindex < PNR_IMUSER_MAXNUM)
                     {
                         pmsg->to_uid = g_grouplist[gid].user[i].userindex;
                         strcpy(pmsg->to,g_grouplist[gid].user[i].toxid);
@@ -14077,7 +14084,7 @@ int im_group_sendfile_done_deal(cJSON * params,char* retmsg,int* retmsg_len,
                             memset(pmsg->group_name,0,PNR_GROUP_USERKEY_MAXLEN);
                             strcpy(pmsg->group_name,g_grouplist[gid].user[i].group_remarks);
                         }
-                        im_pushmsg_callback(pmsg->to_uid,PNR_IM_CMDTYPE_GROUPMSGPUSH,TRUE,head->api_version,(void *)pmsg);
+						im_pushmsg_callback(pmsg->to_uid,PNR_IM_CMDTYPE_GROUPMSGPUSH,TRUE,head->api_version,(void *)pmsg);
                     }
                 }
                 pthread_mutex_unlock(&g_grouplock[gid]);
@@ -14237,7 +14244,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         strcpy(group_sysmsg.msgpay,name);
                         for(i=0;i<PNR_GROUP_USER_MAXNUM;i++)
                         {
-                            if(g_grouplist[gid].user[i].userindex != 0 && g_grouplist[gid].user[i].userindex != uindex)
+                            if(g_grouplist[gid].user[i].userindex > 0 && g_grouplist[gid].user[i].userindex != uindex && g_grouplist[gid].user[i].userindex < PNR_IMUSER_MAXNUM)
                             {
                                 group_sysmsg.to_uid = g_grouplist[gid].user[i].userindex;
                                 strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[i].toxid);
@@ -14362,7 +14369,7 @@ int im_group_config_deal(cJSON * params,char* retmsg,int* retmsg_len,
                                     strcpy(group_sysmsg.to_user,puserlist->gpuser[i].userid);
                                     for(j=0;j<PNR_GROUP_USER_MAXNUM;j++)
                                     {
-                                        if(g_grouplist[gid].user[j].userindex != 0 && g_grouplist[gid].user[j].userindex != uindex)
+                                        if(g_grouplist[gid].user[j].userindex > 0 && g_grouplist[gid].user[j].userindex != uindex && g_grouplist[gid].user[j].userindex < PNR_IMUSER_MAXNUM)
                                         {
                                             strcpy(group_sysmsg.msgtargetuser,g_grouplist[gid].user[j].toxid);
                                             im_pushmsg_callback(g_grouplist[gid].user[j].userindex,PNR_IM_CMDTYPE_GROUPSYSPUSH,TRUE,head->api_version,(void *)&group_sysmsg);
@@ -16214,6 +16221,7 @@ int im_addfriend_auto_deal(cJSON * params,char* retmsg,int* retmsg_len,
                         pnr_account_dbget_byuserid(&src_account);
                         //im_pushmsg_callback(fid,PNR_IM_CMDTYPE_ADDFRIENDPUSH,TRUE,head->api_version,(void *)msg);
                         pnr_autoadd_localfriend(uindex,fid,&src_account);
+						cfd_user_promation_deal(msg->from_uidstr,msg->to_uidstr);
                     }
                     else
                     {

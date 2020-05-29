@@ -2072,4 +2072,57 @@ int pnr_set_qlcnode_enable(int enable)
     qlc_node_status = enable;
     return OK;
 }
+/*****************************************************************************
+ 函 数 名  : cfd_system_cmd
+ 功能描述  : 系统system的封装
+ 输入参数  : 
+ 输出参数  : 无
+ 返 回 值  : 
+ 调用函数  : 
+ 被调函数  : 
+ 
+ 修改历史      :
+  1.日    期   : 2018年11月30日
+    作    者   : willcao
+    修改内容   : 新生成函数
 
+*****************************************************************************/
+int cfd_system_cmd(const char *cmd) 
+{ 
+	FILE * fp = NULL; 
+	int res;
+	char buf[1024] = {0}; 
+	if (cmd == NULL) 
+	{ 
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"my_system cmd is NULL!");
+		return -1;
+	} 
+	if ((fp = popen(cmd, "r") ) == NULL) 
+	{ 
+		perror("popen");
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen error: %s", strerror(errno)); 
+		return -1; 
+	} 
+	else
+	{
+		while(fgets(buf, sizeof(buf), fp)) 
+		{ 
+			//printf("%s", buf); 
+		} 
+		if ( (res = pclose(fp)) == -1) 
+		{ 
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"close popen file pointer fp error!");
+			return res;
+		} 
+		else if (res == 0) 
+		{
+			return res;
+		} 
+		else 
+		{ 
+			DEBUG_PRINT(DEBUG_LEVEL_ERROR,"popen res is :%d", res);
+			return res; 
+		} 
+	}
+	return OK;
+} 

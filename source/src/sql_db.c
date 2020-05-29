@@ -2599,6 +2599,11 @@ int pnr_msglog_getid(int index, int *logid)
     //DEBUG_PRINT(DEBUG_LEVEL_INFO,"pnr_msglog_getid: insert ok");
 	*logid = sqlite3_last_insert_rowid(g_msglogdb_handle[index]);
 #else
+	if(index < 0 || index >= PNR_IMUSER_MAXNUM)
+	{
+		DEBUG_PRINT(DEBUG_LEVEL_ERROR, "pnr_msglog_getid index(%d) error",index);
+		return ERROR;
+	}
     pthread_mutex_lock(&(g_user_msgidlock[index]));
     *logid = (int)g_imusr_array.usrnode[index].msglog_dbid;
     g_imusr_array.usrnode[index].msglog_dbid++;
@@ -8681,6 +8686,98 @@ int cfd_userattribute_dbget_byuid(char* p_uid,char* p_atype,int limit_num,struct
         }
     }
 	DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userattribute_dbget_byuid: sql(%s) ret(%d)",sql_cmd,*ret_count);
+    return OK;
+}
+
+/***********************************************************************************
+  Function:      cfd_userpromate_dbget_byuid
+  Description:  根据用户id获取用户推广权益
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_userpromate_dbget_byuid(char* p_user,struct cfd_userpromition_struct* p_uprom)
+{
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    char cache_uinfo[CFD_KEYWORD_MAXLEN] = {0};
+	struct db_string_ret db_ret;
+    char *errmsg = NULL;
+	char* ptmp = NULL;
+    if(p_user == NULL || p_uprom == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userpromate_dbget_byuid input err");
+        return ERROR;
+    }
+
+    db_ret.buf_len = CFD_USER_PUBKEYLEN;
+    db_ret.pbuf = cache_uinfo;
+    //rnode_uinfo_tab(id integer primary key autoincrement,local,uindex,uinfoseq,friendseq,friendnum,createtime,version,type,capacity,idstring,uname,mailinfo,avatar,atamd5,info);
+    snprintf(sql_cmd,SQL_CMD_LEN,"select info from rnode_uinfo_tab where idstring='%s';",p_user);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,dbget_singstr_result,&db_ret,&errmsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userpromate_dbget_byuid failed(%s)",sql_cmd);
+        sqlite3_free(errmsg);
+        return ERROR;
+    }
+	p_uprom->pro_status = FALSE;
+	p_uprom->pro_right = 0;
+	if(strlen(cache_uinfo) > 0)
+	{
+		ptmp = strchr(cache_uinfo,CFD_UINFO_SEPARATOR);
+		if(ptmp != NULL)
+		{
+			p_uprom->pro_status = atoi(cache_uinfo);
+			ptmp++;
+			p_uprom->pro_right = atoi(ptmp);
+		}
+	} 
+	DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userpromate_dbget_byuid: user(%s) ret(%d %d)",sql_cmd,p_uprom->pro_status,p_uprom->pro_right);
+    return OK;
+}
+/***********************************************************************************
+  Function:      cfd_userpromate_dbupdate
+  Description:  数据库更新用户推广权益
+  Calls:
+  Called By:     main
+  Input:
+  Output:
+  Return:
+  Others:
+
+  History:
+  History: 1. Date:2015-10-08
+                  Author:Will.Cao
+                  Modification:Initialize
+***********************************************************************************/
+int cfd_userpromate_dbupdate(char* p_user,struct cfd_userpromition_struct* p_uprom)
+{
+    int8* errMsg = NULL;
+    int count = 0;
+    char sql_cmd[SQL_CMD_LEN] = {0};
+    char cache_uinfo[CFD_KEYWORD_MAXLEN] = {0};
+	
+    if(p_user == NULL || p_uprom == NULL)
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"cfd_userpromate_dbupdate:input err");
+        return ERROR;
+    }
+	snprintf(cache_uinfo,CFD_KEYWORD_MAXLEN,"%d,%d",p_uprom->pro_status,p_uprom->pro_right);
+    snprintf(sql_cmd,SQL_CMD_LEN,"update rnode_uinfo_tab set info='%s' where idstring='%s';",cache_uinfo,p_user);
+    DEBUG_PRINT(DEBUG_LEVEL_INFO,"cfd_userpromate_dbupdate:sql(%s)",sql_cmd);
+    if(sqlite3_exec(g_rnodedb_handle,sql_cmd,0,0,&errMsg))
+    {
+        DEBUG_PRINT(DEBUG_LEVEL_ERROR,"sqlite cmd(%s) err(%s)",sql_cmd,errMsg);
+        sqlite3_free(errMsg);
+        return ERROR;
+    }
     return OK;
 }
 

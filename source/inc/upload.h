@@ -13,7 +13,7 @@
 #include "md5.h"
 
 #define UPLOAD_FILENAME_MAXLEN	256
-#define PNR_MAX_SENDFILE_NUM	100	/* 最大同时发送文件数 */
+#define PNR_MAX_SENDFILE_NUM	50	/* 最大同时发送文件数 */
 
 /*
  * Unlike ws, http is a stateless protocol.  This pss only exists for the
