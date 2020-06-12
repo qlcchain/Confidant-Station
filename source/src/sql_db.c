@@ -4329,7 +4329,7 @@ int pnr_msgcache_dbinsert_v3(int msgid, char *fromid, char *toid, int type,
 	pthread_mutex_lock(&lws_cache_msglock[userid]);
 	if (!list_empty(&g_lws_cache_msglist[userid].list)) {
 		list_for_each_safe(tmsg, n, &g_lws_cache_msglist[userid].list, struct lws_cache_msg_struct, list) {
-			if (tmsg->logid && tmsg->logid == logid) {
+			if (tmsg->msgid && tmsg->msgid == msgid) {
                 DEBUG_PRINT(DEBUG_LEVEL_INFO,"msg cache repeat, no add");
                 free(msg);
 				goto OUT;

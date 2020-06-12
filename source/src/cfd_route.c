@@ -2300,7 +2300,7 @@ int cfd_checklastactive_byuidstr(char* p_uidstr,int* p_index,int* p_rid)
 ***********************************************************************************/
 int cfd_getfriendid_byidstr(int userid,char* friend_idstr)
 {
-    int i = 0,idstr_len = 0;;
+    int i = 0,idstr_len = 0;
     char idstr[CFD_USER_PUBKEYLEN+1] = {0};
     char* pidstr = NULL;
     if( userid <=0 || userid > PNR_IMUSER_MAXNUM || friend_idstr == NULL)
